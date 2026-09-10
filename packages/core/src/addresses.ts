@@ -50,7 +50,15 @@ export const MENTO_MAINNET = {
     'AUSD/USDm': '0xb0a0264Ce6847F101b76ba36A4a3083ba489F501',
     'USDC/USDm': '0x463c0d1F04bcd99A1efCF94AC2a75bc19Ea4A7E5',
     'GBPm/USDm': '0xD0E9c1a718D2a693d41eacd4B2696180403Ce081',
+    // §14.1 — all seven pools enumerated from FPMMFactory on 2026-09-10
+    'EURm/USDm': '0x93e15A22fDa39FEfcCCe82D387A09cCF030EAD61',
+    'CHFm/USDm': '0xDC81135fD82f02Cae736E261FB676B716663e8b8',
+    'JPYm/USDm': '0x4DF3f08977743Ad95aB31b8dC203EAe885Ae9D32',
+    'USDT0/USDm': '0x0A59be741AD49c6C2E0a2d30a57eD8f5ffa5DEB8',
   },
+  /** §14.2 — per-pool oracle adapters differ; read pool.oracleAdapter() on-chain, these are for display only */
+  oracleAdapterFx: '0xa472fBBF4b890A54381977ac392BdF82EeC4383a',
+  oracleAdapterUsd: '0xEB23E1339b2119c0f4a0097Cb294E990C1fA6423',
 } as const satisfies Record<string, Address | Record<string, Address>>
 
 /** §4, §12.2 — Chainlink Data Feed proxies on Monad mainnet (AggregatorV3). */
@@ -60,7 +68,8 @@ export const CHAINLINK_MAINNET = {
   'CHF/USD': { address: '0x6DBa7f3A7B5B7c1079337104caD14D19150F6B8d', decimals: 18, heartbeatSec: 240 },
   'JPY/USD': { address: '0xF64664Ea54cE47eCC7a1816C49d1Bc6deF828927', decimals: 18, heartbeatSec: 240 },
   'AUSD/USD': { address: '0xE20751C7B5867bCBef815ffc1b284c3f412a9e13', decimals: 8, heartbeatSec: 3600 },
-  'USDC/USD': { address: '0x30cF74D15Ea22D872418ace3475f42066EDe7E50', decimals: 18, heartbeatSec: 86400 },
+  // §14.3 — the 8-dec proxy is the one Mento relays; the 18-dec 0x30cF… is an SVR DualAggregator
+  'USDC/USD': { address: '0xf5F15f188AbCB0d165D1Edb7f37F7d6fA2fCebec', decimals: 8, heartbeatSec: 3600 },
 } as const satisfies Record<string, { address: Address; decimals: number; heartbeatSec: number }>
 
 /** §1, §13 — canonical infrastructure on Monad mainnet. */
@@ -70,11 +79,13 @@ export const INFRA_MAINNET = {
   entryPointV07: '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
   entryPointV08: '0x4337084d9e255ff0702461cf8895ce9e3b5ff108',
   simple7702Account: '0xe6Cae83BdE06E4c305530e199D7217f42808555B',
+  // §14.4 — Pimlico SingletonPaymasterV8
+  pimlicoPaymasterV08: '0x888888888888Ec68A58AB8094Cc1AD20Ba3D2402',
+  mentoMarketHoursBreaker: '0x0A18B8e7338eF8d6025529257aA5CCd5A14e0DAF',
 } as const satisfies Record<string, Address>
 
 /** Henad's own contracts. Filled in by the deploy scripts; empty until then. */
 export interface HenadDeployment {
-  payoutIntent: Address
   corridorRouter: Address
   rateAttestation: Address
   deployedAtBlock: bigint

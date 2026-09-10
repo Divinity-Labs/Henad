@@ -2,30 +2,36 @@
 pragma solidity ^0.8.31;
 
 /// @title IRateSource
-/// @notice A named, addressable source of a reference exchange rate for a corridor.
-/// @dev Henad never sets rates. Every implementation reads an on-chain oracle
-///      (e.g. a Chainlink AggregatorV3 proxy on Monad) and reports where the number
-///      came from, so a receipt can name its source. Rates are fixed-point with
-///      `RATE_DECIMALS` decimals, quoted as units of target currency per one unit
-///      of source currency (e.g. USD→GBP ≈ 0.78e18).
+/// @notice A named, addressable, replayable source of a reference exchange rate
+///         for an asset pair. Henad never sets rates: every implementation reads
+///         on-chain oracles and returns enough provenance for anyone to re-derive
+///         the number later.
+/// @dev Keyed by (sourceAsset, targetAsset) rather than by currency pair because
+///      two source assets in the same currency (AUSD, USDC) have different feeds.
+///      Rates are 1e18 fixed point, target units per one source unit
+///      (AUSD -> GBPm ≈ 0.74e18). The receipt records `address(this)` as the
+///      rate source; implementations expose their underlying feeds separately.
 interface IRateSource {
-    /// @notice Fixed-point scale used by every rate returned from this interface.
+    error UnsupportedPair(address sourceAsset, address targetAsset);
+    error StaleReferenceRate(address feed, uint256 updatedAt, uint256 maxAge);
+    error InvalidReferenceAnswer(address feed, int256 answer);
+
+    /// @notice Fixed-point scale of every rate returned here. Always 18.
     function RATE_DECIMALS() external pure returns (uint8);
 
-    /// @notice Human-readable label, e.g. "chainlink:GBP/USD" or "mento:SortedOracles".
+    /// @notice Human-readable label, e.g. "chainlink:composed-fiat-feeds".
     function name() external view returns (string memory);
 
-    /// @notice Latest reference rate for a corridor.
-    /// @param corridor keccak256 of the ISO-4217 pair string, e.g. keccak256("USD/GBP").
-    /// @return rate      target units per source unit, scaled by 10**RATE_DECIMALS.
-    /// @return updatedAt timestamp the underlying oracle last updated.
-    /// @return source    the address the rate was read from (e.g. the Chainlink proxy),
-    ///                   recorded verbatim in the receipt.
-    function getRate(bytes32 corridor)
+    /// @notice Latest reference rate for a pair. Reverts if unsupported, stale, or invalid.
+    /// @return rate        target units per source unit, scaled 1e18.
+    /// @return updatedAt   the oldest underlying oracle timestamp used.
+    /// @return observation source-defined provenance that lets anyone replay the
+    ///                     read (for Chainlink: (roundIdBase << 80) | roundIdQuote).
+    function getRate(address sourceAsset, address targetAsset)
         external
         view
-        returns (uint256 rate, uint64 updatedAt, address source);
+        returns (uint256 rate, uint64 updatedAt, bytes32 observation);
 
-    /// @notice True if this source can quote the corridor.
-    function isSupported(bytes32 corridor) external view returns (bool);
+    /// @notice True if this source can quote the pair.
+    function isSupported(address sourceAsset, address targetAsset) external view returns (bool);
 }

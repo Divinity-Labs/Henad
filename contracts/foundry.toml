@@ -3,21 +3,32 @@ src = "src"
 out = "out"
 libs = ["lib"]
 solc_version = "0.8.31"
+evm_version = "osaka"
 optimizer = true
 optimizer_runs = 200
 fs_permissions = [{ access = "read", path = "./" }]
 
-# Native Monad support (Foundry >= 1.8.0): Monad opcode pricing, hardfork, anvil --network monad.
+# Monad execution semantics (Foundry >= 1.8.0). Mainnet has been on MONAD_TEN since
+# block 101352493 (2026-09-02 14:30 UTC); never pin MonadNine, it inflates gas ~26%.
+# See docs/INTEGRATION-FACTS.md §14.
 network = "monad"
+hardfork = "monad:MonadTen"
 
-# Sources: docs/INTEGRATION-FACTS.md §1
+# Sources: docs/INTEGRATION-FACTS.md §1. Fork tests read MONAD_FORK_BLOCK (0 = latest).
 [rpc_endpoints]
 monad = "${MONAD_MAINNET_RPC_URL}"
 monad_testnet = "${MONAD_TESTNET_RPC_URL}"
 
+# Monadscan is Etherscan V2: forge derives https://api.etherscan.io/v2/api?chainid=143
+# from `chain` alone. Do NOT set `url` — api.monadscan.com/api is a dead V1 endpoint.
+# MonadVision uses a separate Sourcify server; see scripts/verify.sh.
 [etherscan]
-monad = { key = "${MONAD_EXPLORER_API_KEY}", url = "https://api.monadscan.com/api", chain = 143 }
-monad_testnet = { key = "${MONAD_EXPLORER_API_KEY}", url = "https://api-testnet.monadscan.com/api", chain = 10143 }
+monad = { key = "${ETHERSCAN_API_KEY}", chain = 143 }
+monad_testnet = { key = "${ETHERSCAN_API_KEY}", chain = 10143 }
 
 [fuzz]
 runs = 1024
+
+[invariant]
+runs = 256
+depth = 32

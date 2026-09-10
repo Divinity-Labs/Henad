@@ -2,34 +2,38 @@
 pragma solidity ^0.8.31;
 
 /// @title IVenueAdapter
-/// @notice Executes one leg-or-more swap on an external venue (Mento V3 Router on
-///         Monad) and returns exactly how much target asset was delivered.
-/// @dev The adapter never holds funds between calls. The router transfers
-///      `amountIn` of `assetIn` to the adapter, calls `swap`, and the adapter must
-///      deliver `assetOut` straight to `recipient`. The realised rate is computed
-///      by the caller from `amountIn` and `amountOut`; adapters do not report rates.
+/// @notice Executes a swap on an external venue (Mento V3 on Monad) and delivers
+///         the target asset straight to the recipient.
+/// @dev The caller transfers `amountIn` of `assetIn` to the adapter, then calls
+///      `swap`. The adapter must never hold funds between calls. Rates are not
+///      reported by adapters; the router derives the executed rate from the
+///      recipient's balance delta.
 interface IVenueAdapter {
+    /// @notice Why a pair cannot trade right now. `Open` means it can.
+    enum Status {
+        Open,
+        NoRoute,
+        MarketClosed,
+        OracleStale,
+        TradingSuspended
+    }
+
+    error NoRoute(address assetIn, address assetOut);
+
     /// @notice Human-readable label, e.g. "mento:v3-router".
     function name() external view returns (string memory);
 
-    /// @notice Quote without executing. Used for the pre-signing spread disclosure.
-    function quote(address assetIn, address assetOut, uint256 amountIn)
-        external
-        view
-        returns (uint256 amountOut);
+    /// @notice Tradability without reverting, for the UI and relayer pre-flight.
+    function status(address assetIn, address assetOut) external view returns (Status);
 
-    /// @notice Execute the swap and deliver `assetOut` to `recipient`.
-    /// @param assetIn      token already transferred to this adapter by the caller.
-    /// @param assetOut     token to deliver.
-    /// @param amountIn     amount of `assetIn` held for this swap.
+    /// @notice Venue quote. Reverts with the venue's own errors when it cannot price.
+    function quote(address assetIn, address assetOut, uint256 amountIn) external view returns (uint256 amountOut);
+
+    /// @notice Execute and deliver `assetOut` to `recipient`.
+    /// @param amountIn     amount of `assetIn` already transferred to this adapter.
     /// @param minAmountOut revert if fewer than this would be delivered.
-    /// @param recipient    final receiver of `assetOut`.
-    /// @return amountOut   amount actually delivered to `recipient`.
-    function swap(
-        address assetIn,
-        address assetOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        address recipient
-    ) external returns (uint256 amountOut);
+    /// @return amountOut   amount the venue reports as delivered.
+    function swap(address assetIn, address assetOut, uint256 amountIn, uint256 minAmountOut, address recipient)
+        external
+        returns (uint256 amountOut);
 }
