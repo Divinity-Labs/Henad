@@ -24,7 +24,8 @@ export const metadata: Metadata = {
     'Send money abroad. Keep proof of the rate. Cross-border payouts settled through onchain FX on Monad, with the reference rate, the executed rate, and the exact spread on every payment.',
   applicationName: 'Henad',
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/brand/monad-logomark.svg' },
+  // Icons come from src/app/icon.svg and apple-icon.svg (the file-based convention).
+  // Never Monad's logomark: it is their trademark, and Henad has its own mark.
 }
 
 export const viewport: Viewport = {

@@ -35,14 +35,18 @@ async function readChainlink(feed: FeedRef) {
   return { roundId, answer, updatedAt: Number(updatedAt) }
 }
 
-async function readPyth(priceId: string): Promise<{ price: number; publishTime: number }> {
-  const url = `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${priceId}&parsed=true`
-  const res = await fetch(url, { next: { revalidate: 30 } })
-  if (!res.ok) throw new Error(`Pyth Hermes ${res.status}`)
-  const json = (await res.json()) as { parsed: { price: { price: string; expo: number; publish_time: number } }[] }
-  const p = json.parsed[0]!.price
-  return { price: Number(p.price) * 10 ** p.expo, publishTime: p.publish_time }
-}
+/**
+ * Pyth prices are deliberately not read here.
+ *
+ * Pyth is a pull oracle: a price only exists on Monad once somebody pays to post it,
+ * and nobody posts FX there — in a 100-block sample, 53 Pyth feeds were updated on
+ * Monad and not one was a currency. The rand value sitting in Monad's Pyth contract
+ * was published 2 Sep 2025 and every staleness-checked read reverts StalePrice.
+ * Hermes, the off-chain price service, now returns 401 without an API key
+ * (PYTH_HERMES_API_KEY), so quoting it would also mean showing a number that is not
+ * on the chain we settle on. If a Pyth-priced corridor is ever added, read it
+ * on-chain through the Pyth contract with getPriceNoOlderThan and let it revert.
+ */
 
 /** Live reference rates for every corridor in the registry. Unpriced rows return rate null. */
 export async function liveRates(): Promise<LiveRate[]> {
@@ -59,9 +63,8 @@ export async function liveRates(): Promise<LiveRate[]> {
           const stale = now - updatedAt > (corridor.feed.heartbeatSec ?? 3600) * 1.5
           return { ...base, rate, updatedAt, stale }
         }
-        const { price, publishTime } = await readPyth(corridor.feed.ref)
-        const rate = BigInt(Math.round(price * 1e6)) * 10n ** 12n
-        return { ...base, rate, updatedAt: publishTime, stale: now - publishTime > 300 }
+        // No non-Chainlink feed is wired; see the note above readPyth's removal.
+        return { ...base, rate: null, updatedAt: null, stale: true, error: 'unsupported feed kind' }
       } catch (e) {
         return { ...base, rate: null, updatedAt: null, stale: true, error: (e as Error).message }
       }

@@ -129,12 +129,18 @@ export const CORRIDORS: Corridor[] = [
     target: 'ZAR',
     targetSymbol: 'R',
     targetName: 'rand',
-    tier: 'quote',
-    // §4: Pyth USD/ZAR price id; Pyth is live on Monad as a pull oracle
-    feed: { kind: 'pyth', label: 'Pyth USD/ZAR · pull oracle', ref: '0x389d889017db82bf42141f23b61b8de938a4e2d156e36312175bebf797f493f1', usdPerTarget: false },
+    // Not 'quote'. Quote means a live reference rate with no asset to deliver into.
+    // Pyth is a pull oracle: it publishes USD/ZAR (price id
+    // 0x389d889017db82bf42141f23b61b8de938a4e2d156e36312175bebf797f493f1, the only
+    // African currency in its ~1,893 feeds) but nobody posts FX to Monad. The value
+    // stored in Monad's Pyth contract was published 2 Sep 2025 and every
+    // staleness-checked read reverts StalePrice, so there is no usable rand price
+    // here. Read on-chain 10 Sep 2026.
+    tier: 'unpriced',
+    feed: null,
     venue: null,
     targetAsset: null,
-    note: 'Priced · no asset on Monad',
+    note: 'Pyth publishes USD/ZAR but nobody posts it to Monad · last on-chain price 2 Sep 2025',
     rateDp: 3,
     currencyDp: 2,
   },

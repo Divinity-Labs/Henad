@@ -12,9 +12,17 @@ do not build on it). Nothing here is from memory.
 **There is no naira on Monad mainnet and no NGN/USD oracle on Monad.** The USD→NGN
 corridor in the build prompt cannot be settled onchain on Monad today.
 
+> ⚠ **§2 below is superseded by §14.1 wherever they disagree.** §2 was written from
+> Mento's docs page, which lists only USDm and GBPm on Monad. §14.1 enumerated the
+> pools on-chain: **all four FX corridors are live** — GBPm, EURm, CHFm and JPYm each
+> have a USDm pool that quotes today, confirmed again on 2026-09-10 in Mento's own app
+> at app.mento.org/swap/monad, which offers GBPm, USDm, AUSD, USDT0, EURm, JPYm and
+> CHFm. The product treats all four as live corridors. Still true in both: no African
+> currency on Monad.
+
 | Claim in the build prompt | Finding |
 | --- | --- |
-| "Mento — already deployed on Monad, 15 currencies" | **Refuted as worded.** Mento supports 15 currencies on Celo. On Monad it launched 2026-03-12 with **USDm and GBPm** only; EURm/CHFm/JPYm tokens exist on-chain but their pools are unverified. No African currency on Monad. |
+| "Mento — already deployed on Monad, 15 currencies" | **Refuted as worded.** Mento supports 15 currencies on Celo, five of them African. On Monad it launched 2026-03-12; the docs page lists USDm and GBPm, but on-chain there are five stables (USDm, GBPm, EURm, CHFm, JPYm) and seven pools — see §14.1. No African currency on Monad. |
 | "cNGN (Mento's naira stablecoin)" | Mento's naira (NGNm, formerly cNGN) is **Celo-only**. The *other* cNGN (Africa Stablecoin Consortium / WrappedCBDC) is on **Monad testnet only**, no mainnet contract. |
 | "Chainlink underpins Mento's rates — get the Monad feed addresses" | **Confirmed.** Chainlink Data Feeds are live on Monad mainnet with EUR, GBP, CHF, JPY, CAD vs USD. **No NGN feed** from Chainlink or Pyth on Monad (Pyth has no NGN feed on any chain). |
 

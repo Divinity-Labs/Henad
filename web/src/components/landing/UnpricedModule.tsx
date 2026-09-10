@@ -47,10 +47,12 @@ const ROWS: readonly (readonly [string, string])[] = [
 
 const HEADLINE = 'Five currencies have a live price on Monad. None of them is African.'
 
-/** Derived from the registry, which holds exactly one unpriced corridor. */
-const pairs = CORRIDORS.filter((c) => c.tier === 'unpriced')
-  .map((c) => `${c.source} → ${c.target}`)
-  .join(' · ')
+/** This panel is about the naira specifically. The rand is also unpriced, for a
+ *  different reason, and gets its own row in the rates table rather than this card. */
+const pairs =
+  CORRIDORS.filter((c) => c.target === 'NGN')
+    .map((c) => `${c.source} → ${c.target}`)
+    .join(' · ') || 'USD → NGN'
 
 function NgnCard({ compact = false }: { compact?: boolean }) {
   return (
