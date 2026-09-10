@@ -200,14 +200,38 @@ contract CorridorRouterTest is Test {
         assertEq(router.owner(), owner);
     }
 
+    /// The zero check runs before the binding check, so a zero attestation is still
+    /// `ZeroAddress` rather than a failed `router()` staticcall.
     function test_constructor_rejectsZeroAttestation() public {
         vm.expectRevert(CorridorRouter.ZeroAddress.selector);
         new CorridorRouter(owner, IRateAttestation(address(0)));
     }
 
+    /// Ownable's base constructor runs before the router's body, so a zero owner is
+    /// reported as `OwnableInvalidOwner` even though `attestation` is bound elsewhere.
     function test_constructor_rejectsZeroOwner() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
         new CorridorRouter(address(0), attestation);
+    }
+
+    /// A mispredicted CREATE nonce must fail on deploy, not on the first settlement.
+    /// Off-by-one prediction: the attestation is bound to nonce+2 while the router
+    /// lands at nonce+1.
+    function test_constructor_rejectsMispredictedCreateNonce() public {
+        address mispredicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 2);
+        RateAttestation misbound = new RateAttestation(mispredicted);
+        assertTrue(misbound.router() != vm.computeCreateAddress(address(this), vm.getNonce(address(this))), "setup");
+
+        vm.expectRevert(CorridorRouter.AttestationMisbound.selector);
+        new CorridorRouter(owner, misbound);
+    }
+
+    /// The corollary: a receipt store already bound to a live router can never back a
+    /// second one, so the pair is always one-to-one.
+    function test_constructor_rejectsAttestationBoundToAnotherRouter() public {
+        assertEq(attestation.router(), address(router), "setup");
+        vm.expectRevert(CorridorRouter.AttestationMisbound.selector);
+        new CorridorRouter(owner, attestation);
     }
 
     // =========================================================================
@@ -293,6 +317,28 @@ contract CorridorRouterTest is Test {
         vm.expectRevert(CorridorRouter.ZeroAddress.selector);
         router.registerCorridor(address(ausd), address(eurm), CORRIDOR, rateSource, IVenueAdapter(address(0)));
         vm.stopPrank();
+    }
+
+    /// A same-asset corridor could never settle (`_requireOpen` rejects the intent) and
+    /// on Mento would route X -> USDm -> X, so it is refused at registration.
+    function test_registerCorridor_rejectsSameAsset() public {
+        rateSource.setSupported(address(ausd), address(ausd), true);
+        vm.prank(owner);
+        vm.expectRevert(CorridorRouter.SameAsset.selector);
+        router.registerCorridor(address(ausd), address(ausd), keccak256("USD/USD"), rateSource, venue);
+        (,, IVenueAdapter v,,) = router.corridors(address(ausd), address(ausd));
+        assertEq(address(v), address(0), "nothing stored");
+    }
+
+    /// An empty corridor id would stamp every receipt for the pair with a blank
+    /// identifier, which reads as "no corridor" off-chain.
+    function test_registerCorridor_rejectsZeroCorridor() public {
+        rateSource.setSupported(address(ausd), address(eurm), true);
+        vm.prank(owner);
+        vm.expectRevert(CorridorRouter.ZeroCorridor.selector);
+        router.registerCorridor(address(ausd), address(eurm), bytes32(0), rateSource, venue);
+        (,, IVenueAdapter v,,) = router.corridors(address(ausd), address(eurm));
+        assertEq(address(v), address(0), "nothing stored");
     }
 
     // =========================================================================
@@ -502,6 +548,28 @@ contract CorridorRouterTest is Test {
             abi.encodeWithSelector(CorridorRouter.CorridorNotRegistered.selector, address(ausd), address(eurm));
         _expectRevertVia(false, i, err);
         _expectRevertVia(true, i, err);
+    }
+
+    /// Neither the router nor the venue adapter has a sweep — deliberately — so target
+    /// tokens delivered to either would be stuck forever. Both are refused before the
+    /// swap, on both paths, and nothing moves.
+    function test_settle_recipientRouterOrVenueReverts() public {
+        address[2] memory bad = [address(router), address(venue)];
+        for (uint256 k = 0; k < bad.length; ++k) {
+            PayoutIntent.Intent memory i = _intent();
+            i.recipient = bad[k];
+            bytes memory err = abi.encodeWithSelector(CorridorRouter.InvalidRecipient.selector, bad[k]);
+            uint256 payerBefore = ausd.balanceOf(payer);
+
+            _expectRevertVia(false, i, err);
+            _expectRevertVia(true, i, err);
+
+            assertEq(ausd.balanceOf(payer), payerBefore, "payer untouched");
+            assertEq(gbpm.balanceOf(bad[k]), 0, "nothing delivered");
+            assertEq(venue.swapCount(), 0, "venue never called");
+            assertEq(uint8(router.intentStatus(router.hashIntent(i))), uint8(PayoutIntent.Status.None));
+            assertFalse(ausd.authorizationState(payer, router.hashIntent(i)), "path-A nonce rolled back");
+        }
     }
 
     function test_settle_noApprovalReverts() public {

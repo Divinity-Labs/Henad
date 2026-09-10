@@ -34,6 +34,12 @@ import {Corridor} from "./libraries/Corridor.sol";
 ///      funds, edit or remove a corridor, or touch a receipt. There is no receive or
 ///      fallback function, so the contract cannot hold native tokens.
 ///
+///      Because there is no sweep, `_settle` refuses an intent whose recipient is this
+///      router or the corridor's venue adapter (`InvalidRecipient`): tokens delivered
+///      to either would be stuck forever. The constructor likewise refuses an
+///      attestation that is not already bound to this address (`AttestationMisbound`),
+///      so a mispredicted CREATE nonce fails on deploy rather than after the first swap.
+///
 ///      Reentrancy: both entry points are `nonReentrant` (transient storage, live on
 ///      Monad). Checks-effects-interactions is not fully achievable because the swap
 ///      must precede the receipt, so the guard is the defence; `_markFilled` runs
@@ -73,11 +79,22 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
     error AuthorizationUsed(bytes32 intentId);
     error ValueOverflow();
     error ZeroAddress();
+    error AttestationMisbound();
+    error SameAsset();
+    error ZeroCorridor();
+    error InvalidRecipient(address recipient);
 
     /// @param owner_        The only key that may register corridors. Zero reverts in Ownable.
     /// @param attestation_  The RateAttestation deployed one nonce earlier with this address predicted.
+    /// @dev Reverts `AttestationMisbound` unless the attestation's immutable `router`
+    ///      already equals this address. The pair is wired by CREATE nonce prediction
+    ///      (script/Deploy.s.sol) and neither contract has a setter, so a mispredicted
+    ///      nonce would otherwise produce a router whose every settlement reverts
+    ///      `NotRouter` at the receipt write — after the swap. Failing here makes that
+    ///      a deploy-time error instead of a first-payout error.
     constructor(address owner_, IRateAttestation attestation_) Ownable(owner_) {
         if (address(attestation_) == address(0)) revert ZeroAddress();
+        if (attestation_.router() != address(this)) revert AttestationMisbound();
         attestation = attestation_;
     }
 
@@ -90,6 +107,11 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
     /// @dev Reverts `IRateSource.UnsupportedPair` unless `rateSource.isSupported(src, dst)`
     ///      and `IVenueAdapter.NoRoute` if `venue.status(src, dst) == NoRoute`. Token
     ///      decimals are read once here and stored so settlement never calls `decimals()`.
+    ///      Also reverts `SameAsset` on `sourceAsset == targetAsset` (a corridor that
+    ///      could never settle, since `_requireOpen` rejects same-asset intents, and on
+    ///      Mento it would route X -> USDm -> X and burn two fees) and `ZeroCorridor` on
+    ///      an empty corridor id (every receipt for the pair would carry a blank
+    ///      identifier, which reads as "no corridor" off-chain).
     /// @param sourceAsset  Token the payer sends (AUSD, USDC).
     /// @param targetAsset  Token the recipient receives (GBPm, EURm, ...).
     /// @param corridor     Corridor id for the receipt, e.g. `Corridor.id("USD", "GBP")`.
@@ -106,6 +128,8 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
             sourceAsset == address(0) || targetAsset == address(0) || address(rateSource) == address(0)
                 || address(venue) == address(0)
         ) revert ZeroAddress();
+        if (sourceAsset == targetAsset) revert SameAsset();
+        if (corridor == bytes32(0)) revert ZeroCorridor();
         if (address(corridors[sourceAsset][targetAsset].venue) != address(0)) {
             revert CorridorAlreadyRegistered(sourceAsset, targetAsset);
         }
@@ -184,6 +208,15 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
         // 2. corridor
         CorridorConfig memory c = corridors[intent.sourceAsset][intent.targetAsset];
         if (address(c.venue) == address(0)) revert CorridorNotRegistered(intent.sourceAsset, intent.targetAsset);
+
+        // 2b. the recipient may not be this router or the venue adapter. Neither has a
+        //     sweep — deliberately, so that no key can move a user's funds — so target
+        //     tokens delivered to either would be stuck forever. Checked after the
+        //     corridor lookup because the venue is per-corridor, and before the swap,
+        //     so nothing has moved when it fires.
+        if (intent.recipient == address(this) || intent.recipient == address(c.venue)) {
+            revert InvalidRecipient(intent.recipient);
+        }
 
         // 3. reference, read before the swap: a stale feed fails fast, before any token moves.
         //    Never used to derive a minimum output.
