@@ -73,7 +73,7 @@ nowhere in Monad's own faucet page or docs.
 Permissionless, no sign-up, one transaction:
 
 ```
-cast send 0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C   "requestFunds(address)" <yourAddress>   --rpc-url https://testnet-rpc.monad.xyz   --private-key $PRIVATE_KEY
+cast send 0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C "requestFunds(address)" <yourAddress> --rpc-url https://testnet-rpc.monad.xyz --private-key $PRIVATE_KEY
 ```
 
 It sends **10,000 AUSD** per call. I traced the contract: it holds about 700,000 AUSD,
