@@ -9,10 +9,10 @@ that first. This document says what to build; that one says why.
 contracts/src/
   PayoutIntent.sol            DONE  abstract: EIP-712 intent hash, None/Filled/Cancelled, minAmountOut
   RateAttestation.sol         DONE  append-only receipt store, router-only writer, no admin
-  CorridorRouter.sol          TODO  the settlement contract; inherits PayoutIntent
+  CorridorRouter.sol          DONE  the settlement contract; inherits PayoutIntent
   adapters/
-    ChainlinkRateSource.sol   TODO  IRateSource: composes two Chainlink fiat feeds per asset pair
-    MentoVenueAdapter.sol     TODO  IVenueAdapter: two-hop swap through Mento V3 Router via USDm
+    ChainlinkRateSource.sol   DONE  IRateSource: composes two Chainlink fiat feeds per asset pair
+    MentoVenueAdapter.sol     DONE  IVenueAdapter: two-hop swap through Mento V3 Router via USDm
   interfaces/                 DONE  IRateSource, IVenueAdapter, IRateAttestation
   interfaces/external/        DONE  IMentoRouter, IFPMM, IOracleAdapter, IMarketHoursBreaker,
                                     AggregatorV3Interface, IERC3009
@@ -21,13 +21,19 @@ contracts/test/
   utils/MonadMainnet.sol      DONE  verified mainnet addresses
   utils/ForkTest.sol          DONE  fork base, _dealAUSD (vm.store), pinned block
   Corridor.t.sol, PayoutIntent.t.sol, RateAttestation.t.sol   DONE
-  ChainlinkRateSource.t.sol   TODO  unit (mock aggregators) + fork
-  MentoVenueAdapter.t.sol     TODO  fork
-  CorridorRouter.t.sol        TODO  unit with mocks (both paths)
-  fork/Settlement.t.sol       TODO  integration: real Mento, real feeds, both paths, real EntryPoint
+  ChainlinkRateSource.t.sol   DONE  unit (mock aggregators) + fork/ChainlinkRateSource.fork.t.sol
+  fork/MentoVenueAdapter.fork.t.sol  DONE
+  CorridorRouter.t.sol        DONE  unit with mocks (both paths)
+  Deploy.t.sol                DONE  unit: per-chain address table + deployment-record path
+  fork/Settlement.fork.t.sol  DONE  integration: real Mento, real feeds, both paths, real EntryPoint
 contracts/script/
-  Deploy.s.sol                TODO  CREATE-address prediction for the attestation/router pair
+  Deploy.s.sol                DONE  CREATE-address prediction for the attestation/router pair
+  DeployThrowaway.s.sol       DONE  one trivial contract, to prove the toolchain on mainnet first
 ```
+
+Status: 172 tests green (128 unit, 44 fork). Three files committed before this branch
+(`libraries/Corridor.sol`, `test/Corridor.t.sol`, `test/PayoutIntent.t.sol`) are not
+`forge fmt` clean; left alone here to avoid conflicting with parallel branches.
 
 Toolchain: Foundry 1.8.1, solc 0.8.31, `evm_version = "osaka"`, `network = "monad"`,
 `hardfork = "monad:MonadTen"`. OpenZeppelin v5.7.0 is vendored at
@@ -84,7 +90,7 @@ Reentrancy: `ReentrancyGuardTransient` on both entry points. Checks-effects-
 interactions is not fully possible (the swap happens before the receipt), so the
 guard is the defence; `_markFilled` happens before `attest`.
 
-## CorridorRouter (TODO)
+## CorridorRouter (DONE)
 
 ```solidity
 contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient {
@@ -120,12 +126,28 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
 
 Errors: `CorridorNotRegistered(src,dst)`, `CorridorAlreadyRegistered(src,dst)`,
 `InsufficientDelivery(delivered, minOut)`, `SpreadTooWide(int256 spread, uint16 max)`,
-`AuthorizationUsed(intentId)`, `ValueOverflow()`, `ZeroAddress()`.
+`AuthorizationUsed(intentId)`, `ValueOverflow()`, `ZeroAddress()`,
+`AttestationMisbound()`, `SameAsset()`, `ZeroCorridor()`, `InvalidRecipient(address)`.
 
 The owner key can only register new corridors. It cannot pause, upgrade, sweep,
 or touch a receipt. Say so in NatSpec.
 
-## ChainlinkRateSource (TODO)
+Hardening added after the merge review:
+
+- The constructor reverts `AttestationMisbound()` unless `attestation_.router()` is
+  already `address(this)`. Neither contract has a setter, so a mispredicted CREATE
+  nonce would otherwise produce a router whose every settlement reverts `NotRouter`
+  at the receipt write — after the swap. It now fails on deploy instead.
+- `registerCorridor` reverts `SameAsset()` when `sourceAsset == targetAsset` (an
+  intent for such a corridor can never pass `_requireOpen`, and on Mento it would
+  route X → USDm → X and burn two fees) and `ZeroCorridor()` on an empty corridor
+  id (every receipt for the pair would read as "no corridor" off-chain).
+- Step 2b of `_settle` reverts `InvalidRecipient(address)` when `intent.recipient`
+  is the router or the corridor's venue adapter. There is deliberately no sweep on
+  either, so tokens delivered there would be stuck forever. Checked after the
+  corridor lookup (the venue is per-corridor) and before the swap.
+
+## ChainlinkRateSource (DONE)
 
 Immutable feed registry, configured entirely in the constructor. No setters.
 
@@ -155,7 +177,7 @@ answer, zero updatedAt, future updatedAt, decimals 8/18 mixes, observation packi
 unsupported pair. Fork test: read the real pair at PINNED_BLOCK, replay via
 `getRoundData` on both proxies from the observation and assert equality.
 
-## MentoVenueAdapter (TODO)
+## MentoVenueAdapter (DONE)
 
 ```solidity
 constructor(IMentoRouter mentoRouter, address usdm)
@@ -186,38 +208,168 @@ is Open. At `MonadMainnet.SATURDAY_BLOCK`: status(AUSD, GBPm) == MarketClosed, q
 reverts with `IOracleAdapter.FXMarketClosed`, status(AUSD, USDm) == Open. Fee
 sanity: delivered ≈ oracle × (1 − 20 bps) within 1 bps for the two-hop route.
 
-## Integration tests (TODO, after the three above merge)
+## Integration tests (DONE)
 
-`test/fork/Settlement.t.sol`, at PINNED_BLOCK, deploying the real stack
-(ChainlinkRateSource with AUSD→GBPm and USDC→GBPm pairs, MentoVenueAdapter,
-RateAttestation with predicted router address, CorridorRouter, registered corridors):
+`test/fork/Settlement.fork.t.sol`, at PINNED_BLOCK, deploying the real stack in the
+exact order `script/Deploy.s.sol` uses (ChainlinkRateSource with all five pairs,
+MentoVenueAdapter, RateAttestation at the predicted router address, CorridorRouter,
+five registered corridors). Every expected amount is `IMentoRouter.getAmountsOut`
+read in the same block, never the adapter or router under test; every expected rate
+is replayed out of the Chainlink proxies by round id. 18 tests:
 
 - Path A: payer key signs the ERC-3009 authorization (domain "Agora Dollar"/"1",
-  chain 143, AUSD) with nonce = hashIntent; relayer calls `settleWithAuthorization`;
-  assert recipient GBPm delta == quotedAmountOut (same block), receipt stored with
-  spread in [19, 21] bps, `PayoutSettled` emitted, intent Filled, replay reverts,
-  tampered intent reverts at the token, cancelled-at-token authorization reverts.
+  chain 143, AUSD, asserted against a hand-built domain) with nonce = hashIntent;
+  relayer calls `settleWithAuthorization`; assert recipient GBPm delta ==
+  quotedAmountOut == the same-block quote, receipt corridor/rateSource/venue,
+  `PayoutSettled` emitted with the struct, intent Filled, token nonce consumed, no
+  dust left on the router or adapter, replay reverts `AuthorizationUsed`, a tampered
+  intent reverts at the token with `InvalidSignature` (0x8baa579f), and a
+  cancelled-at-token authorization reverts `AuthorizationUsed`.
+- The same for USDC, with Circle's own domain ("USDC"/"2").
 - Path A with a 7702-delegated payer (vm.signDelegation/attachDelegation to
-  Simple7702Account) on AUSD and on USDC.
+  Simple7702Account) on AUSD and on USDC — a payer who used path B once can still
+  use path A.
 - Path B: real EntryPoint v0.8 `handleOps` with a stub paymaster, executeBatch
-  [approve, settle]; payer MON balance unchanged; template is
-  `scratch/erc3009/probe/test/HandleOps.t.sol` (read it, then write ours).
+  [approve, settle]; the receipt's payer is the EOA, the payer's MON stays 0,
+  `UserOperationEvent.success == true`. Soft failure: `maxSpreadBps = 1` makes
+  `settle` revert inside the batch, `handleOps` still succeeds, `success == false`,
+  no receipt, intent still None, payer's AUSD untouched.
+- EUR, CHF and JPY corridors: one path-A settlement each, delivered == quote.
 - Reference replay: from the receipt's observation, `getRoundData` on both
   Chainlink proxies reproduces `referenceRate`.
-- Spread limit: maxSpreadBps = 5 reverts `SpreadTooWide`; tolerance 0 with a
-  stale quote reverts `InsufficientOutputAmount` from Mento.
-- Saturday block: `settle` reverts with `FXMarketClosed` bubbled from Mento.
-- Gas: assert path A tx gas < 1.45M and print it (Monad bills the limit).
+- Spread: the disclosed spread is asserted inside [15, 30] bps and logged. Measured
+  19 bps on all five corridors at PINNED_BLOCK, matching §14.3's 19–21 in-sync band
+  and §14.1's 19.99 bps two-hop fee. The window is wider than [19, 21] because the
+  Chainlink reference and Mento's relay drift apart for up to a minute after each
+  round (§14.3); [19, 21] would go red on a relay lag, not on a regression.
+- Limits: maxSpreadBps = 5 reverts `SpreadTooWide` with the swap rolled back;
+  quotedAmountOut = quote + 1 with tolerance 0 reverts `InsufficientOutputAmount`
+  from Mento; a stale reference (warp +2 h) reverts `StaleReferenceRate` before any
+  token moves; `previewQuote` reports Open with both numbers populated.
+- Saturday block (through MONAD_ARCHIVE_RPC_URL): `settle` reverts with
+  `FXMarketClosed` bubbled from Mento and `previewQuote` reports MarketClosed.
+- Gas: path A measured with `gasleft()` and logged (Monad bills the limit).
+  **1,471,301** at PINNED_BLOCK — Mento's own two-hop swap is 868,286 of that
+  (59%), the two cold Chainlink proxy hops 122,593, the six-slot receipt plus its
+  id push 180,772, `receiveWithAuthorization` 72,032, the router's own work
+  ~185,000. §14.5's 1,254,338 predates both the sixth receipt slot
+  (`referenceObservation`, added by §14.3) and the real router, which that probe
+  stood in for with a mock; the guard in the test is therefore 1.55M, inside
+  §14.5's own 1.6M cap. Path B's `actualGasUsed` from `UserOperationEvent`:
+  1,803,204.
 
-## Deploy script (TODO)
+## Deploy script (DONE)
 
-`script/Deploy.s.sol`: `vm.computeCreateAddress(deployer, nonce + 1)` for the
-router, deploy `RateAttestation(predictedRouter)`, then `CorridorRouter(owner,
-attestation)`, assert `address(router) == predicted`. Then `ChainlinkRateSource`,
-`MentoVenueAdapter`, `registerCorridor` for AUSD→GBPm, USDC→GBPm, AUSD→EURm,
-AUSD→CHFm, AUSD→JPYm. Write the addresses to `deployments/<chainId>.json`.
-Verification commands are in §14.5 of the facts file (Sourcify on BlockVision
-plus Etherscan V2).
+`script/Deploy.s.sol` deploys `ChainlinkRateSource` (five feed pairs), then
+`MentoVenueAdapter`, then takes `vm.computeCreateAddress(deployer, nonce + 1)` for
+the router, deploys `RateAttestation(predictedRouter)` and `CorridorRouter(owner,
+attestation)`, and asserts both `address(router) == predicted` and
+`attestation.router() == address(router)` (the router's constructor already refuses
+the mismatch; these are belt and braces). Then `registerCorridor` for AUSD→GBPm,
+USDC→GBPm, AUSD→EURm, AUSD→CHFm, AUSD→JPYm with `Corridor.id` ids, each read back
+and asserted. Finally it writes the deployment record with `rateSource`,
+`venueAdapter`, `rateAttestation`, `corridorRouter`, `owner`, `corridorsRegistered`,
+`deployedAtBlock` and `corridors[]`, which needs the `write` fs_permission on
+`./deployments` in `foundry.toml`.
+
+The record is `deployments/<chainId>.json` **only on a broadcast**. A keyless run
+still executes `run()` to completion from a simulated sender, so its addresses are
+fiction; it writes `deployments/<chainId>.dry-run.json` instead (git-ignored), and
+the rehearsal in "Deploy and verify" below therefore cannot overwrite a real record.
+`Deploy.deploymentFile(chainId, broadcast)` picks the name and
+`Deploy.isBroadcasting()` is the guard; both are unit-tested. `corridorsRegistered`
+is `false` when the run only printed the calldata, so the file never claims corridors
+that are not on-chain.
+
+`OWNER` defaults to the deployer. When it is something else (a Safe), the script
+deploys and prints the five `registerCorridor` calldatas for the owner to submit
+rather than pretending to have registered them.
+
+Addresses are taken per chain by `Deploy.config(chainId)`. Only 143 has a Mento
+deployment, so every other chain — Monad testnet 10143 included — reverts
+`NoMentoDeployment(chainId)` before anything is deployed. Registering the
+mainnet-only corridors on testnet would otherwise point them at addresses with no
+code. `test/Deploy.t.sol` covers the table and the record path; a dry run against
+`https://testnet-rpc.monad.xyz` reverts with `NoMentoDeployment(10143)`.
+
+`script/DeployThrowaway.s.sol` deploys one `ToolchainProbe` and nothing else.
+Broadcast it first: no transaction has ever been sent on Monad mainnet with this
+toolchain (§14.6), so the compiler settings, gas estimate, nonce handling and both
+verification endpoints are unproven until it lands. Simulated cost 150,983 gas
+(~0.031 MON at a 203 gwei max fee) against 6,190,540 gas (~1.26 MON) for the full
+stack. Both figures are already `forge script`'s 130 % `--gas-estimate-multiplier`
+applied to the raw estimate, priced at the max fee; at the 103 gwei a block actually
+charges the full stack is ~0.64 MON. On Monad the padding is not refunded — gas is
+billed on the limit (§14.5) — so lower `--gas-estimate-multiplier` only if you are
+willing to risk an out-of-gas mid-sequence.
+
+## Deploy and verify
+
+Dry run — no key, no `--broadcast`; `DEPLOYER` only sets the simulated sender:
+
+```bash
+export MONAD_MAINNET_RPC_URL=https://rpc.monad.xyz
+cd contracts
+
+forge script script/DeployThrowaway.s.sol:DeployThrowaway --rpc-url $MONAD_MAINNET_RPC_URL
+forge script script/Deploy.s.sol:Deploy --rpc-url $MONAD_MAINNET_RPC_URL
+```
+
+Broadcast, throwaway first:
+
+```bash
+export PRIVATE_KEY=0x...            # the deployer
+export OWNER=0x...                  # optional; defaults to the deployer
+export ETHERSCAN_API_KEY=...
+
+forge script script/DeployThrowaway.s.sol:DeployThrowaway \
+  --rpc-url $MONAD_MAINNET_RPC_URL --broadcast
+forge script script/Deploy.s.sol:Deploy \
+  --rpc-url $MONAD_MAINNET_RPC_URL --broadcast
+```
+
+Constructor arguments for verification (`cast abi-encode`; substitute the addresses
+the script printed for `<attestation>`, `<router>` and `<owner>`):
+
+```bash
+# ChainlinkRateSource(FeedPair[]) — (sourceAsset, targetAsset, base, quote, baseMaxAge, quoteMaxAge)
+cast abi-encode "constructor((address,address,address,address,uint32,uint32)[])" \
+"[(0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a,0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1,0xE20751C7B5867bCBef815ffc1b284c3f412a9e13,0x1ffC8B75a16FFfbd7879F042B580F7607Dcf5C30,5400,600),\
+(0x754704Bc059F8C67012fEd69BC8A327a5aafb603,0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1,0xf5F15f188AbCB0d165D1Edb7f37F7d6fA2fCebec,0x1ffC8B75a16FFfbd7879F042B580F7607Dcf5C30,5400,600),\
+(0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a,0x4D502d735B4C574B487Ed641ae87cEaE884731C7,0xE20751C7B5867bCBef815ffc1b284c3f412a9e13,0x00D7E359c8CE46168eFDD4D65b708fFb16c4b99a,5400,600),\
+(0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a,0xF64e91fFEf7ef43aA314F0Bc2AC39f770797990C,0xE20751C7B5867bCBef815ffc1b284c3f412a9e13,0x6DBa7f3A7B5B7c1079337104caD14D19150F6B8d,5400,600),\
+(0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a,0x22f6A6752800eAB67b84748FeFc3cC658384aF72,0xE20751C7B5867bCBef815ffc1b284c3f412a9e13,0xF64664Ea54cE47eCC7a1816C49d1Bc6deF828927,5400,600)]"
+
+# MentoVenueAdapter(IMentoRouter mentoRouter, address usdm)
+cast abi-encode "constructor(address,address)" \
+  0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6 0xBC69212B8E4d445b2307C9D32dD68E2A4Df00115
+
+# RateAttestation(address router_)
+cast abi-encode "constructor(address)" <router>
+
+# CorridorRouter(address owner_, IRateAttestation attestation_)
+cast abi-encode "constructor(address,address)" <owner> <attestation>
+```
+
+Verify twice per contract (§14.5): MonadVision reads a separate Sourcify server,
+Monadscan is Etherscan V2 and forge derives its URL from `--chain 143` alone.
+`ToolchainProbe` has no constructor arguments, so drop the flag for it.
+
+```bash
+forge verify-contract --chain 143 \
+  --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/ \
+  --constructor-args <hex> \
+  <address> src/adapters/ChainlinkRateSource.sol:ChainlinkRateSource
+
+forge verify-contract --chain 143 \
+  --verifier etherscan --etherscan-api-key $ETHERSCAN_API_KEY \
+  --constructor-args <hex> \
+  <address> src/adapters/ChainlinkRateSource.sol:ChainlinkRateSource
+```
+
+Repeat both for `src/adapters/MentoVenueAdapter.sol:MentoVenueAdapter`,
+`src/RateAttestation.sol:RateAttestation` and
+`src/CorridorRouter.sol:CorridorRouter`.
 
 ## Non-goals this week
 

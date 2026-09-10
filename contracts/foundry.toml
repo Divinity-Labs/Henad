@@ -6,7 +6,10 @@ solc_version = "0.8.31"
 evm_version = "osaka"
 optimizer = true
 optimizer_runs = 200
-fs_permissions = [{ access = "read", path = "./" }]
+fs_permissions = [
+  { access = "read", path = "./" },
+  { access = "write", path = "./deployments" }, # script/Deploy.s.sol writes deployments/<chainId>.json
+]
 
 # Monad execution semantics (Foundry >= 1.8.0). Mainnet has been on MONAD_TEN since
 # block 101352493 (2026-09-02 14:30 UTC); never pin MonadNine, it inflates gas ~26%.
