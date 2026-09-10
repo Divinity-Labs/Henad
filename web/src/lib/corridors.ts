@@ -36,6 +36,8 @@ export interface Corridor {
   venue: { label: string; pool: Address } | null
   targetAsset: { symbol: string; address: Address; decimals: number } | null
   note: string
+  /** Six-word version of `note` for the hero cards, where there is no room for the full reason. */
+  shortNote: string
   /** Decimal places when formatting a rate in this corridor. */
   rateDp: number
   currencyDp: number
@@ -58,6 +60,7 @@ export const CORRIDORS: Corridor[] = [
     venue: { label: 'Mento GBPm/USDm', pool: P['GBPm/USDm'] },
     targetAsset: { symbol: 'GBPm', address: T.GBPm!.address, decimals: 18 },
     note: 'Mento GBPm/USDm · Chainlink GBP/USD',
+    shortNote: 'Mento · Chainlink',
     rateDp: 5,
     currencyDp: 2,
   },
@@ -73,6 +76,7 @@ export const CORRIDORS: Corridor[] = [
     venue: { label: 'Mento EURm/USDm', pool: P['EURm/USDm'] },
     targetAsset: { symbol: 'EURm', address: T.EURm!.address, decimals: 18 },
     note: 'Mento EURm/USDm · Chainlink EUR/USD',
+    shortNote: 'Mento · Chainlink',
     rateDp: 5,
     currencyDp: 2,
   },
@@ -88,6 +92,7 @@ export const CORRIDORS: Corridor[] = [
     venue: { label: 'Mento CHFm/USDm', pool: P['CHFm/USDm'] },
     targetAsset: { symbol: 'CHFm', address: T.CHFm!.address, decimals: 18 },
     note: 'Mento CHFm/USDm · Chainlink CHF/USD',
+    shortNote: 'Mento · Chainlink',
     rateDp: 5,
     currencyDp: 2,
   },
@@ -103,6 +108,7 @@ export const CORRIDORS: Corridor[] = [
     venue: { label: 'Mento JPYm/USDm', pool: P['JPYm/USDm'] },
     targetAsset: { symbol: 'JPYm', address: T.JPYm!.address, decimals: 18 },
     note: 'Mento JPYm/USDm · Chainlink JPY/USD',
+    shortNote: 'Mento · Chainlink',
     rateDp: 2,
     currencyDp: 0,
   },
@@ -119,6 +125,7 @@ export const CORRIDORS: Corridor[] = [
     venue: null,
     targetAsset: null,
     note: 'Priced · no asset on Monad',
+    shortNote: 'Priced · no asset',
     rateDp: 4,
     currencyDp: 2,
   },
@@ -141,6 +148,7 @@ export const CORRIDORS: Corridor[] = [
     venue: null,
     targetAsset: null,
     note: 'Pyth publishes USD/ZAR but nobody posts it to Monad · last on-chain price 2 Sep 2025',
+    shortNote: 'Pyth feed · not posted here',
     rateDp: 3,
     currencyDp: 2,
   },
@@ -156,6 +164,7 @@ export const CORRIDORS: Corridor[] = [
     venue: null,
     targetAsset: null,
     note: 'No NGN feed on Monad · Chainlink NGN/USD exists on Celo',
+    shortNote: 'No feed on Monad',
     rateDp: 2,
     currencyDp: 2,
   },

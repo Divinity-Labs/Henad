@@ -28,15 +28,23 @@ interface Card {
 }
 
 /**
- * Live / Quote / Quote / Unpriced, one per tier from the registry. The live
- * card carries the latest settlement's spread, or the live reference rate
- * before the first settlement. Decorative: the same figures sit in the stats
- * and the corridor table, so the cards are hidden from assistive tech.
+ * Four cards, one per rung of the ladder the product is about: a corridor that
+ * settles, one priced with nowhere to deliver, one whose price exists but never
+ * reaches this chain, and one with no price at all. The naira takes the last slot
+ * deliberately — it is the argument, so it must never be crowded out by another
+ * unpriced corridor sorting ahead of it.
+ *
+ * The live card carries the latest settlement's spread, or the live reference rate
+ * before the first settlement. Decorative: every figure here also appears in the
+ * stats and the corridor table, so the cards are hidden from assistive tech.
  */
 function FloatingCards({ rates, latest }: { rates: LiveRate[]; latest: Receipt | null }) {
+  const byKey = (k: string) => rates.find((r) => r.corridor.key === k)
   const live = rates.find((r) => r.corridor.tier === 'live')
-  const quotes = rates.filter((r) => r.corridor.tier === 'quote').slice(0, 2)
-  const unpriced = rates.find((r) => r.corridor.tier === 'unpriced')
+  const quote = rates.find((r) => r.corridor.tier === 'quote')
+  // Named, not found-by-tier: the naira is the point of the section this card previews.
+  const naira = byKey('USD/NGN')
+  const otherUnpriced = rates.find((r) => r.corridor.tier === 'unpriced' && r.corridor.target !== 'NGN')
 
   const cards: Card[] = []
   if (latest) {
@@ -50,8 +58,9 @@ function FloatingCards({ rates, latest }: { rates: LiveRate[]; latest: Receipt |
       note: `${c.feed?.label ?? 'Reference'}${live.stale ? ' · stale' : ''}`,
     })
   }
-  for (const q of quotes) cards.push({ corridor: q.corridor, note: q.corridor.note })
-  if (unpriced) cards.push({ corridor: unpriced.corridor, note: 'No rate source on Monad' })
+  for (const r of [quote, otherUnpriced, naira]) {
+    if (r) cards.push({ corridor: r.corridor, note: r.corridor.shortNote })
+  }
 
   return (
     <>
