@@ -80,14 +80,16 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
 - [ ] Production domain: **henad.xyz** (being acquired). Needed before the week-4
       mainnet deploy on 25 Sep. See "Domains and passkeys" below.
 
-**Week 2 (11–17 Sep) — contracts, forked mainnet.**
-- `PayoutIntent`, `CorridorRouter` (both entry points), `RateAttestation`.
-- `ChainlinkRateSource` (AUSD/USD × GBP/USD → USD/GBP), `MentoVenueAdapter`
-  (AUSD→USDm→GBPm via Mento Router). Verify the Router ABI and whether
-  EURm/CHFm/JPYm pools exist on-chain.
-- Tests against a Monad mainnet fork; fuzz on spread maths and `maxSpreadBps`
-  enforcement. Confirm AUSD `decimals()` and the MarketHoursBreaker schedule.
-- `packages/core` skeleton: chain config, ABIs generated from `forge build`.
+**Week 2 (11–17 Sep) — contracts, forked mainnet.** Started early on 10 Sep.
+- [x] Research pass: Mento router API, all 7 pools verified, per-pool oracle adapters,
+      market hours, reference-rate decision, ERC-3009 + 7702 paths proven on a fork,
+      Pimlico paymaster on 143, MonadTen hardfork, gas (facts §14).
+- [x] `docs/CONTRACTS-SPEC.md`; interfaces; `PayoutIntent`; `RateAttestation`; fork test base.
+- [ ] `ChainlinkRateSource`, `MentoVenueAdapter`, `CorridorRouter` + tests (in progress).
+- [ ] Integration fork suite: both paths on real Mento with real feeds, real EntryPoint.
+- [ ] `script/Deploy.s.sol`; throwaway mainnet broadcast to prove the toolchain.
+- [x] `packages/core`: intent typed data + ERC-3009 authorization helpers (vector-checked).
+- [ ] `packages/core`: ABIs from `forge build`.
 
 **Week 3 (18–24 Sep) — web `/send`, testnet.**
 - Mera onboarding in Next.js: create/sign-in ceremony, derive account, show AUSD
