@@ -1,4 +1,5 @@
 import type { Receipt } from '@/lib/receipts'
+import { HenadMark } from './ui/HenadMark'
 import { blockNumber, money, rateLine, shortAddress, shortHash, spreadLine, utcStamp, utcTime } from '@/lib/format'
 
 type Size = 'sm' | 'md' | 'lg'
@@ -33,9 +34,9 @@ export function ReceiptSlip({
   const c = r.corridor
   const dp = c.currencyDp
   const s = {
-    sm: { pad: 'px-4 pt-[14px] pb-[22px]', gap: 'gap-[7px]', text: 'text-[10px]', brand: 'text-[15px]', big: 'text-[24px]', tooth: '5px', radius: 'rounded-t-[10px]' },
-    md: { pad: 'px-4 pt-4 pb-[26px]', gap: 'gap-[9px]', text: 'text-[11px]', brand: 'text-[16px]', big: 'text-[34px]', tooth: '5px', radius: 'rounded-t-[12px]' },
-    lg: { pad: 'px-6 pt-6 pb-8', gap: 'gap-3', text: 'text-[12px]', brand: 'text-[18px]', big: 'text-[44px]', tooth: '6px', radius: 'rounded-t-[12px]' },
+    sm: { pad: 'px-4 pt-[14px] pb-[22px]', gap: 'gap-[7px]', text: 'text-[10px]', brand: 'text-[15px]', mark: 16, big: 'text-[24px]', tooth: '5px', radius: 'rounded-t-[10px]' },
+    md: { pad: 'px-4 pt-4 pb-[26px]', gap: 'gap-[9px]', text: 'text-[11px]', brand: 'text-[16px]', mark: 17, big: 'text-[34px]', tooth: '5px', radius: 'rounded-t-[12px]' },
+    lg: { pad: 'px-6 pt-6 pb-8', gap: 'gap-3', text: 'text-[12px]', brand: 'text-[18px]', mark: 18, big: 'text-[44px]', tooth: '6px', radius: 'rounded-t-[12px]' },
   }[size]
 
   const row = (k: string, v: React.ReactNode, strong = false) => (
@@ -53,7 +54,10 @@ export function ReceiptSlip({
         style={{ ['--tooth' as string]: s.tooth }}
       >
         <div className="flex justify-between items-baseline">
-          <span className={`font-display font-semibold tracking-[-.03em] ${s.brand}`}>Henad</span>
+          <span className="inline-flex items-center gap-[6px]">
+            <HenadMark size={s.mark} title="" />
+            <span className={`font-display font-semibold tracking-[-.03em] ${s.brand}`}>Henad</span>
+          </span>
           <span className="label text-purple">
             {r.sample ? 'Sample receipt' : `Settlement receipt${r.index ? ` · #${r.index}` : ''}`}
           </span>

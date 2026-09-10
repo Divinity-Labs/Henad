@@ -29,9 +29,12 @@ function sendCell(r: LiveRate) {
 
 /** Desktop table of every corridor in the registry, three tiers, live feeds. */
 export function CorridorTable({ rates }: { rates: LiveRate[] }) {
-  const cols = 'grid grid-cols-[100px_120px_1fr_310px_120px_190px] gap-4 items-center px-9'
+  // The fixed columns total 940px and the padding adds 72px, so this table needs a
+  // 1012px container. It scrolls inside .scroll-x rather than pushing the page sideways;
+  // below lg the caller shows CorridorList instead.
+  const cols = 'grid grid-cols-[100px_120px_minmax(200px,1fr)_310px_120px_190px] gap-4 items-center px-9'
   return (
-    <div className="flex flex-col font-mono text-[12px] tabular">
+    <div className="flex min-w-[1012px] flex-col font-mono text-[12px] tabular">
       <div className={`${cols} py-[10px] border-t border-b border-hairline label text-muted`}>
         <span>Status</span>
         <span>Corridor</span>

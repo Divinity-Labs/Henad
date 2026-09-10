@@ -3,7 +3,10 @@ import { money, shortHash, spreadLine } from '@/lib/format'
 import type { Receipt } from '@/lib/receipts'
 import { ledgerStamp, pad2, settled } from './ledger'
 
-const cols = 'grid grid-cols-[40px_150px_90px_1fr_150px_120px] gap-4 items-center px-9'
+// 810px of fixed columns plus 72px of padding: the table scrolls inside .scroll-x
+// rather than pushing the page sideways, and below lg the mobile list is shown instead.
+const cols = 'grid grid-cols-[40px_150px_90px_minmax(140px,1fr)_150px_120px] gap-4 items-center px-9'
+const LEDGER_MIN_W = 'min-w-[882px]'
 
 function amount(r: Receipt) {
   return `${money(r.sourceAmount, r.sourceAsset.decimals, '$')} → ${money(r.deliveredAmount, r.targetAsset.decimals, r.corridor.targetSymbol, r.corridor.currencyDp)}`
@@ -43,7 +46,8 @@ export function SettlementsBlock({ receipts, title = 'Settlements', heading: Hea
         </p>
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="scroll-x hidden lg:block">
+            <div className={LEDGER_MIN_W}>
             <div className={`${cols} label border-t border-b border-hairline py-[10px] text-muted`}>
               <span>#</span>
               <span>Settled</span>
@@ -64,8 +68,9 @@ export function SettlementsBlock({ receipts, title = 'Settlements', heading: Hea
                 </Link>
               </div>
             ))}
+            </div>
           </div>
-          <ul className="m-0 list-none p-0 md:hidden">
+          <ul className="m-0 list-none p-0 lg:hidden">
             {rows.map((r) => (
               <li key={r.intentId} className="border-t border-hairline-2 first:border-t-hairline last:border-b last:border-b-hairline">
                 <Link href={`/receipt/${r.intentId}`} className="tabular grid grid-cols-[28px_1fr_auto] items-center gap-[10px] px-4 py-3 font-mono text-[11px] text-ink">

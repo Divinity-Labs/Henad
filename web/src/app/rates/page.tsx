@@ -52,7 +52,7 @@ export default async function RatesPage() {
       <main className="flex flex-1 flex-col">
         <RatesHero count={t.settlements} head={headline(t)} sample={sample} chain={chainLabel()} />
         <CorridorsBlock rates={rates} />
-        <div className="hidden md:grid md:grid-cols-[400px_1fr]">
+        <div className="hidden md:block lg:grid lg:grid-cols-[minmax(320px,400px)_1fr]">
           <RoutesBlock corridors={CORRIDORS} totals={t} sample={sample} />
           <SettlementsBlock receipts={receipts.slice(-LEDGER_ROWS)} />
         </div>
