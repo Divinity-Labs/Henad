@@ -1,0 +1,4 @@
+# Simulated runs (`forge script` without --broadcast) write here. The addresses come
+# from a simulated sender, so the file is never a deployment record; only the
+# broadcast's ./deployments/<chainId>.json is. See script/Deploy.s.sol:deploymentFile.
+*.dry-run.json

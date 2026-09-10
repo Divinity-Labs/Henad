@@ -2,6 +2,7 @@
 pragma solidity ^0.8.31;
 
 import {Script} from "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {CorridorRouter} from "../src/CorridorRouter.sol";
@@ -154,7 +155,9 @@ contract Deploy is Script {
 
     // ------------------------------------------------------------------- run
 
-    /// @notice Deploy the stack, register the corridors, write deployments/<chainId>.json.
+    /// @notice Deploy the stack, register the corridors, write the deployment record.
+    /// @dev The record is `deployments/<chainId>.json` on a broadcast and
+    ///      `deployments/<chainId>.dry-run.json` otherwise (`deploymentFile`).
     /// @return router The CorridorRouter, which is the only address the client needs.
     function run() external returns (CorridorRouter router) {
         ChainConfig memory c = config(block.chainid);
@@ -166,8 +169,8 @@ contract Deploy is Script {
         console2.log("owner   ", owner);
 
         _deploy(c, deployer, owner, pk);
-        _registerCorridors(c, owner, pk);
-        _writeJson(c);
+        bool registered = _registerCorridors(c, owner, pk);
+        _writeJson(c, owner, registered);
 
         return corridorRouter;
     }
@@ -216,7 +219,9 @@ contract Deploy is Script {
     /// @dev `registerCorridor` is onlyOwner. When the owner is the deployer the script
     ///      registers and verifies every corridor; when it is a multisig the script
     ///      prints the calldata for the owner to submit instead of pretending to.
-    function _registerCorridors(ChainConfig memory c, address owner, uint256 pk) internal {
+    /// @return registered True when the corridors were registered by this run; false when
+    ///                     the owner is a third party and only the calldata was printed.
+    function _registerCorridors(ChainConfig memory c, address owner, uint256 pk) internal returns (bool registered) {
         CorridorSpec[] memory specs = corridorSpecs(c);
         (address deployer,) = _deployer();
         bool ownerIsDeployer = owner == deployer;
@@ -248,6 +253,7 @@ contract Deploy is Script {
             vm.stopBroadcast();
             _assertRegistered(specs);
         }
+        return ownerIsDeployer;
     }
 
     /// @dev Read every corridor back and require the stored id, rate source and venue.
@@ -266,9 +272,33 @@ contract Deploy is Script {
 
     // ------------------------------------------------------------------ json
 
+    /// @notice True only when this run will actually send transactions.
+    /// @dev `forge script` without `--broadcast` still executes `run()` end to end,
+    ///      from a simulated sender whose CREATE addresses are fiction. Everything that
+    ///      persists outside the EVM must therefore ask this first.
+    function isBroadcasting() public view returns (bool) {
+        return vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume);
+    }
+
+    /// @notice Path of the deployment record for `chainId`.
+    /// @dev Only a real broadcast may write `deployments/<chainId>.json` — that file is
+    ///      the deployment record the backend and the verification commands read. A dry
+    ///      run writes `<chainId>.dry-run.json` (git-ignored) instead, because its
+    ///      addresses come from a simulated sender. Without the split, the dry run that
+    ///      docs/CONTRACTS-SPEC.md tells you to run first would silently overwrite a real
+    ///      record with simulated addresses.
+    /// @param chainId   Chain the record describes.
+    /// @param broadcast Whether this run sends transactions; see `isBroadcasting`.
+    /// @return path Relative path under `./deployments`.
+    function deploymentFile(uint256 chainId, bool broadcast) public pure returns (string memory path) {
+        return string.concat("./deployments/", vm.toString(chainId), broadcast ? ".json" : ".dry-run.json");
+    }
+
     /// @dev deployments/<chainId>.json. Needs the `write` fs_permission on ./deployments
-    ///      in foundry.toml.
-    function _writeJson(ChainConfig memory c) internal {
+    ///      in foundry.toml. `corridorsRegistered` is false when OWNER is a third party
+    ///      and this run only printed the calldata: the file must never claim corridors
+    ///      that are not on-chain.
+    function _writeJson(ChainConfig memory c, address owner, bool corridorsRegistered) internal {
         CorridorSpec[] memory specs = corridorSpecs(c);
         string[] memory entries = new string[](specs.length);
         for (uint256 i = 0; i < specs.length; ++i) {
@@ -284,11 +314,16 @@ contract Deploy is Script {
         vm.serializeAddress(root, "venueAdapter", address(venueAdapter));
         vm.serializeAddress(root, "rateAttestation", address(rateAttestation));
         vm.serializeAddress(root, "corridorRouter", address(corridorRouter));
+        vm.serializeAddress(root, "owner", owner);
+        vm.serializeBool(root, "corridorsRegistered", corridorsRegistered);
         vm.serializeUint(root, "deployedAtBlock", block.number);
         string memory json = vm.serializeString(root, "corridors", entries);
 
-        string memory path = string.concat("./deployments/", vm.toString(block.chainid), ".json");
+        string memory path = deploymentFile(block.chainid, isBroadcasting());
         vm.writeJson(json, path);
         console2.log("wrote", path);
+        if (!corridorsRegistered) {
+            console2.log("  corridorsRegistered=false: the owner must submit the calldata printed above");
+        }
     }
 }

@@ -78,6 +78,25 @@ contract DeployTest is Test {
         assertEq(Corridor.id("USD", "GBP"), keccak256("USD/GBP"));
     }
 
+    // ---------------------------------------------------------- deployment record
+
+    /// The deployment record is the file the backend and the verification commands read.
+    /// A simulated run's addresses come from a simulated sender, so it must never land on
+    /// the canonical name: `forge script` without `--broadcast` still runs `run()` to
+    /// completion, and the dry run is the first command in the deploy runbook, so without
+    /// the split it would overwrite a real record with fiction on every rehearsal.
+    function test_deploymentFile_onlyABroadcastWritesTheCanonicalRecord() public view {
+        assertEq(script.deploymentFile(143, true), "./deployments/143.json", "broadcast");
+        assertEq(script.deploymentFile(143, false), "./deployments/143.dry-run.json", "simulation");
+        assertEq(script.deploymentFile(10_143, true), "./deployments/10143.json", "chain id is not hardcoded");
+    }
+
+    /// The guard that picks between them. Any context that is not a broadcast — this test,
+    /// a keyless `forge script`, coverage — must read as "not broadcasting".
+    function test_isBroadcasting_falseOutsideABroadcast() public view {
+        assertFalse(script.isBroadcasting(), "forge test is not a broadcast context");
+    }
+
     /// Every corridor gets a feed pair, with the USD-stable leg as base and the fiat leg
     /// as quote, and the max ages from docs/INTEGRATION-FACTS.md §14.3.
     function test_feedPairs() public view {

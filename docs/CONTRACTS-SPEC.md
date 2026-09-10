@@ -24,14 +24,14 @@ contracts/test/
   ChainlinkRateSource.t.sol   DONE  unit (mock aggregators) + fork/ChainlinkRateSource.fork.t.sol
   fork/MentoVenueAdapter.fork.t.sol  DONE
   CorridorRouter.t.sol        DONE  unit with mocks (both paths)
-  Deploy.t.sol                DONE  unit: the deploy script's per-chain address table
+  Deploy.t.sol                DONE  unit: per-chain address table + deployment-record path
   fork/Settlement.fork.t.sol  DONE  integration: real Mento, real feeds, both paths, real EntryPoint
 contracts/script/
   Deploy.s.sol                DONE  CREATE-address prediction for the attestation/router pair
   DeployThrowaway.s.sol       DONE  one trivial contract, to prove the toolchain on mainnet first
 ```
 
-Status: 170 tests green (126 unit, 44 fork). Three files committed before this branch
+Status: 172 tests green (128 unit, 44 fork). Three files committed before this branch
 (`libraries/Corridor.sol`, `test/Corridor.t.sol`, `test/PayoutIntent.t.sol`) are not
 `forge fmt` clean; left alone here to avoid conflicting with parallel branches.
 
@@ -267,10 +267,19 @@ attestation)`, and asserts both `address(router) == predicted` and
 `attestation.router() == address(router)` (the router's constructor already refuses
 the mismatch; these are belt and braces). Then `registerCorridor` for AUSD→GBPm,
 USDC→GBPm, AUSD→EURm, AUSD→CHFm, AUSD→JPYm with `Corridor.id` ids, each read back
-and asserted. Finally it writes `deployments/<chainId>.json` with `rateSource`,
-`venueAdapter`, `rateAttestation`, `corridorRouter`, `deployedAtBlock` and
-`corridors[]`, which needs the `write` fs_permission on `./deployments` in
-`foundry.toml`.
+and asserted. Finally it writes the deployment record with `rateSource`,
+`venueAdapter`, `rateAttestation`, `corridorRouter`, `owner`, `corridorsRegistered`,
+`deployedAtBlock` and `corridors[]`, which needs the `write` fs_permission on
+`./deployments` in `foundry.toml`.
+
+The record is `deployments/<chainId>.json` **only on a broadcast**. A keyless run
+still executes `run()` to completion from a simulated sender, so its addresses are
+fiction; it writes `deployments/<chainId>.dry-run.json` instead (git-ignored), and
+the rehearsal in "Deploy and verify" below therefore cannot overwrite a real record.
+`Deploy.deploymentFile(chainId, broadcast)` picks the name and
+`Deploy.isBroadcasting()` is the guard; both are unit-tested. `corridorsRegistered`
+is `false` when the run only printed the calldata, so the file never claims corridors
+that are not on-chain.
 
 `OWNER` defaults to the deployer. When it is something else (a Safe), the script
 deploys and prints the five `registerCorridor` calldatas for the owner to submit
@@ -280,15 +289,19 @@ Addresses are taken per chain by `Deploy.config(chainId)`. Only 143 has a Mento
 deployment, so every other chain — Monad testnet 10143 included — reverts
 `NoMentoDeployment(chainId)` before anything is deployed. Registering the
 mainnet-only corridors on testnet would otherwise point them at addresses with no
-code. `test/Deploy.t.sol` covers the table; a dry run against
+code. `test/Deploy.t.sol` covers the table and the record path; a dry run against
 `https://testnet-rpc.monad.xyz` reverts with `NoMentoDeployment(10143)`.
 
 `script/DeployThrowaway.s.sol` deploys one `ToolchainProbe` and nothing else.
 Broadcast it first: no transaction has ever been sent on Monad mainnet with this
 toolchain (§14.6), so the compiler settings, gas estimate, nonce handling and both
 verification endpoints are unproven until it lands. Simulated cost 150,983 gas
-(~0.031 MON at a 203 gwei max fee) against 6,190,540 gas (~1.25 MON) for the full
-stack.
+(~0.031 MON at a 203 gwei max fee) against 6,190,540 gas (~1.26 MON) for the full
+stack. Both figures are already `forge script`'s 130 % `--gas-estimate-multiplier`
+applied to the raw estimate, priced at the max fee; at the 103 gwei a block actually
+charges the full stack is ~0.64 MON. On Monad the padding is not refunded — gas is
+billed on the limit (§14.5) — so lower `--gas-estimate-multiplier` only if you are
+willing to risk an out-of-gas mid-sequence.
 
 ## Deploy and verify
 
