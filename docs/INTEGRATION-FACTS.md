@@ -19,7 +19,7 @@ corridor in the build prompt cannot be settled onchain on Monad today.
 | "Chainlink underpins Mento's rates — get the Monad feed addresses" | **Confirmed.** Chainlink Data Feeds are live on Monad mainnet with EUR, GBP, CHF, JPY, CAD vs USD. **No NGN feed** from Chainlink or Pyth on Monad (Pyth has no NGN feed on any chain). |
 
 What is actually live end-to-end on Monad mainnet, with a Chainlink reference rate
-and a Mento venue: **USD→GBP** (USDC → USDm → GBPm). See §11 for options.
+and a Mento venue: **USD→GBP** (AUSD or USDC → USDm → GBPm). See §11 and §12.
 
 ---
 
@@ -242,7 +242,8 @@ Nansen
 - "Choose one main track to qualify for any bounty. Main-track prizes are separate and stack with sponsor bounties."
 - Submit: "A working product with a public project profile: a demo, a short write-up, and a link to the code." Open source encouraged not required. Solo builders welcome. Work must be built during the six weeks.
 - Bounties verified by title on the public page: Agora **$10,000 Best Cross-Border Payments App on Monad** (and a separate $10,000 Best Mobile Trading App); Chainlink $3,000 Best workflow with CRE; Privy $5,000; Aurora Intents $5,000 Bring Any-Chain Liquidity to Monad; Envio $1,000; Nansen $5,000; Kuru $5,000 ×2 (Consumer Trading App; Bring New Assets and Markets). Also relevant: Monad Foundation $2,500 "Best Mera-Powered UX" and $2,500 "Mera: One Passkey, Many Keys"; Dynamic $5,000.
-- **All bounty requirement texts, official rules, judging rubric, team-size cap, and demo-video specs are behind login at https://hackathon.monad.xyz/ — UNVERIFIED. You need to log in and paste them into this file.**
+- Bounty requirement texts were pasted from the logged-in platform on 2026-09-10 — see **docs/BOUNTIES.md**. Standard deliverables per track: public repo, technical demo video, pitch video, live product link. Official rules, judging rubric for main tracks, team-size cap, and video length specs remain UNVERIFIED.
+- **The Agora bounty text names AUSD as the asset and Mera passkeys as onboarding.** This moves the source asset from USDC to AUSD and the account layer from Privy to Mera. Mera and the Agora API are researched in §12.
 
 ---
 
@@ -294,3 +295,66 @@ in the write-up as the roadmap, not as a feature. This costs nothing extra and k
 the Nigeria story honest.
 
 Recommendation: **(C)** — build A, design for NGN, do not ship a fake naira.
+
+**Update after reading the Agora bounty text (docs/BOUNTIES.md):** the source asset
+is AUSD and the corridor is **AUSD → USDm → GBPm**, with Chainlink AUSD/USD and
+GBP/USD as the reference feeds. USDC stays as a secondary source. Option C otherwise
+stands.
+
+---
+
+## 12. Mera and Agora — researched after the bounty texts arrived
+
+### 12.1 Mera (`@category-labs/mera`) — VERIFIED, preview software
+
+What it is
+- "Accounts on any chain and platform, from a passkey." Derives 32 secret bytes from the passkey via the WebAuthn **PRF extension**; the app derives accounts from those bytes and signs through an in-memory signing session. No custody backend, no MPC, no smart-account contracts. https://raw.githubusercontent.com/category-labs/mera/main/README.md ; https://mera.category.xyz/getting-started/
+- The result is a **plain secp256k1 EOA** (`getEvmAddress` returns an EIP-55 address). Not ERC-4337. The viem adapter can sign EIP-7702 authorizations if we choose to delegate. https://mera.category.xyz/reference/ ; https://mera.category.xyz/reference/to-viem-account/
+- Package `@category-labs/mera` **0.2.0** (2026-08-12), MIT OR Apache-2.0, deps `@noble/curves`, `@noble/hashes`, `@scure/base`; optional peer `viem ^2.28.0`. App also installs `@scure/bip32 @scure/bip39` for derivation. https://registry.npmjs.org/@category-labs/mera ; https://raw.githubusercontent.com/category-labs/mera/main/library/package.json
+- Status: "currently in preview, and the API may change before version 1.0. Category Labs has completed an internal security review." Last commit 2026-08-31. https://github.com/category-labs/mera
+
+Onboarding and signing
+- `createPasskeyWithPrfOutput({ rp, user })` → `{ credentialId, prfOutput, prfSalt, transports }` — one ceremony. `getPasskeyPrfOutput({ rpId, credential?, prfSalt? })` — one assertion ceremony for sign-in. Both show a single prompt. https://mera.category.xyz/reference/create-passkey-with-prf-output/ ; https://mera.category.xyz/reference/get-passkey-prf-output/
+- Derivation is app code: `entropyToMnemonic(prfOutput)` → `mnemonicToSeedSync` → `HDKey.fromMasterSeed(seed).derive("m/44'/60'/0'/0/0")`. https://mera.category.xyz/recipes/create-passkey-accounts/
+- `createSecp256k1SigningSession({ privateKey })` → `signDigest`, `end()`. **No built-in TTL, scope, or spend limit** — session lifetime is entirely app-managed. https://mera.category.xyz/concepts/signing-sessions/
+- `toViemAccount(session)` → viem `LocalAccount` implementing signTransaction, signMessage (EIP-191), **signTypedData (EIP-712)**, signAuthorization (EIP-7702). Works with `createWalletClient` on any viem chain; no wagmi connector exists. https://mera.category.xyz/reference/to-viem-account/
+- Error codes include `PRF_UNAVAILABLE`, `SESSION_ENDED`. https://mera.category.xyz/reference/errors/
+
+Stateless test
+- "Each ceremony recomputes the same accounts on every device the passkey syncs to, with no secret stored anywhere." The recipe persists only `credentialId`/`transports` in localStorage; on a fresh device WebAuthn prompts to pick a discoverable passkey. Passes the judges' test by design. https://mera.category.xyz/concepts/passkey-accounts/
+- Salts are namespaces: PRF output is fixed by (credential, rpId, salt); default salt `sha256("mera.prf.salt.v1")`, custom 32-byte salts allowed. This is the primitive for the "One Passkey, Many Keys" bounty. https://mera.category.xyz/concepts/passkeys-and-prf/
+- Secret vaults: AES-256-GCM under a PRF-derived key (`createSecretVaultWithNewPasskey`, `decryptSecretVaultWithPasskey`). https://mera.category.xyz/concepts/secret-vaults/
+
+Caveats
+- **rpId lock-in:** accounts exist only under the domain the passkey was created for. A domain change strands funds. Pick the production domain before the first mainnet user. https://mera.category.xyz/concepts/security-model/
+- **Passkey loss = account loss** unless we ship an export path. https://mera.category.xyz/concepts/passkey-accounts/
+- **No gas sponsorship.** "Product flows such as funding remain under application control." A fresh Mera user holds AUSD and zero MON, so they cannot pay gas. See 12.3.
+- **PRF support** (Category Labs matrix, 2026-06): iOS 18+ Safari/Chrome, Android Chrome with Google Password Manager, Chrome 132+ desktop with GPM signed in, Windows 11 25H2+, YubiKey 5.2+, 1Password. **Not** Chrome desktop local-profile passkeys, Bitwarden, Dashlane. Android with GPM is the target user and is covered. https://mera.category.xyz/authenticator-support/
+- Next.js is not mentioned anywhere; the official demo is Vite + React 19. The library touches `navigator.credentials` only inside function bodies, so importing in a server bundle should not throw; ceremonies must run in a client component over HTTPS or localhost. UNVERIFIED by anyone else — expect to do this integration ourselves. https://raw.githubusercontent.com/category-labs/mera/main/library/src/webauthn.ts
+- Monad: Mera docs mention no chain. The demo runs `anvil --network monad`. Any viem chain object works. https://raw.githubusercontent.com/category-labs/mera/main/demos/web/network/evm/server.mts
+
+### 12.2 Agora / AUSD — VERIFIED (token); PARTIAL (API and "staging")
+
+- AUSD: fully reserved USD stablecoin issued by Agora Bermuda Limited (Bermuda Monetary Authority licensed), monthly Grant Thornton attestations. https://www.agora.finance/ ; https://docs.agora.finance/developer/transparency.md
+- Token standards: ERC-20, EIP-712, ERC-1271, **ERC-2612 permit**, **ERC-3009 transferWithAuthorization**; role-restricted mint/burn; asset freezing. https://docs.agora.finance/contract-overview ; https://docs.agora.finance/developer/security-and-compliance.md
+- **Monad mainnet `0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a`** confirmed by Agora and Monad Foundation; 6 decimals (via GeckoTerminal, on-chain check blocked by explorer rate limits — confirm with `decimals()` in week 2). Monad is AUSD's largest chain by supply (~185M). https://docs.agora.finance/developer/contract-deployments.md ; https://docs.monad.xyz/developer-essentials/network-information/tokens-and-bridges.md ; https://api.agora.finance/v0/metrics
+- **Monad testnet AUSD `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`**, faucet contract `0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C` (`requestFunds(address)`; execution on Monad testnet UNVERIFIED). https://docs.agora.finance/developer/contract-deployments.md ; https://docs.agora.finance/instant-settlement/guides/getting-testnet-tokens.md
+- **Chainlink AUSD/USD on Monad mainnet `0xE20751C7B5867bCBef815ffc1b284c3f412a9e13`** confirmed (8 dec, 3600 s heartbeat, 0.05% deviation). SVR variant `0x91D9c75fe73e25f22d9F5e0C6a2a5eC48B6bFBeB` (18 dec). **No AUSD feed on testnet.** https://reference-data-directory.vercel.app/feeds-monad-mainnet.json ; https://raw.githubusercontent.com/monad-crypto/protocols/main/mainnet/chainlink.jsonc
+- Liquidity on Monad besides Mento: Uniswap v4 AUSD/USDC (~$3.9M), Curve AUSD/USDC/USDT0 (~$2.3M), others. The only non-USD FX route for AUSD is Mento's AUSD→USDm→GBPm. https://api.geckoterminal.com/api/v2/networks/monad/tokens/0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a/pools
+
+The Agora API and "staging environment"
+- The public API (`https://api.agora.finance`) is an **institutional mint/redeem API**: routes `usd→ausd`, `stablecoin→ausd`, `ausd→usd`, `ausd→usdc`; accounts are the org's bank accounts and wallets; "The API never auto-approves." Auth is an API key from the dashboard, which requires an organization. https://docs.agora.finance/api.md ; https://docs.agora.finance/api/endpoints/routes/overview.md ; https://docs.agora.finance/api/authentication.md
+- Only `GET /v0/metrics*` is public. Everything else needs an org account via a contact form. https://docs.agora.finance/api/authentication.md ; https://www.agora.finance/contact
+- **No staging or sandbox URL appears anywhere in Agora's docs or OpenAPI spec** (servers list production only). The bounty's "staging environment" is UNVERIFIED — credentials would have to come from Agora through the hackathon. https://docs.agora.finance/openapi.yaml
+- Agora's **Instant Settlement Protocol** is an on-chain fixed-price AUSD/USDC pair on Monad mainnet (`0xf33286E3222D1c829dACeac48c0Ec651F6452470`), "available exclusively to verified platform users through a protected whitelist". Testnet has a CTK/AUSD pair `0x1Aa8958Aa34cEC8096EF4381cb335effe977b0ae`. Whitelist-only, so not usable by us without Agora's approval. https://docs.agora.finance/instant-settlement.md ; https://docs.agora.finance/instant-settlement/protocol-deployments.md
+- Practical reading of the bounty: "instant settlement for the transfer itself" is satisfied by Monad's 600 ms finality on a plain AUSD transfer. The Agora API is for the fiat edge, which we do not operate. Ask the Agora mentor whether staging credentials exist for hackathon teams; do not block on it.
+
+### 12.3 The gas problem, and the answer it suggests
+
+A first-time Mera user has AUSD and no MON. Mera has no paymaster. Options:
+
+1. **ERC-3009 `receiveWithAuthorization` + our relayer. Recommended.** The sender signs an EIP-712 authorization with their Mera account (supported by `toViemAccount.signTypedData`). Our relayer submits one transaction to `CorridorRouter`, which pulls AUSD via the authorization, routes through Mento, delivers GBPm, and emits the receipt. The user never holds MON, never sees gas, and the funds still move payer→recipient in a single transaction with no custody. AUSD's ERC-3009 support is documented (verify on-chain in week 2). This also matches Track 02's "a payments app that never mentions a blockchain".
+2. EIP-7702 delegation plus a third-party paymaster on Monad. UNVERIFIED which bundlers support Monad; adds a smart-account dependency the prompt rules out.
+3. Drip MON to new accounts from a faucet wallet. Works for a demo, leaks value, does not scale. Fallback only.
+
+Consequence for the recipient side: GBPm arrives in the recipient's EOA with no gas needed to receive. To spend it they need MON or another relayed flow, which is out of scope.
