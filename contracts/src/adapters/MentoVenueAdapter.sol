@@ -87,10 +87,12 @@ contract MentoVenueAdapter is IVenueAdapter {
 
     /// @dev One hop when a side is USDm, else assetIn -> USDm -> assetOut. `view`
     ///      rather than `pure` only because solc forbids reading an immutable in a
-    ///      pure function; it touches no storage. The
-    ///      factory is left as address(0) so the Router resolves its default
-    ///      FPMMFactory. A same-asset pair is not special-cased: the Router
-    ///      reverts `SameAddresses` on it, and `status` reports NoRoute.
+    ///      pure function; it touches no storage. The factory is left as
+    ///      address(0) so the Router resolves its default FPMMFactory. A
+    ///      same-asset pair is not special-cased: USDm/USDm is one hop the Router
+    ///      rejects with `SameAddresses` (`status` reports NoRoute), while any
+    ///      other X/X routes X -> USDm -> X through two real pools and reads Open;
+    ///      CorridorRouter rejects same-asset intents before reaching the venue.
     function _routes(address assetIn, address assetOut) internal view returns (IMentoRouter.Route[] memory routes) {
         address hub = usdm;
         if (assetIn == hub || assetOut == hub) {
@@ -105,7 +107,11 @@ contract MentoVenueAdapter is IVenueAdapter {
 
     /// @dev Tradability of a single pool. Order matters: a closed FX market is
     ///      reported before staleness because relays are blocked while the market
-    ///      is closed, so a closed pool is always stale too.
+    ///      is closed, so a closed pool also reads stale once the last pre-close
+    ///      report expires (360 s for GBP/USD); checking staleness first would
+    ///      report every weekend as OracleStale. Verified on-chain at the Friday
+    ///      21:00 UTC close (closed, still recent) and the Sunday 23:00 UTC open
+    ///      (open, stale); see the fork tests.
     function _hopStatus(address from, address to) internal view returns (Status) {
         address pool;
         try mentoRouter.poolFor(from, to, address(0)) returns (address p) {

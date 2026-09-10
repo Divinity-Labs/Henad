@@ -24,6 +24,22 @@ contract MentoVenueAdapterForkTest is ForkTest {
     ///      window (docs/INTEGRATION-FACTS.md §1 table).
     string internal constant ARCHIVE_RPC_DEFAULT = "https://rpc-mainnet.monadinfra.com";
 
+    /// @dev First block at or after Fri 2026-09-04 21:00:00 UTC (timestamp
+    ///      1788555600): the market-hours breaker has just closed but the last
+    ///      GBP/USD relay (20:59) is still inside its 360 s expiry, so the FX
+    ///      oracle adapter reports {isRecent: true, isFXMarketOpen: false}.
+    ///      Read with cast: getRate -> (1.35154e18, 1e18, 0, true, false),
+    ///      isFXMarketOpen() == false, hasRecentRate(GBP/USD) == true.
+    uint256 internal constant FRIDAY_CLOSE_BLOCK = 102_001_572;
+
+    /// @dev First block at or after Sun 2026-09-06 23:00:00 UTC (timestamp
+    ///      1788735600): the market has just reopened and no relay has landed
+    ///      since Friday, so {isRecent: false, isFXMarketOpen: true}. The first
+    ///      post-open relay landed by block 102_593_574 (15 s later). Read with
+    ///      cast: getRate -> (1.35154e18, 1e18, 0, false, true), isFXMarketOpen()
+    ///      == true, hasRecentRate(GBP/USD) == false.
+    uint256 internal constant SUNDAY_OPEN_BLOCK = 102_593_524;
+
     /// @dev Pool fees in bps as observed on-chain (§14.1); asserted, not assumed.
     uint256 internal constant USD_POOL_FEE_BPS = 5; // AUSD/USDm, USDC/USDm: lp 3 + protocol 2
     uint256 internal constant FX_POOL_FEE_BPS = 15; // GBPm/USDm etc.: lp 10 + protocol 5
@@ -276,5 +292,102 @@ contract MentoVenueAdapterForkTest is ForkTest {
         // The USD-stable pools use a breaker with checks disabled, so they stay open.
         assertEq(uint8(sat.status(M.AUSD, M.USDM)), uint8(IVenueAdapter.Status.Open), "AUSD->USDm");
         assertGt(sat.quote(M.AUSD, M.USDM, 1e6), 0, "AUSD->USDm should still quote");
+    }
+
+    // ------------------------------------------------- market-hours boundaries
+
+    /// @dev At PINNED_BLOCK both RateInfo bools are true and at SATURDAY_BLOCK both
+    ///      are false, so those tests cannot tell `isRecent` from `isFXMarketOpen`
+    ///      (the OracleAdapter implementation is not source-verified, §14.6). The
+    ///      Friday close is the one window where the pool is closed but still
+    ///      recent: it pins the field order against the adapter's single-purpose
+    ///      views and the closed-before-stale ordering in `_hopStatus`.
+    function testFork_fridayClose_marketClosedBeforeStale() public {
+        _forkArchiveAt(FRIDAY_CLOSE_BLOCK);
+        MentoVenueAdapter fri = new MentoVenueAdapter(ROUTER, M.USDM);
+
+        IFPMM pool = IFPMM(M.POOL_GBPM_USDM);
+        IOracleAdapter fx = pool.oracleAdapter();
+        address feed = pool.referenceRateFeedID();
+        assertFalse(fx.isFXMarketOpen(), "market should have just closed");
+        assertTrue(fx.hasRecentRate(feed), "last pre-close relay should still be recent");
+        IOracleAdapter.RateInfo memory info = fx.getRate(feed);
+        assertEq(info.tradingMode, 0, "tradingMode");
+        assertTrue(info.isRecent, "RateInfo.isRecent must mirror hasRecentRate");
+        assertFalse(info.isFXMarketOpen, "RateInfo.isFXMarketOpen must mirror isFXMarketOpen()");
+
+        assertEq(uint8(fri.status(M.AUSD, M.GBPM)), uint8(IVenueAdapter.Status.MarketClosed), "AUSD->GBPm");
+        assertEq(uint8(fri.status(M.USDM, M.GBPM)), uint8(IVenueAdapter.Status.MarketClosed), "USDm->GBPm");
+        vm.expectRevert(IOracleAdapter.FXMarketClosed.selector);
+        fri.quote(M.AUSD, M.GBPM, 1e6);
+
+        assertEq(uint8(fri.status(M.AUSD, M.USDM)), uint8(IVenueAdapter.Status.Open), "AUSD->USDm");
+        assertGt(fri.quote(M.AUSD, M.USDM, 1e6), 0, "AUSD->USDm should still quote");
+    }
+
+    /// @dev The Sunday open is the mirror window: open but no relay yet, so the
+    ///      pool is OracleStale and the Router reverts NoRecentRate (§14.2).
+    function testFork_sundayOpen_oracleStale() public {
+        _forkArchiveAt(SUNDAY_OPEN_BLOCK);
+        MentoVenueAdapter sun = new MentoVenueAdapter(ROUTER, M.USDM);
+
+        IFPMM pool = IFPMM(M.POOL_GBPM_USDM);
+        IOracleAdapter fx = pool.oracleAdapter();
+        address feed = pool.referenceRateFeedID();
+        assertTrue(fx.isFXMarketOpen(), "market should have just opened");
+        assertFalse(fx.hasRecentRate(feed), "no relay should have landed yet");
+        IOracleAdapter.RateInfo memory info = fx.getRate(feed);
+        assertEq(info.tradingMode, 0, "tradingMode");
+        assertFalse(info.isRecent, "RateInfo.isRecent must mirror hasRecentRate");
+        assertTrue(info.isFXMarketOpen, "RateInfo.isFXMarketOpen must mirror isFXMarketOpen()");
+
+        assertEq(uint8(sun.status(M.AUSD, M.GBPM)), uint8(IVenueAdapter.Status.OracleStale), "AUSD->GBPm");
+        assertEq(uint8(sun.status(M.USDM, M.GBPM)), uint8(IVenueAdapter.Status.OracleStale), "USDm->GBPm");
+        vm.expectRevert(IOracleAdapter.NoRecentRate.selector);
+        sun.quote(M.AUSD, M.GBPM, 1e6);
+
+        assertEq(uint8(sun.status(M.AUSD, M.USDM)), uint8(IVenueAdapter.Status.Open), "AUSD->USDm");
+        assertGt(sun.quote(M.AUSD, M.USDM, 1e6), 0, "AUSD->USDm should still quote");
+    }
+
+    // ------------------------------------------- remaining status branches (mocked)
+
+    /// @dev A non-zero BreakerBox trading mode cannot be produced at any pinned
+    ///      block, so the FX adapter's getRate is mocked with the real RateInfo and
+    ///      only tradingMode changed. The USD pools use a different adapter and
+    ///      must be unaffected.
+    function testFork_status_tradingSuspended() public {
+        IFPMM pool = IFPMM(M.POOL_GBPM_USDM);
+        IOracleAdapter fx = pool.oracleAdapter();
+        address feed = pool.referenceRateFeedID();
+        assertTrue(address(fx) != address(IFPMM(M.POOL_AUSD_USDM).oracleAdapter()), "pools share an adapter");
+
+        IOracleAdapter.RateInfo memory info = fx.getRate(feed);
+        assertEq(info.tradingMode, 0);
+        info.tradingMode = 1;
+        vm.mockCall(address(fx), abi.encodeCall(IOracleAdapter.getRate, (feed)), abi.encode(info));
+
+        _assertStatus(M.AUSD, M.GBPM, IVenueAdapter.Status.TradingSuspended, "AUSD->GBPm");
+        _assertStatus(M.USDM, M.GBPM, IVenueAdapter.Status.TradingSuspended, "USDm->GBPm");
+        _assertStatus(M.AUSD, M.EURM, IVenueAdapter.Status.Open, "AUSD->EURm (other feed)");
+        _assertStatus(M.AUSD, M.USDM, IVenueAdapter.Status.Open, "AUSD->USDm (other adapter)");
+        vm.clearMockedCalls();
+    }
+
+    /// @dev An oracle read that reverts maps to NoRoute rather than bubbling, so
+    ///      `status` keeps its never-reverts contract for the UI pre-flight.
+    function testFork_status_oracleRevertIsNoRoute() public {
+        IFPMM pool = IFPMM(M.POOL_GBPM_USDM);
+        IOracleAdapter fx = pool.oracleAdapter();
+        address feed = pool.referenceRateFeedID();
+        vm.mockCallRevert(
+            address(fx),
+            abi.encodeCall(IOracleAdapter.getRate, (feed)),
+            abi.encodeWithSelector(IOracleAdapter.InvalidRate.selector)
+        );
+
+        _assertStatus(M.AUSD, M.GBPM, IVenueAdapter.Status.NoRoute, "AUSD->GBPm");
+        _assertStatus(M.AUSD, M.USDM, IVenueAdapter.Status.Open, "AUSD->USDm (other adapter)");
+        vm.clearMockedCalls();
     }
 }
