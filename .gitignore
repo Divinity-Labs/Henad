@@ -23,3 +23,6 @@ Thumbs.db
 
 # agent scratch experiments
 scratch/
+
+# agent worktrees
+.claude/worktrees/
