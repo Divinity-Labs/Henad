@@ -51,7 +51,7 @@ export function CorridorTable({ rates }: { rates: LiveRate[] }) {
               {c.source} → {c.target}
             </span>
             <span className={live ? 'font-medium' : r.rate === null ? 'text-muted' : ''}>
-              {r.rate === null ? 'No rate on Monad' : rateText(r, true)}
+              {r.rate === null ? (c.feed ? 'Feed unavailable · retrying' : 'No rate on Monad') : rateText(r, true)}
               {r.stale && r.rate !== null ? <span className="text-amber"> · stale</span> : null}
             </span>
             <span className={r.rate === null ? 'text-muted' : ''}>
@@ -104,6 +104,7 @@ export function CorridorList({ rates, hrefLive = '/send' }: { rates: LiveRate[];
                   : c.tier === 'quote'
                     ? `${c.feed?.kind === 'pyth' ? 'Pyth pull' : 'Chainlink'} · ${c.note.replace('Priced · ', '')}`
                     : 'No NGN feed on Monad · MRC →'}
+                {c.feed && r.rate === null ? ' · feed unavailable' : ''}
               </span>
             </span>
             <span className={live ? 'font-medium' : r.rate === null ? 'text-muted' : ''}>{r.rate === null ? '—' : rateText(r, false)}</span>

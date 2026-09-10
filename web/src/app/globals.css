@@ -61,19 +61,26 @@
   }
 }
 
-html,
-body {
-  margin: 0;
-  background: var(--color-canvas);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+/*
+ * Element defaults live in @layer base. Unlayered rules beat every layered one
+ * regardless of specificity, so an unlayered `a { color: inherit }` would win
+ * over Tailwind's own text-* utilities and paint every link ink.
+ */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-a {
-  color: inherit;
-  text-decoration: none;
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Dot-grid canvas gutters, as on every artboard. */
@@ -157,4 +164,65 @@ a {
 :focus-visible {
   outline: 2px solid var(--color-purple);
   outline-offset: 2px;
+}
+
+/*
+ * Scrollbar. Hairline track on the canvas, a thin ink thumb that turns purple
+ * on hover: the same 1px-structure language as the rest of the page, and thin
+ * enough not to compete with the dot grid. Firefox gets the two-value
+ * `scrollbar-color`; WebKit and Chromium get the pseudo-elements.
+ */
+@supports (scrollbar-width: thin) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-left: 1px solid var(--color-hairline);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:active {
+  background: var(--color-purple);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark panels carry their own scrollbar so the thumb stays visible on them. */
+.on-dark {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.on-dark::-webkit-scrollbar-track {
+  border-left-color: rgba(255, 255, 255, 0.1);
+}
+.on-dark::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  background-clip: content-box;
+}
+.on-dark::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+  background-clip: content-box;
+}
+
+/* Horizontal overflow containers (wide tables) keep the page from scrolling sideways. */
+.scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }

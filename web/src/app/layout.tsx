@@ -11,7 +11,14 @@ const instrument = Instrument_Sans({
 })
 const mono = Roboto_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-roboto-mono', display: 'swap' })
 
+/** Canonical host for absolute OG/canonical URLs. Vercel supplies the deploy URL. */
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: 'Henad', template: '%s · Henad' },
   description:
     'Send money abroad. Keep proof of the rate. Cross-border payouts settled through onchain FX on Monad, with the reference rate, the executed rate, and the exact spread on every payment.',

@@ -24,8 +24,8 @@ const RAILS: Rail[] = [
   { name: 'Agora', mark: 'agora', height: 18, label: 'AUSD source asset' },
   { name: 'Mera', label: 'Passkey accounts · no seed phrase' },
   { name: 'Aurora Intents', label: 'Inbound funds from other chains' },
-  { name: 'Envio', label: 'Indexes every receipt' },
-  { name: 'Nansen', mark: 'nansen', height: 20, label: 'Wallet labels on the explorer' },
+  { name: 'Envio', label: 'Receipt indexing · planned' },
+  { name: 'Nansen', mark: 'nansen', height: 20, label: 'Wallet labels · planned' },
   { name: 'Pyth', label: `${pyth ? `${pyth.source}/${pyth.target} ` : ''}pull feed · evaluated` },
 ]
 

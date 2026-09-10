@@ -12,7 +12,7 @@ const STEPS = [
   },
   {
     title: 'Every payout emits a public receipt',
-    body: 'RateAttestation writes reference rate, executed rate, spread, and the rate source to Monad. Envio indexes it; anyone can open the permalink without a wallet.',
+    body: 'RateAttestation writes reference rate, executed rate, spread, and the rate source to Monad. Anyone can open the permalink and check it against the chain, without a wallet.',
   },
 ]
 

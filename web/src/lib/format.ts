@@ -39,10 +39,21 @@ export function shortHash(h: string): string {
   return shortAddress(h, 6, 4)
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+/**
+ * Three-letter months from a fixed table, not Intl: Node's ICU renders
+ * September as "Sept" in en-GB, and the design uses "Sep" everywhere.
+ */
+function utcDate(d: Date): string {
+  return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
 /** "09 Sep 2026 · 14:32:07 UTC" */
 export function utcStamp(unixSeconds: number | bigint): string {
   const d = new Date(Number(unixSeconds) * 1000)
-  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+  const date = utcDate(d)
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'UTC' })
   return `${date} · ${time} UTC`
 }
@@ -56,7 +67,7 @@ export function utcTime(unixSeconds: number | bigint): string {
 /** "Sun 13 Sep · 23:00 UTC" */
 export function utcDayTime(unixSeconds: number | bigint): string {
   const d = new Date(Number(unixSeconds) * 1000)
-  const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
+  const day = `${WEEKDAYS[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]}`
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' })
   return `${day} · ${time} UTC`
 }
