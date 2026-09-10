@@ -273,7 +273,16 @@ Source: https://raw.githubusercontent.com/monad-crypto/MIPs/main/mip-template.md
 
 ---
 
-## 11. Corridor options — decision needed before week 2
+## Decisions log
+
+| # | Decision | Chosen | Date |
+| --- | --- | --- | --- |
+| D1 | Corridor (§11) | **C** — ship AUSD/USDC → USDm → GBPm on mainnet; corridor and rate-source registry generic so NGN plugs in later; no fake naira | 2026-09-10 |
+| D2 | Gas for zero-MON users (§12.3) | **Research EIP-7702 + paymaster first (§13); ERC-3009 + own relayer is the fallback** | 2026-09-10, pending §13 |
+
+---
+
+## 11. Corridor options — DECIDED: C (see decisions log)
 
 **(A) Ship USD→GBP on mainnet. Recommended.**
 USDC → USDm → GBPm through the Mento Router, Chainlink GBP/USD (18 dec) as the
