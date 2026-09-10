@@ -90,7 +90,14 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
 - [ ] Integration fork suite: both paths on real Mento with real feeds, real EntryPoint (in progress).
 - [ ] `script/Deploy.s.sol` (in progress); throwaway mainnet broadcast to prove the toolchain.
 - [x] `packages/core`: intent typed data + ERC-3009 authorization helpers (vector-checked).
-- [ ] `packages/core`: ABIs from `forge build`.
+- [x] `packages/core`: ABIs generated from `forge build` (scripts/gen-abis.mjs).
+- [x] Web pages built from the canvas and merged: landing, /send (Mera passkeys),
+      /rates, /receipts, /receipt/[id] + OG image, /docs; settlement transport
+      (ERC-3009 relayer + 7702/Pimlico) with 63 unit tests. Build green.
+- [ ] **Blocked on deployment:** nothing is deployed, so `HENAD[chainId]` is empty,
+      the send button is disabled and no receipt can exist.
+- [ ] Four of five page builds are unreviewed (reviewers died on credits).
+- [ ] The Mera passkey ceremony has never run in a browser.
 
 **Design (10 Sep).** The "Henad v4" canvas (claude.ai/design project, exported to
 `design/Henad-v4.dc.html`) is the UI source of truth; `docs/DESIGN.md` maps its
