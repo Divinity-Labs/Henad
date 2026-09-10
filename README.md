@@ -41,9 +41,12 @@ Pronounced HEE-nad. `Henad` in prose and UI, `henad` in code.
 ## Layout
 
 ```
-contracts/   Foundry. PayoutIntent, CorridorRouter, RateAttestation + adapters.
-web/         Next.js App Router. /send, /rates, /receipt/[intentId].
-docs/        INTEGRATION-FACTS.md (verified addresses, sources), MRC-DRAFT.md.
+contracts/      Foundry. PayoutIntent, CorridorRouter, RateAttestation + adapters.
+packages/core/  Shared TypeScript: chain config, ABIs, corridor maths, signing helpers.
+web/            Next.js App Router PWA. /send, /rates, /receipt/[intentId]. Built first.
+mobile/         Expo app on the same core. Built after the web flow settles on mainnet.
+indexer/        Envio HyperIndex feeding /rates.
+docs/           INTEGRATION-FACTS.md, BOUNTIES.md, PLAN.md, MRC-DRAFT.md.
 ```
 
 ## Status
