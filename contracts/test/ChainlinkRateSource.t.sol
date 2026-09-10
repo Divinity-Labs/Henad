@@ -380,6 +380,20 @@ contract ChainlinkRateSourceTest is Test {
         src.getRate(ausd, gbpm);
     }
 
+    function test_getRate_bubblesFeedRevert() public {
+        // A proxy with no completed round reverts inside latestRoundData (EACAggregatorProxy
+        // "No data present"). getRate must bubble that revert untouched, never mask it as
+        // InvalidReferenceAnswer or StaleReferenceRate, whichever side of the pair it is on.
+        MockAggregator empty = new MockAggregator(8, "EMPTY / USD");
+        ChainlinkRateSource s = new ChainlinkRateSource(_single(ausd, gbpm, empty, gbpUsd));
+        vm.expectRevert(abi.encodeWithSelector(MockAggregator.NoData.selector, uint80(0)));
+        s.getRate(ausd, gbpm);
+
+        s = new ChainlinkRateSource(_single(ausd, gbpm, ausdUsd, empty));
+        vm.expectRevert(abi.encodeWithSelector(MockAggregator.NoData.selector, uint80(0)));
+        s.getRate(ausd, gbpm);
+    }
+
     // ---------------------------------------------------------------- registry
 
     function test_getRate_unsupportedPair() public {
