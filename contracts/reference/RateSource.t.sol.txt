@@ -1,0 +1,210 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.24;
+
+// Fork test for the receipt's reference-vs-executed spread around one GBP/USD Chainlink round
+// that had not yet been relayed into Mento's SortedOracles.
+//
+// Timeline (Monad mainnet, 2026-09-10, all from eth_getLogs, see scratch/ratesrc1.sh):
+//   block 103622468  Chainlink GBP/USD aggregator AnswerUpdated aggRound 83378: 1.35018 -> 1.34980, updatedAt 1789046769
+//   block 103622644  SortedOracles OracleReported(GBP/USD id, relayer 0xDb8f...) reportTs 1789046822 (53 s later)
+// PRE_RELAY_BLOCK sits inside that window; RELAY_BLOCK is the relay block itself (state after the relay).
+
+import {Test, console2} from "forge-std/Test.sol";
+
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
+}
+
+interface AggregatorV3Interface {
+    function decimals() external view returns (uint8);
+    function latestRoundData()
+        external
+        view
+        returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
+}
+
+interface IMentoRouter {
+    struct Route {
+        address from;
+        address to;
+        address factory;
+    }
+
+    function getAmountsOut(uint256 amountIn, Route[] memory routes) external view returns (uint256[] memory amounts);
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        Route[] calldata routes,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory amounts);
+}
+
+interface IFPMMPool {
+    function oracleAdapter() external view returns (address);
+    function referenceRateFeedID() external view returns (address);
+    function invertRateFeed() external view returns (bool);
+    function lpFee() external view returns (uint256);
+    function protocolFee() external view returns (uint256);
+}
+
+interface IOracleAdapter {
+    function getFXRateIfValid(address rateFeedID) external view returns (uint256 numerator, uint256 denominator);
+    function sortedOracles() external view returns (address);
+}
+
+interface ISortedOracles {
+    function medianRate(address) external view returns (uint256, uint256);
+    function medianTimestamp(address) external view returns (uint256);
+}
+
+interface IAgoraDollar {
+    function ERC20_CORE_STORAGE_SLOT() external pure returns (bytes32);
+    function accountData(address _account) external view returns (bool isFrozen, uint248 balance);
+}
+
+contract RateSourceTest is Test {
+    address constant AUSD = 0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a; // 6 dec
+    address constant USDM = 0xBC69212B8E4d445b2307C9D32dD68E2A4Df00115; // 18 dec
+    address constant GBPM = 0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1; // 18 dec
+    address constant FEED_GBP_USD = 0x1ffC8B75a16FFfbd7879F042B580F7607Dcf5C30; // 18 dec
+    address constant FEED_AUSD_USD = 0xE20751C7B5867bCBef815ffc1b284c3f412a9e13; // 8 dec
+    address constant MENTO_ROUTER = 0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6;
+    address constant POOL_AUSD_USDM = 0xb0a0264Ce6847F101b76ba36A4a3083ba489F501;
+    address constant POOL_GBPM_USDM = 0xD0E9c1a718D2a693d41eacd4B2696180403Ce081;
+    bytes32 constant AUSD_ERC20_CORE_SLOT = 0x455730fed596673e69db1907be2e521374ba893f1a04cc5f5dd931616cd6b700;
+
+    uint256 constant PRE_RELAY_BLOCK = 103_622_500; // Chainlink round 83378 landed (103622468), not yet relayed
+    uint256 constant RELAY_BLOCK = 103_622_644; // OracleReported for that round
+
+    // Mento venue fee for the two legs: AUSD/USDm 3+2 bps, GBPm/USDm 10+5 bps.
+    int256 constant EXPECTED_VENUE_BPS = 20;
+    bytes4 constant INSUFFICIENT_OUTPUT = 0x42301c23; // IRouter.InsufficientOutputAmount()
+
+    address user = makeAddr("henad-user");
+    address recipient = makeAddr("gbp-recipient");
+
+    function _fork(uint256 blk) internal {
+        string memory rpc = vm.envOr("MONAD_MAINNET_RPC_URL", string(""));
+        if (bytes(rpc).length == 0) rpc = vm.rpcUrl("monad");
+        vm.createSelectFork(rpc, blk);
+        assertEq(block.chainid, 143, "chainid");
+    }
+
+    function _routes() internal pure returns (IMentoRouter.Route[] memory routes) {
+        routes = new IMentoRouter.Route[](2);
+        routes[0] = IMentoRouter.Route({from: AUSD, to: USDM, factory: address(0)});
+        routes[1] = IMentoRouter.Route({from: USDM, to: GBPM, factory: address(0)});
+    }
+
+    /// Reference = Chainlink AUSD/USD (8 dec) / Chainlink GBP/USD (18 dec), scaled 1e18: GBP per AUSD.
+    function _reference()
+        internal
+        view
+        returns (uint256 ref, uint80 roundAusd, uint256 updAusd, uint80 roundGbp, uint256 updGbp, int256 ansGbp)
+    {
+        int256 ansAusd;
+        (roundAusd, ansAusd,, updAusd,) = AggregatorV3Interface(FEED_AUSD_USD).latestRoundData();
+        (roundGbp, ansGbp,, updGbp,) = AggregatorV3Interface(FEED_GBP_USD).latestRoundData();
+        assertGt(ansAusd, 0);
+        assertGt(ansGbp, 0);
+        ref = (uint256(ansAusd) * 1e10 * 1e18) / uint256(ansGbp);
+    }
+
+    /// Mirrors Corridor.spreadBps: (reference - executed) * 1e4 / reference, signed.
+    function _spreadBps(uint256 ref, uint256 executed) internal pure returns (int256) {
+        return ((int256(ref) - int256(executed)) * 10_000) / int256(ref);
+    }
+
+    /// The rate the GBPm/USDm pool actually prices with (relayed Chainlink via SortedOracles).
+    function _poolGbpRate() internal view returns (uint256 num, uint256 den, uint256 reportTs) {
+        IFPMMPool pool = IFPMMPool(POOL_GBPM_USDM);
+        assertFalse(pool.invertRateFeed(), "GBPm/USDm invertRateFeed");
+        IOracleAdapter oa = IOracleAdapter(pool.oracleAdapter());
+        address feedId = pool.referenceRateFeedID();
+        (num, den) = oa.getFXRateIfValid(feedId);
+        reportTs = ISortedOracles(oa.sortedOracles()).medianTimestamp(feedId);
+    }
+
+    function _dealAUSD(address to, uint256 amount) internal {
+        assertEq(IAgoraDollar(AUSD).ERC20_CORE_STORAGE_SLOT(), AUSD_ERC20_CORE_SLOT, "AUSD storage root changed");
+        bytes32 slot = keccak256(abi.encode(to, AUSD_ERC20_CORE_SLOT));
+        (bool frozen,) = IAgoraDollar(AUSD).accountData(to);
+        vm.store(AUSD, slot, bytes32((amount << 8) | (frozen ? 1 : 0)));
+        assertEq(IERC20(AUSD).balanceOf(to), amount, "vm.store AUSD balance");
+    }
+
+    /// Block inside the un-relayed window: Chainlink already shows the new (lower) GBP/USD, the pool
+    /// still prices on the previous relayed value. Spread lands above the 20 bps venue fee, and an
+    /// amountOutMin derived from the Chainlink reference reverts while one derived from the quote works.
+    function test_preRelay_spreadBand_and_minOutGuard() public {
+        _fork(PRE_RELAY_BLOCK);
+        (uint256 ref,, uint256 updAusd,, uint256 updGbp, int256 ansGbp) = _reference();
+        (uint256 poolNum, uint256 poolDen, uint256 reportTs) = _poolGbpRate();
+        console2.log("block.timestamp", block.timestamp);
+        console2.log("chainlink GBP/USD answer", uint256(ansGbp));
+        console2.log("chainlink GBP/USD age s", block.timestamp - updGbp);
+        console2.log("chainlink AUSD/USD age s", block.timestamp - updAusd);
+        console2.log("pool GBP/USD numerator", poolNum);
+        console2.log("pool report age s", block.timestamp - reportTs);
+        assertEq(poolDen, 1e18, "adapter denominator");
+        assertLe(block.timestamp - updGbp, 60, "expected a fresh Chainlink round");
+        assertLt(reportTs, updGbp, "relay must predate the Chainlink round here");
+        assertTrue(poolNum != uint256(ansGbp), "pool must still use the previous round");
+
+        uint256[] memory amounts = IMentoRouter(MENTO_ROUTER).getAmountsOut(1e6, _routes());
+        uint256 executed = amounts[2]; // 1 AUSD (1e6, 6 dec) -> GBPm (18 dec): rate == delivered
+        int256 spread = _spreadBps(ref, executed);
+        console2.log("reference GBP per AUSD (1e18)", ref);
+        console2.log("executed  GBP per AUSD (1e18)", executed);
+        console2.log("spreadBps", spread);
+        assertGe(spread, 15, "spread below band");
+        assertLe(spread, 30, "spread above band");
+        assertGt(spread, EXPECTED_VENUE_BPS, "un-relayed downward round must widen the spread");
+
+        // A min-out derived from the Chainlink reference (minus the nominal 20 bps venue fee) reverts.
+        _dealAUSD(user, 1e6);
+        uint256 minOutFromReference = (ref * uint256(10_000 - EXPECTED_VENUE_BPS)) / 10_000;
+        assertLt(executed, minOutFromReference, "pool underdelivers vs reference-derived min-out");
+        vm.startPrank(user);
+        IERC20(AUSD).approve(MENTO_ROUTER, 1e6);
+        vm.expectRevert(abi.encodeWithSelector(INSUFFICIENT_OUTPUT));
+        IMentoRouter(MENTO_ROUTER).swapExactTokensForTokens(
+            1e6, minOutFromReference, _routes(), recipient, block.timestamp + 60
+        );
+
+        // A min-out derived from the signed quote and a tolerance (here 10 bps) settles.
+        uint256 minOutFromQuote = (amounts[2] * 9_990) / 10_000;
+        uint256[] memory got = IMentoRouter(MENTO_ROUTER).swapExactTokensForTokens(
+            1e6, minOutFromQuote, _routes(), recipient, block.timestamp + 60
+        );
+        vm.stopPrank();
+        assertEq(got[2], executed, "delivered == same-block quote");
+        assertEq(IERC20(GBPM).balanceOf(recipient), executed, "recipient GBPm");
+        // Receipt maths on the delivered amount reproduces the same spread.
+        assertEq(_spreadBps(ref, got[2]), spread, "attested spread");
+    }
+
+    /// Relay block: pool rate == Chainlink answer, spread == venue fee (20 bps compounded, floor).
+    function test_postRelay_spreadEqualsVenueFee() public {
+        _fork(RELAY_BLOCK);
+        (uint256 ref,,,,, int256 ansGbp) = _reference();
+        (uint256 poolNum,, uint256 reportTs) = _poolGbpRate();
+        assertEq(poolNum, uint256(ansGbp), "pool rate == Chainlink after relay");
+        assertEq(reportTs, block.timestamp, "relay landed in this block");
+
+        uint256[] memory amounts = IMentoRouter(MENTO_ROUTER).getAmountsOut(1e6, _routes());
+        int256 spread = _spreadBps(ref, amounts[2]);
+        console2.log("reference GBP per AUSD (1e18)", ref);
+        console2.log("executed  GBP per AUSD (1e18)", amounts[2]);
+        console2.log("spreadBps", spread);
+        assertGe(spread, 19, "spread below venue fee band");
+        assertLe(spread, 21, "spread above venue fee band");
+
+        // Even with rates in sync, a reference-derived min-out is on a knife-edge (fee compounding + floor).
+        uint256 minOutFromReference = (ref * uint256(10_000 - EXPECTED_VENUE_BPS)) / 10_000;
+        console2.log("minOutFromReference", minOutFromReference);
+        console2.log("executed - minOutFromReference (signed)", int256(amounts[2]) - int256(minOutFromReference));
+    }
+}

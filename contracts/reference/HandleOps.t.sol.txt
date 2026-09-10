@@ -1,0 +1,637 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.31;
+
+import {Test, Vm, console2} from "forge-std/Test.sol";
+
+// ---- ERC-4337 v0.8 (verbatim from Sourcify-verified EntryPoint 0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108, chain 143) ----
+struct PackedUserOperation {
+    address sender;
+    uint256 nonce;
+    bytes initCode;
+    bytes callData;
+    bytes32 accountGasLimits;
+    uint256 preVerificationGas;
+    bytes32 gasFees;
+    bytes paymasterAndData;
+    bytes signature;
+}
+interface IEntryPoint {
+    event UserOperationEvent(bytes32 indexed userOpHash, address indexed sender, address indexed paymaster, uint256 nonce, bool success, uint256 actualGasCost, uint256 actualGasUsed);
+    event UserOperationRevertReason(bytes32 indexed userOpHash, address indexed sender, uint256 nonce, bytes revertReason);
+    event BeforeExecution();
+    error FailedOp(uint256 opIndex, string reason);
+    error FailedOpWithRevert(uint256 opIndex, string reason, bytes inner);
+    function handleOps(PackedUserOperation[] calldata ops, address payable beneficiary) external;
+    function getUserOpHash(PackedUserOperation calldata userOp) external view returns (bytes32);
+    function getNonce(address sender, uint192 key) external view returns (uint256 nonce);
+    function depositTo(address account) external payable;
+    function balanceOf(address account) external view returns (uint256);
+    function getDomainSeparatorV4() external view returns (bytes32);
+    function getPackedUserOpTypeHash() external pure returns (bytes32);
+}
+interface IPaymaster {
+    enum PostOpMode { opSucceeded, opReverted, postOpReverted }
+    function validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost) external returns (bytes memory context, uint256 validationData);
+    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost, uint256 actualUserOpFeePerGas) external;
+}
+interface ISimple7702Account {
+    struct Call { address target; uint256 value; bytes data; }
+    function execute(address target, uint256 value, bytes calldata data) external;
+    function executeBatch(Call[] calldata calls) external;
+}
+interface IERC20 {
+    function balanceOf(address) external view returns (uint256);
+    function transfer(address, uint256) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
+    function approve(address, uint256) external returns (bool);
+    function allowance(address, address) external view returns (uint256);
+}
+// Mento V3 Router (verified on Monad Sourcify; see prior findings)
+interface IMentoRouter {
+    struct Route { address from; address to; address factory; }
+    function getAmountsOut(uint256 amountIn, Route[] calldata routes) external view returns (uint256[] memory amounts);
+    function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, Route[] calldata routes, address to, uint256 deadline) external returns (uint256[] memory amounts);
+}
+
+/// Stand-in for the Henad settlement router: pulls from msg.sender and records who that was.
+contract MockRouter {
+    IERC20 public immutable token;
+    address public lastPayer; uint256 public lastAmount; uint256 public settlements;
+    constructor(IERC20 t) { token = t; }
+    function settle(uint256 value) external {
+        require(token.transferFrom(msg.sender, address(this), value), "pull failed");
+        lastPayer = msg.sender; lastAmount = value; settlements++;
+    }
+}
+
+contract BaseFeeProbe { function basefee() external view returns (uint256) { return block.basefee; } function gasprice() external view returns (uint256) { return tx.gasprice; } }
+contract Caller { function callTarget(address t, bytes calldata d) external returns (bytes memory r) { bool ok; (ok, r) = t.call(d); require(ok, "callTarget failed"); } }
+contract DumbAccount {
+    function validateUserOp(PackedUserOperation calldata, bytes32, uint256) external pure returns (uint256) { return 0; }
+    fallback() external payable {}
+    receive() external payable {}
+}
+contract DepthProbe {
+    BaseFeeProbe immutable p;
+    constructor(BaseFeeProbe _p) { p = _p; }
+    function inner() external view returns (uint256) { return block.basefee; }
+    function viaCall() external view returns (uint256) { return p.basefee(); }
+    function viaSelf() external view returns (uint256) { return this.inner(); }
+    function viaSelfThenCall() external view returns (uint256) { return this.viaCall(); }
+}
+
+/// Minimal sponsoring paymaster: accepts every op, records postOp.
+contract StubPaymaster is IPaymaster {
+    address public immutable ep;
+    uint256 public validations; uint256 public postOps; PostOpMode public lastMode; uint256 public lastActualGasCost; uint256 public lastFeePerGas; uint256 public lastMaxCost;
+    bool public reject;
+    constructor(address _ep) { ep = _ep; }
+    function setReject(bool r) external { reject = r; }
+    function validatePaymasterUserOp(PackedUserOperation calldata, bytes32, uint256 maxCost) external override returns (bytes memory context, uint256 validationData) {
+        require(msg.sender == ep, "pm: not EP");
+        validations++; lastMaxCost = maxCost;
+        // non-empty context so EntryPoint calls postOp (empty context = no postOp)
+        return (abi.encode(uint256(42)), reject ? 1 : 0);
+    }
+    function postOp(PostOpMode mode, bytes calldata, uint256 actualGasCost, uint256 actualUserOpFeePerGas) external override {
+        require(msg.sender == ep, "pm: not EP");
+        postOps++; lastMode = mode; lastActualGasCost = actualGasCost; lastFeePerGas = actualUserOpFeePerGas;
+    }
+}
+
+contract HandleOpsTest is Test {
+    address constant AUSD = 0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a;
+    address constant USDM = 0xBC69212B8E4d445b2307C9D32dD68E2A4Df00115;
+    address constant GBPM = 0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1;
+    address constant MENTO_ROUTER = 0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6;
+    address constant POOL_AUSD = 0xb0a0264Ce6847F101b76ba36A4a3083ba489F501;
+    address constant RESERVE_V2 = 0x4255Cf38e51516766180b33122029A88Cb853806;
+    address constant MULTICALL3 = 0xcA11bde05977b3631167028862bE2a173976CA11;
+    address constant S7702 = 0xe6Cae83BdE06E4c305530e199D7217f42808555B;
+    IEntryPoint constant EP = IEntryPoint(0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108);
+    bytes32 constant USEROP_EVENT_SIG = keccak256("UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)");
+    bytes32 constant REVERT_REASON_SIG = keccak256("UserOperationRevertReason(bytes32,address,uint256,bytes)");
+
+    uint256 constant VERIF_GAS = 500_000;
+    uint256 constant CALL_GAS = 3_000_000;
+    uint256 constant PM_VERIF_GAS = 200_000;
+    uint256 constant PM_POSTOP_GAS = 200_000;
+    uint256 constant PRE_VERIF_GAS = 60_000;
+    uint256 constant MAX_PRIO = 1 gwei;
+    uint256 constant MAX_FEE = 300 gwei;
+
+    uint256 pk = 0xA11CE;
+    address payer;
+    address bundler = address(0xB0B0);
+    address recipient = address(0xCAFE);
+    MockRouter router;
+    StubPaymaster pm;
+
+    struct OpResult { bool found; bool success; uint256 actualGasCost; uint256 actualGasUsed; uint256 nonce; address paymaster; bool revertReasonEmitted; bytes revertReason; }
+
+    function setUp() public {
+        vm.createSelectFork("https://rpc.monad.xyz");
+        payer = vm.addr(pk);
+        router = new MockRouter(IERC20(AUSD));
+        pm = new StubPaymaster(address(EP));
+        // fund from Mento ReserveV2 (NOT from the pool: draining the pool below its stored reserve makes FPMM.swap revert InsufficientInputAmount)
+        vm.prank(RESERVE_V2); IERC20(AUSD).transfer(payer, 1_000e6);
+        assertEq(IERC20(AUSD).balanceOf(POOL_AUSD), IERC20(AUSD).balanceOf(POOL_AUSD), "pool untouched");
+        vm.deal(bundler, 10 ether);
+        vm.deal(address(this), 100 ether);
+        EP.depositTo{value: 5 ether}(address(pm));
+        console2.log("fork block", block.number, "basefee", block.basefee);
+    }
+
+    // ---------- helpers ----------
+    function delegatePayer() internal {
+        // sign an EIP-7702 authorization for payer -> Simple7702Account and apply it via a type-4 tx
+        Vm.SignedDelegation memory d = vm.signDelegation(S7702, pk);
+        assertEq(d.implementation, S7702);
+        vm.attachDelegation(d);
+        (bool ok,) = payer.call("");
+        require(ok, "delegation tx failed");
+        require(payer.code.length == 23, "vm.attachDelegation did not persist delegated code");
+        assertEq(bytes3(payer.code), bytes3(0xef0100));
+        assertEq(address(bytes20(bytes23(payer.code) << 24)), S7702);
+    }
+    function pack(uint256 hi, uint256 lo) internal pure returns (bytes32) { return bytes32((hi << 128) | lo); }
+    function batchCalldata(ISimple7702Account.Call[] memory calls) internal pure returns (bytes memory) {
+        return abi.encodeCall(ISimple7702Account.executeBatch, (calls));
+    }
+    function mockCalls(uint256 amount) internal view returns (ISimple7702Account.Call[] memory calls) {
+        calls = new ISimple7702Account.Call[](2);
+        calls[0] = ISimple7702Account.Call(AUSD, 0, abi.encodeCall(IERC20.approve, (address(router), amount)));
+        calls[1] = ISimple7702Account.Call(address(router), 0, abi.encodeCall(MockRouter.settle, (amount)));
+    }
+    function buildOp(bytes memory initCode, bytes memory callData) internal view returns (PackedUserOperation memory op) {
+        op = PackedUserOperation({
+            sender: payer,
+            nonce: EP.getNonce(payer, 0),
+            initCode: initCode,
+            callData: callData,
+            accountGasLimits: pack(VERIF_GAS, CALL_GAS),
+            preVerificationGas: PRE_VERIF_GAS,
+            gasFees: pack(MAX_PRIO, MAX_FEE),
+            paymasterAndData: abi.encodePacked(address(pm), uint128(PM_VERIF_GAS), uint128(PM_POSTOP_GAS)),
+            signature: ""
+        });
+    }
+    function signOp(PackedUserOperation memory op, bytes32 hash, uint256 key) internal pure returns (PackedUserOperation memory) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, hash);
+        op.signature = abi.encodePacked(r, s, v);
+        return op;
+    }
+    /// Local re-implementation of EntryPoint v0.8 getUserOpHash (with the EIP-7702 initCode override),
+    /// needed for the 0x7702 marker case where the hash must be signed BEFORE the sender has code.
+    function localUserOpHash(PackedUserOperation memory op, address delegateForOverride) internal view returns (bytes32) {
+        bytes32 initHash;
+        if (op.initCode.length >= 2 && bytes2(op.initCode) == 0x7702 && op.initCode.length <= 20) {
+            initHash = keccak256(abi.encodePacked(delegateForOverride));
+        } else {
+            initHash = keccak256(op.initCode);
+        }
+        bytes32 structHash = keccak256(abi.encode(
+            EP.getPackedUserOpTypeHash(), op.sender, op.nonce, initHash, keccak256(op.callData),
+            op.accountGasLimits, op.preVerificationGas, op.gasFees, keccak256(op.paymasterAndData)));
+        return keccak256(abi.encodePacked(hex"1901", EP.getDomainSeparatorV4(), structHash));
+    }
+    function submit(PackedUserOperation memory op) internal returns (OpResult memory res) {
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = op;
+        vm.recordLogs();
+        vm.prank(bundler, bundler);
+        EP.handleOps(ops, payable(bundler));
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].emitter != address(EP)) continue;
+            if (logs[i].topics[0] == USEROP_EVENT_SIG) {
+                res.found = true;
+                res.paymaster = address(uint160(uint256(logs[i].topics[3])));
+                (res.nonce, res.success, res.actualGasCost, res.actualGasUsed) = abi.decode(logs[i].data, (uint256, bool, uint256, uint256));
+                assertEq(address(uint160(uint256(logs[i].topics[2]))), payer, "event sender");
+            } else if (logs[i].topics[0] == REVERT_REASON_SIG) {
+                res.revertReasonEmitted = true;
+                (, res.revertReason) = abi.decode(logs[i].data, (uint256, bytes));
+            }
+        }
+    }
+
+    // ---------- sanity: the EntryPoint on the fork is v0.8 with the ERC4337/1 domain ----------
+    function test_entryPointDomain() public view {
+        bytes32 dom = keccak256(abi.encode(keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256("ERC4337"), keccak256("1"), uint256(143), address(EP)));
+        assertEq(EP.getDomainSeparatorV4(), dom, "EntryPoint v0.8 EIP-712 domain (ERC4337, 1, 143, EP)");
+        assertEq(EP.getPackedUserOpTypeHash(), keccak256("PackedUserOperation(address sender,uint256 nonce,bytes initCode,bytes callData,bytes32 accountGasLimits,uint256 preVerificationGas,bytes32 gasFees,bytes paymasterAndData)"));
+        assertEq(address(EP).code.length > 0, true);
+        assertEq(S7702.code.length > 0, true);
+    }
+
+    // ---------- 1. pre-delegated payer with ZERO MON, empty initCode, paymaster sponsors: executeBatch([approve, settle]) ----------
+    function test_handleOps_preDelegated_zeroMon_mockRouter() public {
+        delegatePayer();
+        vm.deal(payer, 0);
+        uint256 amount = 25e6;
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(amount)));
+        bytes32 h = EP.getUserOpHash(op);
+        assertEq(h, localUserOpHash(op, address(0)), "local hash == EP.getUserOpHash (empty initCode)");
+        op = signOp(op, h, pk);
+
+        uint256 nonceBefore = EP.getNonce(payer, 0);
+        uint256 pmDepBefore = EP.balanceOf(address(pm));
+        uint256 bundlerBefore = bundler.balance;
+        uint256 payerAusdBefore = IERC20(AUSD).balanceOf(payer);
+
+        OpResult memory r = submit(op);
+        assertTrue(r.found, "UserOperationEvent emitted");
+        assertTrue(r.success, "userOp success == true");
+        assertFalse(r.revertReasonEmitted, "no UserOperationRevertReason");
+        assertEq(r.nonce, nonceBefore);
+        assertEq(r.paymaster, address(pm));
+        assertEq(EP.getNonce(payer, 0), nonceBefore + 1, "EP nonce consumed");
+        // router saw msg.sender == payer EOA, tokens moved
+        assertEq(router.lastPayer(), payer, "router msg.sender == payer");
+        assertEq(router.lastAmount(), amount);
+        assertEq(IERC20(AUSD).balanceOf(address(router)), amount);
+        assertEq(IERC20(AUSD).balanceOf(payer), payerAusdBefore - amount);
+        assertEq(IERC20(AUSD).allowance(payer, address(router)), 0, "allowance fully consumed");
+        // payer paid nothing in MON; paymaster deposit paid; bundler received exactly that
+        assertEq(payer.balance, 0, "payer MON unchanged (still 0)");
+        assertEq(pmDepBefore - EP.balanceOf(address(pm)), r.actualGasCost, "paymaster deposit charged actualGasCost");
+        assertEq(bundler.balance - bundlerBefore, r.actualGasCost, "beneficiary received actualGasCost");
+        assertEq(pm.validations(), 1); assertEq(pm.postOps(), 1);
+        assertEq(uint8(pm.lastMode()), uint8(IPaymaster.PostOpMode.opSucceeded));
+        console2.log("actualGasUsed", r.actualGasUsed, "actualGasCost(wei)", r.actualGasCost);
+        console2.log("pm.lastFeePerGas", pm.lastFeePerGas(), "block.basefee in test frame", block.basefee);
+        BaseFeeProbe probe = new BaseFeeProbe();
+        console2.log("basefee seen by a called contract", probe.basefee(), "tx.gasprice", probe.gasprice());
+        assertEq(r.actualGasCost, r.actualGasUsed * pm.lastFeePerGas(), "actualGasCost == actualGasUsed * userOpGasPrice");
+        // maxCost passed to the paymaster = (verif+call+pmVerif+pmPostOp+preVerif) * maxFeePerGas -> proves which half holds maxFeePerGas
+        uint256 totalGas = VERIF_GAS + CALL_GAS + PM_VERIF_GAS + PM_POSTOP_GAS + PRE_VERIF_GAS;
+        console2.log("pm.lastMaxCost", pm.lastMaxCost(), "expected totalGas*MAX_FEE", totalGas * MAX_FEE);
+        assertEq(pm.lastMaxCost(), totalGas * MAX_FEE, "maxFeePerGas is the LOW 128 bits of gasFees");
+        // NOTE (fork artefact, see test_diag_epFrameBasefee_prioZero): inside the fork-loaded EntryPoint, block.basefee reads 0,
+        // so the userOp gas price collapses to maxPriorityFeePerGas. On mainnet it is min(maxFee, prio + 100 gwei basefee).
+        assertTrue(pm.lastFeePerGas() == MAX_PRIO || pm.lastFeePerGas() == MAX_PRIO + probe.basefee(), "userOp gas price = min(maxFee, prio+basefee)");
+    }
+
+    // ---------- 2. same, but the batch hits the REAL Mento Router: AUSD -> USDm -> GBPm ----------
+    function test_handleOps_preDelegated_realMentoSwap() public {
+        delegatePayer();
+        vm.deal(payer, 5 ether); // below Monad's 10-MON reserve; must be untouched
+        uint256 amountIn = 10e6;
+        IMentoRouter.Route[] memory routes = new IMentoRouter.Route[](2);
+        routes[0] = IMentoRouter.Route(AUSD, USDM, address(0));
+        routes[1] = IMentoRouter.Route(USDM, GBPM, address(0));
+        uint256[] memory q = IMentoRouter(MENTO_ROUTER).getAmountsOut(amountIn, routes);
+        console2.log("quote: 10 AUSD ->", q[1], "USDm ->", q[2]);
+        ISimple7702Account.Call[] memory calls = new ISimple7702Account.Call[](2);
+        calls[0] = ISimple7702Account.Call(AUSD, 0, abi.encodeCall(IERC20.approve, (MENTO_ROUTER, amountIn)));
+        calls[1] = ISimple7702Account.Call(MENTO_ROUTER, 0, abi.encodeCall(IMentoRouter.swapExactTokensForTokens, (amountIn, q[2], routes, recipient, block.timestamp + 1 hours)));
+        PackedUserOperation memory op = buildOp("", batchCalldata(calls));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+
+        uint256 payerMon = payer.balance;
+        uint256 payerAusd = IERC20(AUSD).balanceOf(payer);
+        OpResult memory r = submit(op);
+        console2.log("found", r.found, "success", r.success);
+        console2.log("actualGasUsed", r.actualGasUsed);
+        if (r.revertReasonEmitted) {
+            console2.logBytes(r.revertReason);
+            if (bytes4(r.revertReason) == bytes4(keccak256("ExecuteError(uint256,bytes)"))) {
+                bytes memory tail = new bytes(r.revertReason.length - 4);
+                for (uint256 i = 0; i < tail.length; i++) tail[i] = r.revertReason[i + 4];
+                (uint256 idx, bytes memory inner) = abi.decode(tail, (uint256, bytes));
+                console2.log("ExecuteError index", idx); console2.logBytes(inner);
+            }
+        }
+        assertTrue(r.found && r.success, "sponsored swap userOp succeeded");
+        assertEq(IERC20(GBPM).balanceOf(recipient), q[2], "recipient got exactly the same-block quote");
+        assertEq(IERC20(AUSD).balanceOf(payer), payerAusd - amountIn, "AUSD pulled from payer by Router.transferFrom(msg.sender)");
+        assertEq(payer.balance, payerMon, "payer MON unchanged");
+        assertEq(EP.getNonce(payer, 0), 1);
+        console2.log("actualGasUsed", r.actualGasUsed, "GBPm out", q[2]);
+    }
+
+    // ---------- diagnostics ----------
+    function _routes2() internal pure returns (IMentoRouter.Route[] memory routes) {
+        routes = new IMentoRouter.Route[](2);
+        routes[0] = IMentoRouter.Route(AUSD, USDM, address(0));
+        routes[1] = IMentoRouter.Route(USDM, GBPM, address(0));
+    }
+    function _routes1() internal pure returns (IMentoRouter.Route[] memory routes) {
+        routes = new IMentoRouter.Route[](1);
+        routes[0] = IMentoRouter.Route(AUSD, USDM, address(0));
+    }
+    /// Same 2-hop swap, plain EOA, no 7702, no EntryPoint: isolates Mento/fork behaviour from the AA chain.
+    function test_diag_twoHop_plainEOA() public {
+        uint256 amountIn = 10e6;
+        uint256[] memory q = IMentoRouter(MENTO_ROUTER).getAmountsOut(amountIn, _routes2());
+        vm.startPrank(payer);
+        IERC20(AUSD).approve(MENTO_ROUTER, amountIn);
+        try IMentoRouter(MENTO_ROUTER).swapExactTokensForTokens(amountIn, q[2], _routes2(), recipient, block.timestamp + 1 hours) returns (uint256[] memory amounts) {
+            console2.log("plain EOA 2-hop OK, GBPm out", amounts[2]);
+        } catch (bytes memory err) {
+            console2.log("plain EOA 2-hop reverted:"); console2.logBytes(err);
+        }
+        vm.stopPrank();
+        // 1-hop
+        uint256[] memory q1 = IMentoRouter(MENTO_ROUTER).getAmountsOut(amountIn, _routes1());
+        vm.startPrank(payer);
+        IERC20(AUSD).approve(MENTO_ROUTER, amountIn);
+        try IMentoRouter(MENTO_ROUTER).swapExactTokensForTokens(amountIn, q1[1], _routes1(), recipient, block.timestamp + 1 hours) returns (uint256[] memory amounts) {
+            console2.log("plain EOA 1-hop OK, USDm out", amounts[1]);
+        } catch (bytes memory err) {
+            console2.log("plain EOA 1-hop reverted:"); console2.logBytes(err);
+        }
+        vm.stopPrank();
+        // 2-hop with amountOutMin = 0 (rule out quote drift)
+        vm.startPrank(payer);
+        IERC20(AUSD).approve(MENTO_ROUTER, amountIn);
+        try IMentoRouter(MENTO_ROUTER).swapExactTokensForTokens(amountIn, 0, _routes2(), recipient, block.timestamp + 1 hours) returns (uint256[] memory amounts) {
+            console2.log("plain EOA 2-hop (min=0) OK, GBPm out", amounts[2]);
+        } catch (bytes memory err) {
+            console2.log("plain EOA 2-hop (min=0) reverted:"); console2.logBytes(err);
+        }
+        vm.stopPrank();
+    }
+    /// 1-hop AUSD -> USDm through the real EntryPoint + 7702 account (real Router pulls from msg.sender == payer)
+    function test_handleOps_preDelegated_realMento_oneHop() public {
+        delegatePayer();
+        vm.deal(payer, 5 ether);
+        uint256 amountIn = 10e6;
+        uint256[] memory q = IMentoRouter(MENTO_ROUTER).getAmountsOut(amountIn, _routes1());
+        ISimple7702Account.Call[] memory calls = new ISimple7702Account.Call[](2);
+        calls[0] = ISimple7702Account.Call(AUSD, 0, abi.encodeCall(IERC20.approve, (MENTO_ROUTER, amountIn)));
+        calls[1] = ISimple7702Account.Call(MENTO_ROUTER, 0, abi.encodeCall(IMentoRouter.swapExactTokensForTokens, (amountIn, q[1], _routes1(), recipient, block.timestamp + 1 hours)));
+        PackedUserOperation memory op = buildOp("", batchCalldata(calls));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        uint256 payerMon = payer.balance; uint256 payerAusd = IERC20(AUSD).balanceOf(payer);
+        OpResult memory r = submit(op);
+        if (r.revertReasonEmitted) console2.logBytes(r.revertReason);
+        assertTrue(r.found && r.success, "1-hop sponsored swap succeeded");
+        assertEq(IERC20(USDM).balanceOf(recipient), q[1], "recipient got the same-block USDm quote");
+        assertEq(IERC20(AUSD).balanceOf(payer), payerAusd - amountIn);
+        assertEq(payer.balance, payerMon, "payer MON unchanged");
+        console2.log("1-hop via EP: actualGasUsed", r.actualGasUsed, "USDm out", q[1]);
+    }
+    /// basefee as seen under the prank variants used by submit()
+    function test_diag_basefee_prankVariants() public {
+        BaseFeeProbe probe = new BaseFeeProbe();
+        console2.log("no prank        basefee", probe.basefee(), "gasprice", probe.gasprice());
+        vm.prank(bundler);          console2.log("prank(sender)   basefee", probe.basefee());
+        vm.prank(bundler);          console2.log("prank(sender)   gasprice", probe.gasprice());
+        vm.prank(bundler, bundler); console2.log("prank(s,origin) basefee", probe.basefee());
+        vm.prank(bundler, bundler); console2.log("prank(s,origin) gasprice", probe.gasprice());
+        console2.log("test frame basefee", block.basefee, "tx.gasprice", tx.gasprice);
+    }
+    /// basefee by call depth / self-call / fork-loaded code (Multicall3.getBasefee)
+    function test_diag_basefee_depth() public {
+        BaseFeeProbe probe = new BaseFeeProbe();
+        DepthProbe d = new DepthProbe(probe);
+        console2.log("depth1 direct probe          ", probe.basefee());
+        console2.log("depth2 via DepthProbe.viaCall", d.viaCall());
+        console2.log("depth2 via DepthProbe.viaSelf", d.viaSelf());
+        console2.log("depth3 via DepthProbe.viaSelfThenCall", d.viaSelfThenCall());
+        console2.log("Multicall3 code length", MULTICALL3.code.length);
+        if (MULTICALL3.code.length > 0) {
+            (bool ok, bytes memory ret) = MULTICALL3.staticcall(abi.encodeWithSignature("getBasefee()"));
+            console2.log("Multicall3.getBasefee() ok", ok, "value", ok ? abi.decode(ret, (uint256)) : 0);
+            (ok, ret) = MULTICALL3.staticcall(abi.encodeWithSignature("getCurrentBlockTimestamp()"));
+            console2.log("Multicall3.getCurrentBlockTimestamp()", ok ? abi.decode(ret, (uint256)) : 0, "block.timestamp", block.timestamp);
+        }
+        // EP-frame read through a paymaster-less path is not possible; the prio=0 test covers it.
+    }
+    /// reversed packing: gasFees = (300 gwei << 128) | 1 gwei. If EP took maxFee from the high half the price would be 101 gwei;
+    /// per verified source maxPriority=high=300 gwei, maxFee=low=1 gwei => price = min(1 gwei, 300 gwei + basefee) = 1 gwei regardless of basefee.
+    function test_diag_gasFeesPackingReversed() public {
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op.gasFees = pack(MAX_FEE, MAX_PRIO);
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        OpResult memory r = submit(op);
+        uint256 totalGas = VERIF_GAS + CALL_GAS + PM_VERIF_GAS + PM_POSTOP_GAS + PRE_VERIF_GAS;
+        console2.log("reversed: success", r.success, "pm.lastFeePerGas", pm.lastFeePerGas());
+        console2.log("reversed: pm.lastMaxCost", pm.lastMaxCost(), "totalGas*1gwei", totalGas * MAX_PRIO);
+        assertEq(pm.lastMaxCost(), totalGas * MAX_PRIO, "maxFee read from LOW half (=1 gwei)");
+        assertEq(pm.lastFeePerGas(), MAX_PRIO, "price capped by maxFee = 1 gwei");
+    }
+    receive() external payable {}
+    /// which condition zeroes basefee: prank + nesting? fork-loaded code at depth 2? or the EP call itself with no prank at all?
+    function test_diag_basefee_conditions() public {
+        BaseFeeProbe probe = new BaseFeeProbe();
+        DepthProbe d = new DepthProbe(probe);
+        vm.prank(bundler); console2.log("prank -> DepthProbe.viaSelf (depth2)", d.viaSelf());
+        vm.prank(bundler); console2.log("prank -> DepthProbe.viaCall (depth2)", d.viaCall());
+        vm.prank(bundler, bundler); console2.log("prank(s,o) -> DepthProbe.viaSelfThenCall (depth3)", d.viaSelfThenCall());
+        // fork-loaded Multicall3 calling itself (depth 2 inside fork-loaded code)
+        bytes memory inner = abi.encodeWithSignature("getBasefee()");
+        bytes memory agg = abi.encodeWithSignature("aggregate3((address,bool,bytes)[])", _one(MULTICALL3, inner));
+        (bool ok, bytes memory ret) = MULTICALL3.call(agg);
+        console2.log("Multicall3.aggregate3->getBasefee ok", ok, "value", ok ? _decodeAgg(ret) : 0);
+        vm.prank(bundler);
+        (ok, ret) = MULTICALL3.call(agg);
+        console2.log("prank -> Multicall3.aggregate3->getBasefee", ok ? _decodeAgg(ret) : 0);
+        // EP with NO prank: test contract is bundler + beneficiary
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op.gasFees = pack(0, MAX_FEE);
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        EP.handleOps(ops, payable(address(this)));
+        console2.log("no prank, prio=0 -> pm.lastFeePerGas (EP-frame basefee)", pm.lastFeePerGas());
+        // same op from a trivial NON-7702 smart account (rules the 7702 sender in/out as the trigger)
+        DumbAccount acct = new DumbAccount();
+        PackedUserOperation memory op2 = PackedUserOperation({
+            sender: address(acct), nonce: EP.getNonce(address(acct), 0), initCode: "", callData: "",
+            accountGasLimits: pack(VERIF_GAS, CALL_GAS), preVerificationGas: PRE_VERIF_GAS, gasFees: pack(0, MAX_FEE),
+            paymasterAndData: abi.encodePacked(address(pm), uint128(PM_VERIF_GAS), uint128(PM_POSTOP_GAS)), signature: "" });
+        ops[0] = op2;
+        vm.prank(bundler);
+        EP.handleOps(ops, payable(bundler));
+        console2.log("non-7702 DumbAccount, prio=0 -> pm.lastFeePerGas", pm.lastFeePerGas());
+        // fork-loaded CALLER -> test-deployed callee
+        (ok, ret) = MULTICALL3.call(abi.encodeWithSignature("aggregate3((address,bool,bytes)[])", _one(address(probe), abi.encodeCall(BaseFeeProbe.basefee, ()))));
+        console2.log("Multicall3.aggregate3 -> test-deployed probe.basefee", ok ? _decodeAgg(ret) : 0);
+        // test-deployed CALLER -> fork-loaded callee at depth 2
+        Caller c = new Caller();
+        console2.log("test-deployed Caller -> Multicall3.getBasefee (depth2)", abi.decode(c.callTarget(MULTICALL3, inner), (uint256)));
+        // depth 3: test-deployed -> test-deployed -> fork-loaded
+        Caller c2 = new Caller();
+        bytes memory viaC = abi.encodeCall(Caller.callTarget, (MULTICALL3, inner));
+        console2.log("Caller -> Caller -> Multicall3.getBasefee (depth3)", abi.decode(abi.decode(c2.callTarget(address(c), viaC), (bytes)), (uint256)));
+    }
+    function _c3(address t, bytes memory data) internal pure returns (bytes memory) {
+        // Call3 { address target; bool allowFailure; bytes callData; }[] with one element, hand-encoded
+        return abi.encode(_one(t, data));
+    }
+    struct Call3 { address target; bool allowFailure; bytes callData; }
+    function _one(address t, bytes memory data) internal pure returns (Call3[] memory arr) { arr = new Call3[](1); arr[0] = Call3(t, false, data); }
+    function _decodeAgg(bytes memory ret) internal pure returns (uint256) {
+        (bool[] memory oks, bytes[] memory rets) = _decodeResults(ret);
+        return oks[0] ? abi.decode(rets[0], (uint256)) : 0;
+    }
+    struct Result { bool success; bytes returnData; }
+    function _decodeResults(bytes memory ret) internal pure returns (bool[] memory oks, bytes[] memory rets) {
+        Result[] memory rs = abi.decode(ret, (Result[]));
+        oks = new bool[](rs.length); rets = new bytes[](rs.length);
+        for (uint256 i = 0; i < rs.length; i++) { oks[i] = rs[i].success; rets[i] = rs[i].returnData; }
+    }
+    /// priority fee 0 => EP gas price == min(maxFee, basefee) exactly: reads EP-frame basefee through the paymaster
+    function test_diag_epFrameBasefee_prioZero() public {
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op.gasFees = pack(0, MAX_FEE);
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        OpResult memory r = submit(op);
+        console2.log("prio=0: success", r.success, "actualGasCost", r.actualGasCost);
+        console2.log("prio=0: pm.lastFeePerGas (== EP-frame basefee)", pm.lastFeePerGas());
+        // and with prank(sender) only (no tx.origin prank)
+        PackedUserOperation memory op2 = buildOp("", batchCalldata(mockCalls(1e6)));
+        op2.gasFees = pack(0, MAX_FEE);
+        op2 = signOp(op2, EP.getUserOpHash(op2), pk);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op2;
+        vm.prank(bundler);
+        EP.handleOps(ops, payable(bundler));
+        console2.log("prio=0, prank(sender) only: pm.lastFeePerGas", pm.lastFeePerGas());
+    }
+
+    // ---------- 3. same-tx delegation: undelegated payer, initCode = 0x7702, authorization attached to the bundler's handleOps tx ----------
+    function test_handleOps_sameTx7702Marker() public {
+        assertEq(payer.code.length, 0, "payer starts undelegated");
+        vm.deal(payer, 0);
+        uint256 amount = 5e6;
+        PackedUserOperation memory op = buildOp(hex"7702", batchCalldata(mockCalls(amount)));
+        // EP.getUserOpHash would revert now ("sender has no code"): compute it locally with the delegate override
+        vm.expectRevert(bytes("sender has no code"));
+        EP.getUserOpHash(op);
+        bytes32 h = localUserOpHash(op, S7702);
+        op = signOp(op, h, pk);
+
+        Vm.SignedDelegation memory d = vm.signDelegation(S7702, pk);
+        vm.attachDelegation(d);            // authorization list on the NEXT call (the bundler's handleOps)
+        OpResult memory r = submit(op);
+        assertEq(payer.code.length, 23, "delegation applied in the same tx");
+        assertTrue(r.found && r.success, "userOp with 0x7702 initCode succeeded");
+        assertEq(EP.getUserOpHash(op), h, "after delegation EP hash == locally computed override hash");
+        assertEq(router.lastPayer(), payer);
+        assertEq(IERC20(AUSD).balanceOf(address(router)), amount);
+        assertEq(payer.balance, 0);
+        assertEq(EP.getNonce(payer, 0), 1);
+    }
+
+    // ---------- 4. negative paths: the checks the pranked-executeBatch tests skipped are really enforced ----------
+    function test_rejects_wrongSigner() public {
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op = signOp(op, EP.getUserOpHash(op), 0xB0B); // wrong key
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA24 signature error"));
+        EP.handleOps(ops, payable(bundler));
+        assertEq(router.settlements(), 0);
+    }
+    function test_rejects_tamperedCalldata() public {
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        op.callData = batchCalldata(mockCalls(2e6)); // bundler tampers after signing
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA24 signature error"));
+        EP.handleOps(ops, payable(bundler));
+    }
+    function test_rejects_wrongNonce_and_replay() public {
+        delegatePayer();
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op.nonce = op.nonce + 1;
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA25 invalid account nonce"));
+        EP.handleOps(ops, payable(bundler));
+        // valid op, then replay of the identical op
+        PackedUserOperation memory good = buildOp("", batchCalldata(mockCalls(1e6)));
+        good = signOp(good, EP.getUserOpHash(good), pk);
+        OpResult memory r = submit(good);
+        assertTrue(r.success);
+        ops[0] = good;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA25 invalid account nonce"));
+        EP.handleOps(ops, payable(bundler));
+        assertEq(router.settlements(), 1);
+    }
+    function test_rejects_undelegatedSender_emptyInitCode() public {
+        assertEq(payer.code.length, 0);
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA20 account not deployed"));
+        EP.handleOps(ops, payable(bundler));
+    }
+    function test_rejects_paymasterDepositTooLow_and_paymasterSigFail() public {
+        delegatePayer();
+        StubPaymaster poor = new StubPaymaster(address(EP)); // no deposit
+        PackedUserOperation memory op = buildOp("", batchCalldata(mockCalls(1e6)));
+        op.paymasterAndData = abi.encodePacked(address(poor), uint128(PM_VERIF_GAS), uint128(PM_POSTOP_GAS));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1); ops[0] = op;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA31 paymaster deposit too low"));
+        EP.handleOps(ops, payable(bundler));
+        // funded paymaster that returns SIG_VALIDATION_FAILED
+        pm.setReject(true);
+        PackedUserOperation memory op2 = buildOp("", batchCalldata(mockCalls(1e6)));
+        op2 = signOp(op2, EP.getUserOpHash(op2), pk);
+        ops[0] = op2;
+        vm.prank(bundler);
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA34 signature error"));
+        EP.handleOps(ops, payable(bundler));
+    }
+    function test_directExecuteBatch_strangerRejected() public {
+        delegatePayer();
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(bytes("not from self or EntryPoint"));
+        ISimple7702Account(payer).executeBatch(mockCalls(1e6));
+    }
+
+    // ---------- 5. inner-call revert: bundle does NOT revert; op is marked failed, nonce consumed, paymaster still charged ----------
+    function test_innerRevert_isSoftFailure() public {
+        delegatePayer();
+        ISimple7702Account.Call[] memory calls = new ISimple7702Account.Call[](2);
+        calls[0] = ISimple7702Account.Call(AUSD, 0, abi.encodeCall(IERC20.approve, (address(router), 1e6)));
+        calls[1] = ISimple7702Account.Call(address(router), 0, abi.encodeCall(MockRouter.settle, (2e6))); // > allowance
+        PackedUserOperation memory op = buildOp("", batchCalldata(calls));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        uint256 pmDep = EP.balanceOf(address(pm));
+        OpResult memory r = submit(op);
+        assertTrue(r.found, "event emitted"); assertFalse(r.success, "success == false");
+        assertTrue(r.revertReasonEmitted, "UserOperationRevertReason emitted");
+        console2.logBytes(r.revertReason); // ExecuteError(1, <inner revert>) from BaseAccount.executeBatch
+        assertEq(bytes4(r.revertReason), bytes4(keccak256("ExecuteError(uint256,bytes)")));
+        assertEq(router.settlements(), 0, "no settlement");
+        assertEq(IERC20(AUSD).allowance(payer, address(router)), 0, "approve rolled back with the batch");
+        assertEq(EP.getNonce(payer, 0), 1, "nonce consumed anyway");
+        assertEq(pmDep - EP.balanceOf(address(pm)), r.actualGasCost, "paymaster still paid");
+        assertEq(uint8(pm.lastMode()), uint8(IPaymaster.PostOpMode.opReverted));
+    }
+
+    // ---------- 6. Monad 10-MON rule for delegated EOAs: does the forge fork enforce it? ----------
+    function test_monadReserveRule_forkBehaviour() public {
+        delegatePayer();
+        vm.deal(payer, 5 ether);
+        address sink = address(0x5111);
+        ISimple7702Account.Call[] memory calls = new ISimple7702Account.Call[](1);
+        calls[0] = ISimple7702Account.Call(sink, 1 ether, "");
+        PackedUserOperation memory op = buildOp("", batchCalldata(calls));
+        op = signOp(op, EP.getUserOpHash(op), pk);
+        OpResult memory r = submit(op);
+        console2.log("5 MON delegated payer sending 1 MON via sponsored op: success =", r.success, "payer.balance =", payer.balance);
+        console2.log("sink.balance =", sink.balance);
+        // On Monad mainnet this MUST fail (delegated EOA would dip below 10 MON; docs/developer-essentials/eip-7702).
+        // We only report what the fork does; a false here means forge does NOT emulate the reserve-balance rule.
+        if (r.success) console2.log("NOTE: forge fork did NOT enforce Monad's 10-MON delegated-EOA rule");
+        else console2.log("forge fork enforced the 10-MON rule");
+    }
+}
