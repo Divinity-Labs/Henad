@@ -52,7 +52,7 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
 - [x] Repo scaffolded, Foundry and Next.js both building.
 - [x] Interfaces: `IRateSource`, `IVenueAdapter`, `IRateAttestation`, `Corridor` lib
       with fuzz tests.
-- [ ] `foundryup` to ≥1.8.0 in WSL, enable `network = "monad"`.
+- [x] `foundryup` to 1.8.1 in WSL, `network = "monad"` enabled.
 - [ ] Pimlico account with card on file; Envio API token; pick the production
       domain (Mera rpId is permanent).
 
