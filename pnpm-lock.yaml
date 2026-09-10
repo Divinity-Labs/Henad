@@ -37,6 +37,9 @@ importers:
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      permissionless:
+        specifier: ^0.4.1
+        version: 0.4.1(viem@2.56.3(typescript@5.9.3)(zod@4.6.1))
       react:
         specifier: 19.2.8
         version: 19.2.8
@@ -71,6 +74,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@20.19.43)(jiti@2.7.0)(lightningcss@1.32.0)
 
 packages:
 
@@ -2137,6 +2143,15 @@ packages:
   pathval@2.0.1:
     resolution: {integrity: sha512-//nshmD55c46FuFw26xV/xFAaB5HF9Xdap7HJBBnrKdAd6/GxDBaNA1870O79+9ueg61cZLSVc+OaFlfmObYVQ==}
     engines: {node: '>= 14.16'}
+
+  permissionless@0.4.1:
+    resolution: {integrity: sha512-RhSLhA3Aw3gc1il6unWYfo1K+GBQNGBMSEVwv2gJQN6Ryxv6VoYtutRyIIQ279bPHu6WlRutbw/IxRC8giNamQ==}
+    peerDependencies:
+      ox: ^0.11.3
+      viem: ^2.44.4
+    peerDependenciesMeta:
+      ox:
+        optional: true
 
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
@@ -4673,6 +4688,10 @@ snapshots:
   pathe@2.0.3: {}
 
   pathval@2.0.1: {}
+
+  permissionless@0.4.1(viem@2.56.3(typescript@5.9.3)(zod@4.6.1)):
+    dependencies:
+      viem: 2.56.3(typescript@5.9.3)(zod@4.6.1)
 
   picocolors@1.1.1: {}
 
