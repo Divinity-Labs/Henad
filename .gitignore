@@ -20,3 +20,6 @@ contracts/broadcast/**/dry-run/
 .DS_Store
 Thumbs.db
 *.log
+
+# agent scratch experiments
+scratch/

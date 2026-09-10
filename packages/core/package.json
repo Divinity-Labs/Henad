@@ -1,0 +1,22 @@
+{
+  "name": "@henad/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Shared chain config, verified addresses, corridor maths and signing helpers for the Henad web and mobile clients.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "viem": ">=2.28.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "viem": "^2.56.0",
+    "vitest": "^3"
+  }
+}

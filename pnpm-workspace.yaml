@@ -1,0 +1,9 @@
+packages:
+  - web
+  - packages/*
+  - mobile
+  - indexer
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
