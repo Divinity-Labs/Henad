@@ -87,6 +87,20 @@ contract RateAttestationTest is Test {
         att.attest(keccak256("intent-3"), a, payer, recipient, ausd, gbpm);
     }
 
+    function test_intentIdAt_appendOnlyInSettlementOrder() public {
+        bytes32 a1 = keccak256("first");
+        bytes32 a2 = keccak256("second");
+        vm.startPrank(router);
+        att.attest(a1, _sample(), payer, recipient, ausd, gbpm);
+        att.attest(a2, _sample(), payer, recipient, ausd, gbpm);
+        vm.stopPrank();
+        assertEq(att.count(), 2);
+        assertEq(att.intentIdAt(0), a1);
+        assertEq(att.intentIdAt(1), a2);
+        vm.expectRevert(abi.encodeWithSelector(RateAttestation.IndexOutOfRange.selector, 2, 2));
+        att.intentIdAt(2);
+    }
+
     function test_get_unknownIsEmpty() public view {
         IRateAttestation.Attestation memory r = att.get(keccak256("nope"));
         assertEq(r.settledAt, 0);

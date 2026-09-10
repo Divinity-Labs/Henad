@@ -1,26 +1,160 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Henad design tokens. Source: the Claude Design canvas "Henad v4" (10 Sep 2026)
+ * and the Monad brand kit. Institutional-clean: near-white canvas with a dot
+ * grid, 1px hairlines, mono uppercase labels, sentence-case medium headlines,
+ * grey body, one dark cinematic panel per page. Not neobrutalism.
+ */
+@theme {
+  --color-ink: #0e091c;
+  --color-canvas: #fbfbfc;
+  --color-page: #f1f1f4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f6;
+  --color-hairline: #e7e7eb;
+  --color-hairline-2: #efeff3;
+  --color-border: #d9d9de;
+  --color-muted: #8a8a96;
+  --color-grey: #6b6b78;
+  --color-grey-2: #4b4b57;
+  --color-dark: #17171b;
+  --color-dark-2: #23185e;
+  --color-dark-3: #4b37c9;
+  --color-purple: #6e54ff;
+  --color-purple-deep: #3b2a9e;
+  --color-lilac: #ddd7fe;
+  --color-lilac-2: #b9aeff;
+  --color-tint: #f7f6fd;
+  --color-amber: #ffae45;
+  --color-pink: #ff8ee4;
+  --color-cyan: #85e6ff;
+  --color-peach: #ffe3c2;
+  --color-dim: #a7a7b3;
+  --color-dim-2: #d6d6de;
+  --color-ghost: #ececf0;
+  --color-ghost-2: #e9e9ee;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-display: var(--font-instrument), 'Britti Sans', var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-roboto-mono), ui-monospace, monospace;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --animate-feed: henadFeed 1.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-stamp: henadStamp 0.45s 1.75s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  --animate-toast: henadToast 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes henadFeed {
+    0% { transform: translateY(-104%); }
+    30% { transform: translateY(-62%); }
+    42% { transform: translateY(-60%); }
+    78% { transform: translateY(-4%); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes henadStamp {
+    0% { opacity: 0; transform: rotate(-10deg) scale(1.5); }
+    70% { opacity: 1; transform: rotate(-4deg) scale(0.97); }
+    100% { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+  @keyframes henadToast {
+    0% { transform: translateY(-140%); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
   }
 }
 
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Dot-grid canvas gutters, as on every artboard. */
+.dotgrid {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(#d6d6dc 1px, transparent 1.2px);
+  background-size: 20px 20px;
+}
+
+/* Film grain overlay for the one dark cinematic panel per page. */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Torn bottom edge of the paper receipt. --tooth is the scallop radius. */
+.receipt-edge {
+  --tooth: 6px;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - calc(var(--tooth) + 4px)) no-repeat,
+    radial-gradient(circle at 50% 100%, transparent var(--tooth), #000 calc(var(--tooth) + 0.5px)) center bottom /
+      calc(var(--tooth) * 3) calc(var(--tooth) + 4px) repeat-x;
+  -webkit-mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - calc(var(--tooth) + 4px)) no-repeat,
+    radial-gradient(circle at 50% 100%, transparent var(--tooth), #000 calc(var(--tooth) + 0.5px)) center bottom /
+      calc(var(--tooth) * 3) calc(var(--tooth) + 4px) repeat-x;
+}
+
+/* Mono uppercase label, the most-used text style on the canvas. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.label-md {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.label-lg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tactile press state for every button-like element. */
+.press:active {
+  transform: scale(0.98);
+}
+
+.balance {
+  text-wrap: balance;
+}
+.pretty {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion {
+    animation: none !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-purple);
+  outline-offset: 2px;
 }

@@ -1,0 +1,12 @@
+{
+  "name": "Henad",
+  "short_name": "Henad",
+  "description": "Send money abroad. Keep proof of the rate.",
+  "start_url": "/send",
+  "display": "standalone",
+  "background_color": "#fbfbfc",
+  "theme_color": "#6e54ff",
+  "icons": [
+    { "src": "/brand/monad-logomark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Inter:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #F1F1F4; background-image: radial-gradient(#CFCFD6 1px, transparent 1.2px); background-size: 22px 22px; color: #0E091C; font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #6E54FF; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    [data-grain] { position: relative; isolation: isolate; }
+    [data-grain]::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .3; mix-blend-mode: overlay; border-radius: inherit; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+    @keyframes henadFeed { 0% { transform: translateY(-104%); } 30% { transform: translateY(-62%); } 42% { transform: translateY(-60%); } 78% { transform: translateY(-4%); } 100% { transform: translateY(0); } }
+    @keyframes henadStamp { 0% { opacity: 0; transform: rotate(-10deg) scale(1.5); } 70% { opacity: 1; transform: rotate(-4deg) scale(.97); } 100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+    @keyframes henadToast { 0% { transform: translateY(-140%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { [data-motion] { animation: none !important; } }
+  </style>
+</helmet>
+
+<section style="display: flex; flex-direction: column; gap: 56px; padding: 48px 56px 120px; min-width: 2480px;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; border-bottom: 1px solid #D9D9DE; padding-bottom: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #6E54FF;">Henad · UI direction 04 · 10 Sep 2026 · corridor USD → GBP</div>
+      <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-size: 40px; font-weight: 500; letter-spacing: -.03em; line-height: 1.05; max-width: 1040px;">One real settlement, three kinds of corridor, and naira as the argument instead of the demo. Every figure on the page is one Henad can back.</div>
+    </div>
+    <div style="display: flex; gap: 8px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;">
+      <span style="padding: 8px 12px; background: #6E54FF; color: #FFFFFF; border-radius: 4px;">Live · USD → GBP</span>
+      <span style="padding: 8px 12px; background: #DDD7FE; color: #3B2A9E; border-radius: 4px;">Quote · EUR CHF JPY CAD ZAR</span>
+      <span style="padding: 8px 12px; border: 1px solid #D9D9DE; background: #F1F1F4; color: #6B6B78; border-radius: 4px;">Unpriced · NGN</span>
+    </div>
+  </header>
+
+  <!-- ─── Row 1 · Landing ─── -->
+  <div style="display: flex; align-items: flex-start; gap: 40px;">
+
+    <div id="L1" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px; width: 1280px;"><span><a href="#L1">L1</a> · henad.xyz</span><span style="color: #8A8A96;">landing · 1280</span></div>
+      <div style="width: 1280px; background: #FBFBFC; background-image: radial-gradient(#D6D6DC 1px, transparent 1.2px); background-size: 20px 20px; border: 1px solid #D9D9DE; color: #0E091C; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column;">
+
+        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; height: 40px; background: #6E54FF; color: #FFFFFF; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;">
+          <span style="padding: 3px 8px; background: #FFFFFF; color: #6E54FF; border-radius: 3px;">Live</span>
+          <span>First mainnet settlement · USD → GBP · $250.00 → £195.01 · view the receipt →</span>
+        </div>
+
+        <div style="margin: 0 40px; background: #FBFBFC; border-left: 1px solid #E7E7EB; border-right: 1px solid #E7E7EB; display: flex; flex-direction: column;">
+
+          <nav style="display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 36px; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; align-items: center; gap: 48px;">
+              <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -.03em;">Henad</div>
+              <div style="display: flex; gap: 28px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#S1" style="color: #0E091C;">Send</a><a href="#W2" style="color: #0E091C;">Rates</a><a href="#W1" style="color: #0E091C;">Receipts</a><a href="#L1" style="color: #0E091C;">Docs</a></div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Built on <img src="./assets/monad-full-black.svg" alt="Monad" style="height: 14px; display: block; opacity: .85;"></div>
+              <div style="display: inline-flex; align-items: center; height: 40px; padding: 0 16px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">View rates</div>
+              <div style="display: inline-flex; align-items: center; height: 40px; padding: 0 16px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Send a payout</div>
+            </div>
+          </nav>
+
+          <div style="position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 120px 36px 0; min-height: 760px;">
+            <div style="position: absolute; inset: auto 0 0 0; height: 520px; background: radial-gradient(ellipse 45% 55% at 18% 100%, rgba(255,142,228,.42), transparent 70%), radial-gradient(ellipse 50% 60% at 55% 110%, rgba(110,84,255,.34), transparent 70%), radial-gradient(ellipse 40% 50% at 88% 100%, rgba(255,174,69,.36), transparent 70%); pointer-events: none;"></div>
+
+            <div style="position: absolute; left: 96px; top: 168px; transform: rotate(-6deg); display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; box-shadow: 0 12px 30px -12px rgba(14,9,28,.25); font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #6E54FF;">USD → GBP · Live<span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.03em; text-transform: none; color: #0E091C;">31 bps · £0.61</span></div>
+            <div style="position: absolute; left: 150px; top: 430px; transform: rotate(5deg); display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: #F4F4F6; border: 1px dashed #D9D9DE; border-radius: 12px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8A8A96;">USD → EUR · Quote<span style="font-size: 10px; letter-spacing: .04em; text-transform: none; color: #6B6B78;">Priced · no venue yet</span></div>
+            <div style="position: absolute; right: 60px; top: 118px; transform: rotate(7deg); display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: #F4F4F6; border: 1px dashed #D9D9DE; border-radius: 12px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8A8A96;">USD → CAD · Quote<span style="font-size: 10px; letter-spacing: .04em; text-transform: none; color: #6B6B78;">Priced · no asset</span></div>
+            <div style="position: absolute; right: 140px; top: 440px; transform: rotate(-5deg); display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: #F4F4F6; border: 1px dashed #D9D9DE; border-radius: 12px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #8A8A96;">USD → NGN · Unpriced<span style="font-size: 10px; letter-spacing: .04em; text-transform: none; color: #6B6B78;">No rate source on Monad</span></div>
+
+            <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; max-width: 760px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Cross-border payouts · USD → GBP · settled on Monad</div>
+              <h1 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 68px; line-height: 1; letter-spacing: -.035em; text-wrap: balance;">Send money abroad. Keep proof of the rate.</h1>
+              <p style="margin: 0; font-size: 19px; line-height: 1.55; color: #6B6B78; max-width: 620px; text-wrap: pretty;">Henad settles dollars to pounds through onchain FX and publishes the reference rate, the executed rate, and the exact spread on every payment.</p>
+              <div style="display: flex; align-items: center; gap: 28px; padding-top: 6px;">
+                <div style="display: inline-flex; align-items: center; height: 48px; padding: 0 22px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Send a payout</div>
+                <a href="#W2" style="font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #0E091C;">See live rates →</a>
+              </div>
+            </div>
+
+            <div style="position: relative; width: 400px; margin-top: 72px; transform: rotate(-1.5deg); box-shadow: 0 40px 80px -30px rgba(14,9,28,.35);">
+              <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-bottom: 0; border-radius: 12px 12px 0 0; padding: 22px 24px 30px; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 11px; mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x; -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 17px; letter-spacing: -.03em;">Henad</span><span style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Settlement receipt · #1</span></div>
+                <div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 11px;"><span>USD → GBP · Monad</span><span>09 Sep 2026 · 14:32:07 UTC</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Sent</span><span>$250.00 · {{ assetLabel }}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>1 USD = £0.78247</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Executed rate</span><span>1 USD = £0.78003</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Spread</span><span style="font-weight: 500;">£0.61 · 31 bps</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="position: relative; display: flex; flex-direction: column; gap: 5px; padding: 4px 0;">
+                  <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</div>
+                  <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 40px; letter-spacing: -.03em; line-height: 1;">£195.01</div>
+                  <div style="color: #8A8A96;">to Ada Okonkwo · 0x9c41…b7e0</div>
+                  <div style="position: absolute; right: 0; top: 2px; padding: 5px 10px; border: 2px solid #6E54FF; border-radius: 4px; color: #6E54FF; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transform: rotate(-4deg);">Settled</div>
+                </div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="color: #8A8A96;">Rate source</span><span style="text-align: right;">Mento GBPm/USDm · Chainlink GBP/USD</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Block</span><span>41,208,377 · final in 0.8 s</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; gap: 8px; padding: 28px 36px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Mainnet settlements</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -.03em; line-height: 1;">1</span></div>
+            <div style="display: flex; flex-direction: column; gap: 8px; padding: 28px 36px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -.03em; line-height: 1;">£195.01</span></div>
+            <div style="display: flex; flex-direction: column; gap: 8px; padding: 28px 36px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Spread paid, all time</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -.03em; line-height: 1;">£0.61 <span style="font-size: 18px; color: #8A8A96;">· 31 bps</span></span></div>
+            <div style="display: flex; flex-direction: column; gap: 8px; padding: 28px 36px;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Finality</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -.03em; line-height: 1;">0.8 s</span></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column;">
+            <div style="padding: 20px 36px; font-size: 15px; color: #6B6B78; border-bottom: 1px solid #E7E7EB;">Rails Henad reads or links. It operates none of them.</div>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr);">
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><img src="./assets/monad-full-black.svg" alt="Monad" style="height: 18px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Settlement · 0.8 s finality</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><img src="./assets/mento.svg" alt="Mento" style="height: 18px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">GBPm/USDm venue · reference rate</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><img src="./assets/chainlink.svg" alt="Chainlink" style="height: 20px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">GBP EUR CHF JPY CAD feeds</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><img src="./assets/agora.svg" alt="Agora" style="height: 18px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">AUSD source asset</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-bottom: 1px solid #E7E7EB;"><img src="./assets/privy.svg" alt="Privy" style="height: 16px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Embedded wallet · passkeys</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.02em; color: #4B4B57;">Aurora Intents</span><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Inbound funds from other chains</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.02em; color: #4B4B57;">Kuru</span><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Fallback venue only</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.02em; color: #4B4B57;">Envio</span><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Indexes every receipt</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; height: 96px; padding: 0 36px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><img src="./assets/nansen.svg" alt="Nansen" style="height: 20px; width: auto; align-self: flex-start; opacity: .8;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Wallet labels on the explorer</span></div>
+              <div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; height: 96px; padding: 0 36px; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.02em; color: #4B4B57;">Pyth</span><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">USD/ZAR pull feed · evaluated</span></div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding: 88px 36px 40px; align-items: end;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">How it works</div>
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 44px; letter-spacing: -.03em; line-height: 1.05;">Quote. Settle. Receipt.</h2>
+            </div>
+            <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">Remittance pricing hides its real cost inside the exchange rate. On Monad the quote and the fill are both public, so the spread can be shown before you sign, capped by the contract, and proven afterwards.</p>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 40px 36px 48px; border-right: 1px solid #E7E7EB;">
+              <span style="font-family: 'Roboto Mono', monospace; font-size: 12px; color: #6E54FF;">01</span>
+              <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">You see the spread in pounds first</div>
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">The reference rate is read from Mento's GBPm/USDm pool, priced by Chainlink's GBP/USD feed. Henad shows your rate next to it and the difference as an amount, then in basis points.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 40px 36px 48px; border-right: 1px solid #E7E7EB;">
+              <span style="font-family: 'Roboto Mono', monospace; font-size: 12px; color: #6E54FF;">02</span>
+              <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">The contract enforces your worst rate</div>
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">You set a maximum spread. If the fill is worse, CorridorRouter reverts in the same transaction and nothing moves. Kuru is a fallback venue, never the price.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 40px 36px 48px;">
+              <span style="font-family: 'Roboto Mono', monospace; font-size: 12px; color: #6E54FF;">03</span>
+              <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">Every payout emits a public receipt</div>
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">RateAttestation writes reference rate, executed rate, spread, and the rate source to Monad. Envio indexes it; anyone can open the permalink without a wallet.</p>
+            </div>
+          </div>
+
+          <div data-grain="true" style="background: #17171B; color: #FFFFFF; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden;">
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 88px 48px 88px 36px; border-right: 1px solid rgba(255,255,255,.08);">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #B9AEFF;">The receipt</div>
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 44px; letter-spacing: -.03em; line-height: 1.05; text-wrap: pretty;">One artifact that reflects the whole corridor.</h2>
+              <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #A7A7B3; text-wrap: pretty;">A PayoutSettled event, emitted in the same transaction that moved the funds. No admin key can alter it. Every rate on it names an addressable source.</p>
+              <div style="display: flex; flex-direction: column; font-family: 'Roboto Mono', monospace; font-size: 12px; margin-top: 8px;">
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.1);"><span style="color: #B9AEFF;">referenceRate</span><span style="color: #D6D6DE;">What Mento quoted at that block</span></div>
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.1);"><span style="color: #B9AEFF;">executedRate</span><span style="color: #D6D6DE;">What the recipient actually got</span></div>
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.1);"><span style="color: #B9AEFF;">spreadBps</span><span style="color: #D6D6DE;">Signed. Negative means better than reference</span></div>
+                <div style="display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1);"><span style="color: #B9AEFF;">rateSource</span><span style="color: #D6D6DE;">The contract address the rate was read from</span></div>
+              </div>
+            </div>
+            <div style="position: relative; display: flex; align-items: center; justify-content: center; padding: 72px 36px; background: radial-gradient(ellipse 90% 80% at 30% 110%, #4B37C9 0%, #23185E 45%, #17171B 100%);">
+              <div style="position: absolute; left: -8px; bottom: -70px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 340px; line-height: 1; letter-spacing: -.06em; color: rgba(255,255,255,.06); white-space: nowrap; pointer-events: none;">31</div>
+              <div style="position: relative; width: 380px; box-shadow: 0 40px 80px -20px rgba(0,0,0,.6);">
+                <div style="background: #FFFFFF; color: #0E091C; border-radius: 12px 12px 0 0; padding: 22px 22px 30px; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 11px; mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x; -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x;">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 17px; letter-spacing: -.03em;">Henad</span><span style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Settlement receipt · #1</span></div>
+                  <div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 11px;"><span>USD → GBP · Monad</span><span>09 Sep 2026 · 14:32:07 UTC</span></div>
+                  <div style="border-top: 1px dashed #D9D9DE;"></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>1 USD = £0.78247</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Executed rate</span><span>1 USD = £0.78003</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Spread</span><span style="font-weight: 500;">£0.61 · 31 bps</span></div>
+                  <div style="border-top: 1px dashed #D9D9DE;"></div>
+                  <div style="position: relative; display: flex; flex-direction: column; gap: 5px; padding: 4px 0;">
+                    <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</div>
+                    <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 38px; letter-spacing: -.03em; line-height: 1;">£195.01</div>
+                    <div style="color: #8A8A96;">to Ada Okonkwo · 0x9c41…b7e0</div>
+                    <div style="position: absolute; right: 0; top: 2px; padding: 5px 10px; border: 2px solid #6E54FF; border-radius: 4px; color: #6E54FF; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transform: rotate(-4deg);">Settled</div>
+                  </div>
+                  <div style="border-top: 1px dashed #D9D9DE;"></div>
+                  <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="color: #8A8A96;">Rate source</span><span style="text-align: right;">Mento GBPm/USDm · Chainlink GBP/USD<br>0x3fa9…c21d</span></div>
+                  <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Block</span><span>41,208,377 · final in 0.8 s</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 380px; border-bottom: 1px solid #E7E7EB; background: radial-gradient(ellipse 50% 60% at 50% 0%, rgba(221,215,254,.7), transparent 70%);">
+            <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 300px; line-height: 1; letter-spacing: -.05em; color: #E9E9EE; white-space: nowrap; pointer-events: none;">£195.01</div>
+            <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;">
+              <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 36px; letter-spacing: -.03em; line-height: 1.1;">Delivered so far</div>
+              <div style="display: flex; align-items: center; gap: 10px; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 36px; letter-spacing: -.03em; line-height: 1.1;">on <img src="./assets/monad-logomark.svg" alt="" style="height: 30px; width: auto; display: block;"> Monad <span style="color: #8A8A96; font-size: 28px;">↗</span></div>
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #6B6B78; padding-top: 8px;">One settlement · one receipt · every figure provable</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding: 88px 36px 40px; align-items: end;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Corridors</div>
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 44px; letter-spacing: -.03em; line-height: 1.05; text-wrap: pretty;">Three kinds of corridor. Every number from a live feed.</h2>
+            </div>
+            <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">A corridor is live when it has a rate source and a venue. It is quotable when it has a rate source and no asset to deliver into. It is unpriced when Monad has no feed for it at all. Henad's registry holds all three, so the gaps are visible in the product.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;">
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 10px 36px; border-bottom: 1px solid #E7E7EB; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;"><span>Status</span><span>Corridor</span><span>Reference rate</span><span>Source</span><span>Updated</span><span style="text-align: right;">Send</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3; background: #F7F6FD;"><span style="justify-self: start; padding: 4px 8px; background: #6E54FF; color: #FFFFFF; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Live</span><span style="font-weight: 500;">USD → GBP</span><span style="font-weight: 500;">1 USD = £0.78247</span><span>Mento GBPm/USDm · Chainlink GBP/USD</span><span>14:32:07 UTC</span><a href="#S1" style="text-align: right;">Send a payout →</a></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → EUR</span><span>1 USD = €0.85959</span><span>Chainlink EUR/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CHF</span><span>1 USD = CHF 0.80857</span><span>Chainlink CHF/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → JPY</span><span>1 USD = ¥153.46</span><span>Chainlink JPY/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CAD</span><span>1 USD = C$1.3773</span><span>Chainlink CAD/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no asset on Monad</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → ZAR</span><span>1 USD = R15.993</span><span>Pyth USD/ZAR · pull oracle · <a href="#W2">feed ↗</a></span><span>on request</span><span style="text-align: right; color: #8A8A96;">Priced · no asset on Monad</span></div>
+            <div style="display: grid; grid-template-columns: 110px 120px 1fr 340px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px;"><span style="justify-self: start; padding: 4px 8px; background: #F1F1F4; color: #6B6B78; border: 1px solid #D9D9DE; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Unpriced</span><span>USD → NGN</span><span style="color: #8A8A96;">No rate on Monad</span><span style="color: #8A8A96;">No NGN feed from Chainlink or Pyth on Monad</span><span style="color: #8A8A96;">—</span><a href="#L1" style="text-align: right;">Read the MRC →</a></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 520px; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 96px 56px 96px 36px; border-right: 1px solid #E7E7EB;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">The unpriced corridor</div>
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 52px; letter-spacing: -.035em; line-height: 1.02; text-wrap: balance;">Naira has a price on Celo and none on Monad.</h2>
+              <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">Chainlink publishes NGN/USD on Celo, where Mento relays it. On Monad there is no NGN feed from Chainlink or Pyth and no naira asset. Five wealthy-country currencies have a number on this chain. No African currency except the rand has even that.</p>
+              <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">Henad's registry holds the corridor anyway, with a rate source of none. The gap is on the record and visible in the product, not only in the pitch.</p>
+              <div style="display: flex; flex-direction: column; font-family: 'Roboto Mono', monospace; font-size: 12px; margin-top: 6px;">
+                <div style="display: grid; grid-template-columns: 36px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid #E7E7EB;"><span style="color: #6E54FF;">01</span><span>An NGN/USD reference feed on Monad</span></div>
+                <div style="display: grid; grid-template-columns: 36px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid #E7E7EB;"><span style="color: #6E54FF;">02</span><span>A naira settlement asset</span></div>
+                <div style="display: grid; grid-template-columns: 36px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><span style="color: #6E54FF;">03</span><span>A venue that prices from the feed, not from a curve</span></div>
+              </div>
+              <a href="#L1" style="font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;">Read the MRC: a registry that holds a rate with no venue →</a>
+            </div>
+            <div data-grain="true" style="position: relative; overflow: hidden; background: #FFE3C2; background-image: radial-gradient(ellipse 90% 70% at 20% 0%, #FFAE45 0%, transparent 60%), radial-gradient(ellipse 80% 70% at 100% 100%, #FF8EE4 0%, transparent 65%); padding: 36px; display: flex; flex-direction: column; justify-content: flex-end; min-height: 560px;">
+              <div style="position: absolute; left: -14px; top: 12px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 250px; line-height: 1; letter-spacing: -.06em; color: rgba(14,9,28,.08); pointer-events: none;">NGN</div>
+              <div style="position: relative; background: #FFFFFF; border: 1px solid rgba(14,9,28,.08); border-radius: 12px; padding: 20px 22px; font-family: 'Roboto Mono', monospace; font-size: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 30px 60px -30px rgba(14,9,28,.35);">
+                <div style="display: flex; justify-content: space-between; align-items: center;"><span style="font-weight: 500;">USD → NGN · GBP → NGN</span><span style="padding: 4px 8px; background: #F1F1F4; color: #6B6B78; border: 1px solid #D9D9DE; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Unpriced</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>none</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Chainlink · Monad</span><span>no NGN feed</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Pyth · any chain</span><span>no NGN feed</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Chainlink · Celo</span><span>NGN/USD · relayed by Mento</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Settlement asset</span><span>none on Monad</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="font-size: 11px; line-height: 1.55; color: #6B6B78;">Registry entry kept open. Send refuses this corridor with this reason.</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; padding: 88px 36px 40px; align-items: end;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">What Henad does not do</div>
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 44px; letter-spacing: -.03em; line-height: 1.05;">Software between licensed ramps.</h2>
+            </div>
+            <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">A deliberate regulatory position, not a missing feature. Whoever touches fiat needs a licence. Henad never does, so the on and off ramps stay with providers already licensed where you and your recipient live.</p>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 40px 36px 48px; border-right: 1px solid #E7E7EB;"><div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">No fiat</div><p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78;">Henad never takes pounds or dollars and never holds a float. On and off ramps are existing licensed providers, linked, not operated.</p></div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 40px 36px 48px; border-right: 1px solid #E7E7EB;"><div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">No custody</div><p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78;">Funds move from your wallet to the recipient's in one transaction. There is no balance to hold and no key Henad manages.</p></div>
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 40px 36px 48px;"><div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 22px; letter-spacing: -.02em;">No KYC</div><p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78;">Identity checks happen at the ramps that already do them. Henad only ever sees addresses and rates.</p></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 480px; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; justify-content: center; gap: 22px; padding: 80px 48px 80px 36px;">
+              <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 48px; letter-spacing: -.03em; line-height: 1.05; max-width: 560px; text-wrap: pretty;">Send your first payout. Keep the receipt.</h2>
+              <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #6B6B78; max-width: 520px; text-wrap: pretty;">A stranger with a phone can open Henad, sign in with a passkey, and send dollars to pounds without reading instructions. Try it with a trivial amount.</p>
+              <div style="display: flex; gap: 12px;">
+                <div style="display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Send a payout</div>
+                <div style="display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">View receipt #1</div>
+              </div>
+            </div>
+            <div data-grain="true" style="position: relative; overflow: hidden; background: #0E091C; background-image: radial-gradient(ellipse 100% 70% at 50% 100%, #6E54FF 0%, #3B2A9E 40%, #0E091C 100%); color: #FFFFFF; padding: 32px; display: flex; flex-direction: column; justify-content: space-between; min-height: 420px; border-left: 1px solid #E7E7EB;">
+              <div style="position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 150px; line-height: 1; letter-spacing: -.05em; color: #FFFFFF; pointer-events: none;">MRC</div>
+              <div style="position: relative; display: flex; justify-content: space-between; align-items: center;"><span style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #DDD7FE;">Proposing</span><span style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #FFFFFF; color: #0E091C; font-size: 14px;">↗</span></div>
+              <div style="position: relative; display: flex; flex-direction: column; gap: 8px;">
+                <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.02em; line-height: 1.25; text-wrap: pretty;">A Monad application standard for verifiable FX settlement receipts</div>
+                <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #DDD7FE;">Six live rate sources · one documented absence · Henad is the reference implementation</div>
+              </div>
+            </div>
+          </div>
+
+          <footer style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr;">
+            <div style="display: flex; flex-direction: column; gap: 14px; padding: 40px 36px; border-right: 1px solid #E7E7EB;">
+              <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 22px; letter-spacing: -.03em;">Henad</div>
+              <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6B6B78; text-wrap: pretty;">From ἑνάς, a unit of one. The sibling of monad: the unit that makes separate things one.</p>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Built on <img src="./assets/monad-full-black.svg" alt="Monad" style="height: 14px; display: block; opacity: .85;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 18px; padding: 40px 36px; border-right: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#S1" style="color: #0E091C;">Send</a><a href="#W2" style="color: #0E091C;">Rates</a><a href="#W1" style="color: #0E091C;">Receipts</a><a href="#L1" style="color: #0E091C;">Docs</a></div>
+            <div style="display: flex; flex-direction: column; gap: 18px; padding: 40px 36px; border-right: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#L1" style="color: #0E091C;">MRC draft</a><a href="#L1" style="color: #0E091C;">Integration facts</a><a href="#L1" style="color: #0E091C;">Contracts</a><a href="#L1" style="color: #0E091C;">GitHub</a></div>
+            <div style="display: flex; flex-direction: column; gap: 18px; padding: 40px 36px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#L1" style="color: #0E091C;">Monadscan ↗</a><a href="#L1" style="color: #0E091C;">Metropolis 2026 ↗</a><a href="#L1" style="color: #0E091C;">X ↗</a></div>
+          </footer>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 22px 36px; border-top: 1px solid #E7E7EB; font-size: 14px; color: #6B6B78;">
+            <span>© 2026 Henad. No fiat. No custody. No KYC.</span>
+            <div style="display: flex; gap: 24px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase;"><a href="#L1" style="color: #0E091C;">Privacy policy ↗</a><a href="#L1" style="color: #0E091C;">Terms of service ↗</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L1m -->
+    <div id="L1m" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#L1m">L1m</a> · henad.xyz</span><span style="color: #8A8A96;">360 · scrolls</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; height: 32px; background: #6E54FF; color: #FFFFFF; font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .1em; text-transform: uppercase;"><span style="padding: 2px 6px; background: #FFFFFF; color: #6E54FF; border-radius: 3px;">Live</span><span>First settlement · USD → GBP →</span></div>
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="display: inline-flex; align-items: center; height: 34px; padding: 0 12px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase;">Send</div>
+              <div style="display: flex; flex-direction: column; gap: 5px; width: 20px;"><span style="height: 1.5px; background: #0E091C;"></span><span style="height: 1.5px; background: #0E091C;"></span></div>
+            </div>
+          </div>
+          <div style="position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 44px 20px 0; text-align: center;">
+            <div style="position: absolute; inset: auto 0 0 0; height: 300px; background: radial-gradient(ellipse 60% 55% at 10% 100%, rgba(255,142,228,.42), transparent 70%), radial-gradient(ellipse 60% 60% at 55% 110%, rgba(110,84,255,.32), transparent 70%), radial-gradient(ellipse 50% 50% at 95% 100%, rgba(255,174,69,.36), transparent 70%); pointer-events: none;"></div>
+            <div style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">USD → GBP · settled on Monad</div>
+            <h1 style="position: relative; margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 36px; line-height: 1.02; letter-spacing: -.035em; text-wrap: balance;">Send money abroad. Keep proof of the rate.</h1>
+            <p style="position: relative; margin: 0; font-size: 14px; line-height: 1.55; color: #6B6B78; text-wrap: pretty;">Dollars to pounds through onchain FX. Reference rate, executed rate, and the exact spread on every payment.</p>
+            <div style="position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+              <div style="display: flex; align-items: center; justify-content: center; height: 48px; width: 100%; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;" style-active="transform: scale(.98);">Send a payout</div>
+              <a href="#S4" style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #0E091C;">See live rates →</a>
+            </div>
+            <div style="position: relative; width: 280px; margin-top: 18px; transform: rotate(-1.5deg); box-shadow: 0 30px 60px -24px rgba(14,9,28,.35);">
+              <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 14px 16px 22px; font-family: 'Roboto Mono', monospace; font-size: 10px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 7px; text-align: left; mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle at 50% 100%, transparent 5px, #000 5.5px) center bottom / 14px 8px repeat-x; -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle at 50% 100%, transparent 5px, #000 5.5px) center bottom / 14px 8px repeat-x;">
+                <div style="display: flex; justify-content: space-between; color: #8A8A96;"><span>Settlement receipt · #1</span><span>14:32:07 UTC</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>£0.78247</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Executed rate</span><span>£0.78003</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Spread</span><span style="font-weight: 500;">£0.61 · 31 bps</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;"><div><div style="font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</div><div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em; line-height: 1.1;">£195.01</div></div><div style="padding: 3px 7px; border: 2px solid #6E54FF; border-radius: 4px; color: #6E54FF; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; transform: rotate(-4deg);">Settled</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 18px 16px; border-right: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Settlements</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em; line-height: 1;">1</span></div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 18px 16px; border-bottom: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em; line-height: 1;">£195.01</span></div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 18px 16px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Spread paid</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em; line-height: 1;">£0.61</span></div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 18px 16px;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Finality</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em; line-height: 1;">0.8 s</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 36px 16px 8px;">
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Corridors</div>
+            <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 28px; letter-spacing: -.03em; line-height: 1.05; text-wrap: balance;">Three kinds of corridor. Every number from a live feed.</h2>
+          </div>
+          <div style="display: flex; flex-direction: column; margin: 0 16px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums;">
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #E7E7EB;"><span style="justify-self: start; padding: 3px 6px; background: #6E54FF; color: #FFFFFF; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Live</span><span style="font-weight: 500;">USD → GBP</span><span>£0.78247</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → EUR <span style="color: #8A8A96;">· no venue yet</span></span><span>€0.85959</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CHF <span style="color: #8A8A96;">· no venue yet</span></span><span>CHF 0.80857</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → JPY <span style="color: #8A8A96;">· no venue yet</span></span><span>¥153.46</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CAD <span style="color: #8A8A96;">· no asset</span></span><span>C$1.3773</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → ZAR <span style="color: #8A8A96;">· Pyth · no asset</span></span><span>R15.993</span></div>
+            <div style="display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #EFEFF3; border-bottom: 1px solid #E7E7EB;"><span style="justify-self: start; padding: 3px 6px; background: #F1F1F4; color: #6B6B78; border: 1px solid #D9D9DE; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Unpriced</span><span>USD → NGN</span><span style="color: #8A8A96;">no rate</span></div>
+          </div>
+          <div data-grain="true" style="position: relative; overflow: hidden; margin: 24px 12px 0; border-radius: 16px; background: #FFE3C2; background-image: radial-gradient(ellipse 90% 70% at 20% 0%, #FFAE45 0%, transparent 60%), radial-gradient(ellipse 80% 70% at 100% 100%, #FF8EE4 0%, transparent 65%); padding: 24px 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="position: absolute; right: -10px; top: -20px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 130px; line-height: 1; letter-spacing: -.06em; color: rgba(14,9,28,.08); pointer-events: none;">NGN</div>
+            <div style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #0E091C;">The unpriced corridor</div>
+            <div style="position: relative; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 26px; letter-spacing: -.03em; line-height: 1.05; text-wrap: balance;">Naira has a price on Celo and none on Monad.</div>
+            <p style="position: relative; margin: 0; font-size: 13px; line-height: 1.55; color: #4B4B57;">No NGN feed from Chainlink or Pyth on Monad, and no naira asset. Henad keeps the corridor in its registry with a rate source of none, and says so.</p>
+            <a href="#L1" style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #0E091C;">Read the MRC →</a>
+          </div>
+          <div data-grain="true" style="position: relative; overflow: hidden; margin: 12px 12px 0; border-radius: 16px; background: #17171B; background-image: radial-gradient(ellipse 100% 70% at 30% 110%, #4B37C9 0%, #23185E 45%, #17171B 100%); color: #FFFFFF; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="position: absolute; right: -8px; bottom: -40px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 180px; line-height: 1; letter-spacing: -.06em; color: rgba(255,255,255,.06); pointer-events: none;">31</div>
+            <div style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #B9AEFF;">The receipt</div>
+            <div style="position: relative; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 26px; letter-spacing: -.03em; line-height: 1.05; text-wrap: pretty;">One artifact that reflects the whole corridor.</div>
+            <p style="position: relative; margin: 0; font-size: 13px; line-height: 1.55; color: #A7A7B3;">A PayoutSettled event in the same transaction that moved the funds. No admin key can alter it.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 16px; padding: 40px 16px 32px;">
+            <h2 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 30px; letter-spacing: -.03em; line-height: 1.05;">Send your first payout. Keep the receipt.</h2>
+            <div style="display: flex; align-items: center; justify-content: center; height: 48px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;">Send a payout</div>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;"><span>No fiat · No custody · No KYC</span><span style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">Built on <img src="./assets/monad-full-black.svg" alt="Monad" style="height: 11px; display: block; opacity: .85;"></span></div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- Notes -->
+    <div style="display: flex; flex-direction: column; gap: 10px; width: 320px; padding-top: 30px; font-family: 'Roboto Mono', monospace; font-size: 12px; line-height: 1.55; color: #0E091C;">
+      <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Notes</div>
+      <div style="padding: 12px 14px; border: 1px solid #D9D9DE; border-radius: 8px; background: #FFFFFF;"><b>Corridor.</b> Live pair is USD → GBP via Mento GBPm/USDm, priced by Chainlink GBP/USD. Your figures used throughout: £0.78247 reference, £0.78003 executed, £0.61 · 31 bps, £195.01 delivered. Amount first, bps second, everywhere.</div>
+      <div style="padding: 12px 14px; border: 1px solid #D9D9DE; border-radius: 8px; background: #FFFFFF;"><b>Tiers.</b> Quote tier shows EUR, CHF, JPY (tokens exist, pools unverified: "no venue yet"), CAD (no asset), ZAR (Pyth pull, no asset). If the pool enumeration confirms EURm/CHFm/JPYm pools, those three rows move to Live. NGN is the only unpriced row and gets its own module.</div>
+      <div style="padding: 12px 14px; border: 1px solid #D9D9DE; border-radius: 8px; background: #FFFFFF;"><b>Stand-ins to replace.</b> Quote-tier rates are 8 Sep 2026 mid-market values holding the slot for live Chainlink/Pyth reads. Feed links, the 0x3fa9…c21d source address, the block number and timestamps are placeholders until INTEGRATION-FACTS.md confirms them. Stale feeds past heartbeat must render as "stale", not as current.</div>
+      <div style="padding: 12px 14px; border: 1px solid #D9D9DE; border-radius: 8px; background: #FFFFFF;"><b>Removed.</b> All invented volume: 1,284 settlements, 34 bps median, KES/PHP spreads, the 7-day histogram. Everything now reads correctly at one settlement.</div>
+      <div style="padding: 12px 14px; border: 1px solid #D9D9DE; border-radius: 8px; background: #FFFFFF;"><b>Market hours.</b> S5 is the closed state for /send; the /rates banner is behind the marketClosed tweak. Copy assumes FX hours (Sun 22:00 → Fri 22:00 UTC); confirm against Mento's breaker.</div>
+    </div>
+  </div>
+
+  <!-- ─── Row 2 · App screens ─── -->
+  <div style="display: flex; align-items: flex-start; gap: 40px;">
+
+    <!-- S0 -->
+    <div id="S0" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S0">S0</a> · /send</span><span style="color: #8A8A96;">sign in · Privy</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="display: flex; align-items: center; gap: 6px; font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Built on <img src="./assets/monad-full-black.svg" alt="Monad" style="height: 11px; display: block; opacity: .85;"></div>
+          </div>
+          <div style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 40px 20px 32px; border-bottom: 1px solid #E7E7EB;">
+            <div style="position: absolute; inset: auto 0 0 0; height: 160px; background: radial-gradient(ellipse 60% 70% at 15% 100%, rgba(255,142,228,.35), transparent 70%), radial-gradient(ellipse 60% 70% at 85% 100%, rgba(110,84,255,.3), transparent 70%); pointer-events: none;"></div>
+            <div style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Sign in</div>
+            <div style="position: relative; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 32px; letter-spacing: -.035em; line-height: 1.02; text-wrap: balance;">A wallet you don't have to think about.</div>
+            <p style="position: relative; margin: 0; font-size: 14px; line-height: 1.55; color: #6B6B78; text-wrap: pretty;">Your passkey creates an embedded wallet on Monad. No seed phrase. You can export it any time.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 24px 16px 0; flex: 1;">
+            <div style="display: flex; align-items: center; justify-content: center; height: 52px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Continue with passkey</div>
+            <div style="display: flex; align-items: center; justify-content: center; height: 52px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Continue with email</div>
+            <div style="display: flex; align-items: center; justify-content: center; height: 52px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Connect a wallet I have</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 0 0; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;"><span>Secured by Privy</span><span>Monad mainnet</span></div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px 0 20px; border-top: 1px solid #E7E7EB; font-size: 12px; line-height: 1.5; color: #6B6B78;">
+              <div style="display: flex; gap: 10px;"><span style="font-family: 'Roboto Mono', monospace; color: #6E54FF; flex: none;">01</span><span>Henad never holds your money. Funds move wallet to wallet in one transaction.</span></div>
+              <div style="display: flex; gap: 10px;"><span style="font-family: 'Roboto Mono', monospace; color: #6E54FF; flex: none;">02</span><span>No fiat, no custody, no KYC. Identity checks stay with the licensed ramps you already use.</span></div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- S1 -->
+    <div id="S1" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S1">S1</a> · /send</span><span style="color: #8A8A96;">amount · Aurora Intents</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 6px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF;">0x7a3f…9c2e</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 16px; flex: 1;">
+            <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;"><span>Send</span><span style="color: #8A8A96;">Step 1 of 2</span></div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;"><span>You send</span><span>Balance 1,180.42</span></div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 38px; letter-spacing: -.035em; line-height: 1;">$250.00</div>
+                <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 7px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #F4F4F6; white-space: nowrap;">{{ assetLabel }} · Monad ▾</div>
+              </div>
+              <a href="#S1" style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #EFEFF3; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #6E54FF;"><span>Fund from another chain</span><span style="color: #8A8A96;">Aurora Intents →</span></a>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-family: 'Roboto Mono', monospace; font-size: 11px; color: #8A8A96; white-space: nowrap;"><span style="color: #0E091C;">1 USD = £0.78247</span><span>Mento · Chainlink · 2 s</span></div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Ada receives</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 38px; letter-spacing: -.035em; line-height: 1;">£195.62</div>
+                <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 7px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #F4F4F6; white-space: nowrap;">GBP ▾</div>
+              </div>
+              <div style="font-size: 12px; line-height: 1.5; color: #6B6B78; text-wrap: pretty;">At the reference rate. The exact amount after spread comes before you sign.</div>
+              <a href="#S4" style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid #EFEFF3; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;"><span>EUR CHF JPY CAD ZAR · priced only</span><span style="color: #6E54FF;">Why →</span></a>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #DDD7FE; color: #3B2A9E; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 13px;">AO</div>
+              <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0;"><div style="font-size: 15px; font-weight: 500;">Ada Okonkwo</div><div style="font-family: 'Roboto Mono', monospace; font-size: 11px; color: #8A8A96;">0x9c41…b7e0 · Monad</div></div>
+              <a href="#S1" style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase;">Change</a>
+            </div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; align-items: center; justify-content: center; height: 52px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Get quote</div>
+            <div style="text-align: center; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .06em; color: #8A8A96;">Nothing moves until you approve the rate.</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- S2 -->
+    <div id="S2" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S2">S2</a> · /send</span><span style="color: #8A8A96;">quote · Mento · Kuru fallback</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 6px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF;">0x7a3f…9c2e</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 14px; flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">
+              <span>Quote · <span style="color: #8A8A96;">Step 2 of 2</span></span>
+              <sc-if value="{{ quoteFresh }}" hint-placeholder-val="{{ true }}"><span style="padding: 5px 8px; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF; color: #0E091C; font-variant-numeric: tabular-nums;">Expires 0:27</span></sc-if>
+              <sc-if value="{{ quoteExpiring }}" hint-placeholder-val="{{ false }}"><span style="padding: 5px 8px; border-radius: 4px; background: #FFAE45; color: #0E091C; font-variant-numeric: tabular-nums;">Expires 0:06</span></sc-if>
+              <sc-if value="{{ quoteExpired }}" hint-placeholder-val="{{ false }}"><span style="padding: 5px 8px; border-radius: 4px; background: #0E091C; color: #FFFFFF;">Quote expired</span></sc-if>
+            </div>
+            <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; line-height: 1.1; letter-spacing: -.03em; text-wrap: pretty; padding: 2px 0 0;">
+              <sc-if value="{{ spreadBoth }}" hint-placeholder-val="{{ true }}">You are paying <span style="color: #6E54FF;">£0.61</span> in spread. That is 31 bps.</sc-if>
+              <sc-if value="{{ spreadAmount }}" hint-placeholder-val="{{ false }}">You are paying <span style="color: #6E54FF;">£0.61</span> in spread.</sc-if>
+              <sc-if value="{{ spreadBps }}" hint-placeholder-val="{{ false }}">You are paying <span style="color: #6E54FF;">31 bps</span> in spread, £0.61.</sc-if>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 0 14px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums;">
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Reference rate</span><span>1 USD = £0.78247</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Your rate</span><span>1 USD = £0.78003</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Spread</span><span style="font-weight: 500;">£0.61 · 31 bps</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Rate source</span><a href="#S2">Chainlink GBP/USD ↗</a></div>
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Venue</span><span>Mento GBPm/USDm <span style="color: #8A8A96;">· Kuru off</span></span></div>
+              <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;"><span style="color: #8A8A96;">Network fee</span><span style="display: flex; align-items: center; gap: 6px;"><img src="./assets/mon-token.svg" alt="MON" style="width: 14px; height: 14px; border-radius: 3px; display: block;">0.0003 MON</span></div>
+            </div>
+            <div style="background: #17171B; color: #FFFFFF; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #B9AEFF;">Ada receives</div>
+              <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 32px; letter-spacing: -.035em; line-height: 1;">£195.01</div>
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; color: #A7A7B3;">for $250.00 {{ assetLabel }} · final in under a second</div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <div style="display: flex; flex-direction: column; gap: 3px;"><div style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Worst rate you'll accept</div><div style="font-family: 'Roboto Mono', monospace; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums;">£0.98 · 50 bps</div></div>
+                <div style="display: flex; gap: 6px;">
+                  <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF; font-family: 'Roboto Mono', monospace; font-size: 18px; cursor: pointer;" style-active="transform: scale(.96); background: #F4F4F6;">−</div>
+                  <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF; font-family: 'Roboto Mono', monospace; font-size: 18px; cursor: pointer;" style-active="transform: scale(.96); background: #F4F4F6;">+</div>
+                </div>
+              </div>
+              <div style="font-size: 12px; line-height: 1.5; color: #6B6B78;">If the fill is worse than this, the payout reverts. Nothing moves.</div>
+            </div>
+            <div style="flex: 1;"></div>
+            <sc-if value="{{ quoteLive }}" hint-placeholder-val="{{ true }}"><div style="display: flex; align-items: center; justify-content: center; height: 48px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Send payout</div></sc-if>
+            <sc-if value="{{ quoteExpired }}" hint-placeholder-val="{{ false }}"><div style="display: flex; align-items: center; justify-content: center; height: 48px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Get a new quote</div></sc-if>
+            <a href="#S1" style="text-align: center; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Back</a>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- S3 -->
+    <div id="S3" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S3">S3</a> · /send</span><span onClick="{{ replay }}" style="cursor: pointer; padding: 3px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF; color: #0E091C;">Replay print ↻</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="padding: 10px 16px 0; overflow: hidden;">
+            <div data-motion="true" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; background: #17171B; color: #FFFFFF; border-radius: 6px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; animation: {{ toastAnim }};"><span style="width: 8px; height: 8px; border-radius: 50%; background: #85E6FF; flex: none;"></span>Payout sent<span style="margin-left: auto; color: #A7A7B3; letter-spacing: 0; text-transform: none;">final in 0.8 s</span></div>
+          </div>
+          <div style="display: flex; flex-direction: column; padding: 16px 16px 0; flex: 1;">
+            <div style="position: relative; z-index: 2; height: 14px; background: #17171B; border-radius: 6px 6px 0 0;"><div style="position: absolute; left: 14px; right: 14px; top: 5px; height: 2px; background: #6E54FF; border-radius: 1px;"></div></div>
+            <div style="overflow: hidden; padding: 0 0 24px;">
+              <sc-if value="{{ showReceipt }}" hint-placeholder-val="{{ true }}">
+                <div data-motion="true" style="position: relative; animation: {{ feedAnim }}; filter: drop-shadow(0 18px 24px rgba(14,9,28,.14));">
+                  <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-bottom: 0; padding: 16px 16px 26px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 9px; mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle at 50% 100%, transparent 5px, #000 5.5px) center bottom / 14px 8px repeat-x; -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 8px) no-repeat, radial-gradient(circle at 50% 100%, transparent 5px, #000 5.5px) center bottom / 14px 8px repeat-x;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 16px; letter-spacing: -.03em;">Henad</span><span style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Settlement receipt · #1</span></div>
+                    <div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 10px;"><span>USD → GBP · Monad</span><span>09 Sep 2026 · 14:32:07 UTC</span></div>
+                    <div style="border-top: 1px dashed #D9D9DE;"></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Sent</span><span>$250.00 · {{ assetLabel }}</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>1 USD = £0.78247</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Executed rate</span><span>1 USD = £0.78003</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Spread</span>
+                      <sc-if value="{{ spreadBoth }}" hint-placeholder-val="{{ true }}"><span style="font-weight: 500;">£0.61 · +31 bps</span></sc-if>
+                      <sc-if value="{{ spreadAmount }}" hint-placeholder-val="{{ false }}"><span style="font-weight: 500;">£0.61</span></sc-if>
+                      <sc-if value="{{ spreadBps }}" hint-placeholder-val="{{ false }}"><span style="font-weight: 500;">+31 bps · £0.61</span></sc-if>
+                    </div>
+                    <div style="border-top: 1px dashed #D9D9DE;"></div>
+                    <div style="position: relative; display: flex; flex-direction: column; gap: 4px; padding: 2px 0;">
+                      <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</div>
+                      <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 34px; letter-spacing: -.035em; line-height: 1;">£195.01</div>
+                      <div style="color: #8A8A96;">to Ada Okonkwo · 0x9c41…b7e0</div>
+                      <div data-motion="true" style="position: absolute; right: 0; top: 0; padding: 5px 10px; border: 2px solid #6E54FF; border-radius: 4px; color: #6E54FF; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; transform: rotate(-4deg); animation: {{ stampAnim }};">Settled</div>
+                    </div>
+                    <div style="border-top: 1px dashed #D9D9DE;"></div>
+                    <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="color: #8A8A96;">Rate source</span><span style="text-align: right;">Mento GBPm/USDm · Chainlink GBP/USD<br>0x3fa9…c21d</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Venue</span><span>Mento GBPm/USDm</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Intent</span><span>0x8e12…44af</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Block</span><span>41,208,377 · final in 0.8 s</span></div>
+                    <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Max spread</span><span>50 bps · not exceeded</span></div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; gap: 8px; padding-bottom: 16px;">
+              <div style="flex: 1; display: flex; align-items: center; justify-content: center; height: 52px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Share receipt</div>
+              <div style="flex: 1; display: flex; align-items: center; justify-content: center; height: 52px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Monadscan ↗</div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- S4 -->
+    <div id="S4" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S4">S4</a> · /rates</span><span style="color: #8A8A96;">mobile · three tiers</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="display: flex; gap: 16px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase;"><a href="#S1" style="color: #0E091C;">Send</a><a href="#S4" style="color: #0E091C; border-bottom: 1px solid #6E54FF;">Rates</a></div>
+          </div>
+          <div style="position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; padding: 24px 16px 20px; border-bottom: 1px solid #E7E7EB;">
+            <div style="position: absolute; right: -6px; top: -14px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 96px; line-height: 1; letter-spacing: -.06em; color: #ECECF0; pointer-events: none;">01</div>
+            <div style="position: relative; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Rates · Monad mainnet</div>
+            <div style="position: relative; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 28px; letter-spacing: -.03em; line-height: 1.05;">What the spread actually was.</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1px solid #E7E7EB;">
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Settled</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.03em;">1</span></div>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Spread</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.03em;">31 bps</span></div>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;"><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.03em;">£195.01</span></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 20px 16px 8px;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 17px; letter-spacing: -.02em;">Corridors</span><span style="font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Live feeds only</span></div>
+          <div style="display: flex; flex-direction: column; font-family: 'Roboto Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums;">
+            <a href="#S1" style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #E7E7EB; background: #F7F6FD; color: #0E091C;"><span style="justify-self: start; padding: 3px 6px; background: #6E54FF; color: #FFFFFF; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Live</span><span style="display: flex; flex-direction: column; gap: 3px;"><span style="font-weight: 500;">USD → GBP</span><span style="color: #8A8A96; font-size: 10px;">Mento · Chainlink · 14:32:07</span></span><span style="font-weight: 500;">£0.78247</span></a>
+            <div style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → EUR</span><span style="color: #8A8A96; font-size: 10px;">Chainlink · no venue yet</span></span><span>€0.85959</span></div>
+            <div style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → CHF</span><span style="color: #8A8A96; font-size: 10px;">Chainlink · no venue yet</span></span><span>CHF 0.80857</span></div>
+            <div style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → JPY</span><span style="color: #8A8A96; font-size: 10px;">Chainlink · no venue yet</span></span><span>¥153.46</span></div>
+            <div style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → CAD</span><span style="color: #8A8A96; font-size: 10px;">Chainlink · no asset</span></span><span>C$1.3773</span></div>
+            <div style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 3px 6px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → ZAR</span><span style="color: #8A8A96; font-size: 10px;">Pyth pull · no asset</span></span><span>R15.993</span></div>
+            <a href="#L1" style="display: grid; grid-template-columns: 58px 1fr auto; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #EFEFF3; border-bottom: 1px solid #E7E7EB; color: #0E091C;"><span style="justify-self: start; padding: 3px 6px; background: #F1F1F4; color: #6B6B78; border: 1px solid #D9D9DE; border-radius: 3px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase;">Unpriced</span><span style="display: flex; flex-direction: column; gap: 3px;"><span>USD → NGN</span><span style="color: #8A8A96; font-size: 10px;">No NGN feed on Monad · MRC →</span></span><span style="color: #8A8A96;">—</span></a>
+          </div>
+          <div style="flex: 1;"></div>
+          <div style="display: flex; justify-content: space-between; padding: 14px 16px; font-family: 'Roboto Mono', monospace; font-size: 9px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;"><span>Indexed by Envio</span><span>Labels by Nansen</span></div>
+        </div>
+      </x-import>
+    </div>
+
+    <!-- S5 -->
+    <div id="S5" style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px;"><span><a href="#S5">S5</a> · /send</span><span style="color: #8A8A96;">FX market closed</span></div>
+      <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="360px" height="780px" hint-size="372px,792px">
+        <div style="min-height: 100%; display: flex; flex-direction: column; background: #FBFBFC; color: #0E091C; font-family: Inter, system-ui, sans-serif; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 16px; border-bottom: 1px solid #E7E7EB;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 20px; letter-spacing: -.03em;">Henad</div>
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 6px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #FFFFFF;">0x7a3f…9c2e</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding: 20px 16px 16px; flex: 1;">
+            <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;"><span>Send</span><span style="color: #8A8A96;">Sat 12 Sep · 09:14 UTC</span></div>
+            <div data-grain="true" style="position: relative; overflow: hidden; background: #17171B; color: #FFFFFF; border-radius: 12px; padding: 20px 18px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="position: absolute; right: -10px; bottom: -34px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 120px; line-height: 1; letter-spacing: -.06em; color: rgba(255,255,255,.06); pointer-events: none;">22:00</div>
+              <div style="position: relative; display: flex; align-items: center; gap: 8px; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #FFAE45;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #FFAE45;"></span>FX market closed</div>
+              <div style="position: relative; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 26px; letter-spacing: -.03em; line-height: 1.05; text-wrap: balance;">Pounds reopen Sunday at 22:00 UTC.</div>
+              <p style="position: relative; margin: 0; font-size: 13px; line-height: 1.55; color: #A7A7B3; text-wrap: pretty;">Mento's market-hours breaker pauses GBPm/USDm over the weekend, so Henad cannot quote a rate it could settle. Receipts and rates stay open.</p>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 0 14px; font-family: 'Roboto Mono', monospace; font-size: 11px; font-variant-numeric: tabular-nums;">
+              <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Last settled rate</span><span>1 USD = £0.78003</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Settled at</span><span>Fri 11 Sep · 21:58 UTC</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #EFEFF3;"><span style="color: #8A8A96;">Reference feed</span><span>Chainlink GBP/USD · paused</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 10px 0;"><span style="color: #8A8A96;">Next open</span><span style="font-weight: 500;">Sun 13 Sep · 22:00 UTC</span></div>
+            </div>
+            <div style="background: #FFFFFF; border: 1px solid #E7E7EB; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; opacity: .55;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">You send</div>
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 38px; letter-spacing: -.035em; line-height: 1;">$250.00</div>
+                <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 7px 10px; border: 1px solid #D9D9DE; border-radius: 4px; background: #F4F4F6; white-space: nowrap;">{{ assetLabel }} · Monad</div>
+              </div>
+            </div>
+            <div style="flex: 1;"></div>
+            <div style="display: flex; align-items: center; justify-content: center; height: 52px; background: #E7E7EB; color: #8A8A96; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;">Opens Sun 22:00 UTC</div>
+            <div style="display: flex; gap: 8px;">
+              <a href="#S4" style="flex: 1; display: flex; align-items: center; justify-content: center; height: 48px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;">Browse rates</a>
+              <a href="#W1" style="flex: 1; display: flex; align-items: center; justify-content: center; height: 48px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;">Receipt #1</a>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+  </div>
+
+  <!-- ─── W1 · /receipt ─── -->
+  <div id="W1" style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px; width: 1280px;"><span><a href="#W1">W1</a> · /receipt/0x8e12…44af</span><span style="color: #8A8A96;">permalink · no wallet · server-rendered · OG image</span></div>
+    <div style="width: 1280px; background: #FBFBFC; background-image: radial-gradient(#D6D6DC 1px, transparent 1.2px); background-size: 20px 20px; border: 1px solid #D9D9DE; color: #0E091C; font-family: Inter, system-ui, sans-serif;">
+      <div style="margin: 0 40px; background: #FBFBFC; border-left: 1px solid #E7E7EB; border-right: 1px solid #E7E7EB; display: flex; flex-direction: column;">
+        <nav style="display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 36px; border-bottom: 1px solid #E7E7EB;">
+          <div style="display: flex; align-items: center; gap: 48px;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -.03em;">Henad</div>
+            <div style="display: flex; gap: 28px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#S1" style="color: #0E091C;">Send</a><a href="#W2" style="color: #0E091C;">Rates</a><a href="#W1" style="color: #0E091C; border-bottom: 1px solid #6E54FF;">Receipts</a><a href="#L1" style="color: #0E091C;">Docs</a></div>
+          </div>
+          <span style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Public receipt · no wallet needed</span>
+        </nav>
+        <div style="display: grid; grid-template-columns: 560px 1fr;">
+          <div data-grain="true" style="background: #17171B; background-image: radial-gradient(ellipse 90% 80% at 20% 110%, #4B37C9 0%, #23185E 45%, #17171B 100%); padding: 64px 80px; display: flex; flex-direction: column; align-items: center; gap: 22px; position: relative; overflow: hidden;">
+            <div style="position: absolute; left: -10px; bottom: -60px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 300px; line-height: 1; letter-spacing: -.06em; color: rgba(255,255,255,.06); white-space: nowrap; pointer-events: none;">31</div>
+            <div style="position: relative; width: 400px; box-shadow: 0 40px 80px -20px rgba(0,0,0,.6);">
+              <div style="background: #FFFFFF; color: #0E091C; border-radius: 12px 12px 0 0; padding: 24px 24px 32px; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 12px; mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x; -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, radial-gradient(circle at 50% 100%, transparent 6px, #000 6.5px) center bottom / 18px 10px repeat-x;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 18px; letter-spacing: -.03em;">Henad</span><span style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Settlement receipt · #1</span></div>
+                <div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 11px;"><span>USD → GBP · Monad</span><span>09 Sep 2026 · 14:32:07 UTC</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Sent</span><span>$250.00 · {{ assetLabel }}</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Reference rate</span><span>1 USD = £0.78247</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Executed rate</span><span>1 USD = £0.78003</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Spread</span><span style="font-weight: 500;">£0.61 · +31 bps</span></div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="position: relative; display: flex; flex-direction: column; gap: 6px; padding: 4px 0;">
+                  <div style="font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</div>
+                  <div style="font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 44px; letter-spacing: -.035em; line-height: 1;">£195.01</div>
+                  <div style="color: #8A8A96;">to Ada Okonkwo · 0x9c41…b7e0</div>
+                  <div style="position: absolute; right: 0; top: 2px; padding: 5px 10px; border: 2px solid #6E54FF; border-radius: 4px; color: #6E54FF; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; transform: rotate(-4deg);">Settled</div>
+                </div>
+                <div style="border-top: 1px dashed #D9D9DE;"></div>
+                <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="color: #8A8A96;">Rate source</span><span style="text-align: right;">Mento GBPm/USDm · Chainlink GBP/USD<br>0x3fa9…c21d</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Venue</span><span>Mento GBPm/USDm</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Intent</span><span>0x8e12…44af</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Block</span><span>41,208,377 · final in 0.8 s</span></div>
+                <div style="display: flex; justify-content: space-between;"><span style="color: #8A8A96;">Max spread</span><span>50 bps · not exceeded</span></div>
+              </div>
+            </div>
+            <div style="position: relative; display: flex; align-items: center; gap: 10px; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; color: #B9AEFF;">henad.xyz/receipt/0x8e12…44af<span style="color: rgba(255,255,255,.3);">·</span><img src="./assets/monad-full-white.svg" alt="Monad" style="height: 12px; display: block; opacity: .7;"></div>
+          </div>
+          <div style="padding: 56px 56px; display: flex; flex-direction: column; gap: 28px;">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Verification</div>
+              <h1 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 36px; letter-spacing: -.03em; line-height: 1.05; text-wrap: pretty;">Ada received £195.01 for $250. The spread was £0.61. Anyone can check.</h1>
+              <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #6B6B78; max-width: 520px; text-wrap: pretty;">This receipt is a <span style="font-family: 'Roboto Mono', monospace; font-size: 13px; color: #0E091C;">PayoutSettled</span> event emitted by RateAttestation on Monad in the same transaction that moved the funds. The values below are read from the chain, not from Henad.</p>
+            </div>
+            <div style="border-top: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;">
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">intentId</span><span>0x8e12f0a2…44af</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">corridor</span><span>keccak("USD/GBP") · 0x5b90…e1a7</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">referenceRate</span><span>0.782470 · 6 dp</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">executedRate</span><span>0.780030</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">spreadBps</span><span>+31 <span style="color: #8A8A96;">· signed, negative means better than reference</span></span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">deliveredAmount</span><span>195.010000 GBPm</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">rateSource</span><span>0x3fa9…c21d · Mento GBPm/USDm (Chainlink GBP/USD)</span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">recipient</span><span>0x9c41…b7e0 <span style="color: #8A8A96;">· Nansen: retail wallet, first seen Jun 2026</span></span></div>
+              <div style="display: grid; grid-template-columns: 170px 1fr; gap: 16px; padding: 12px 0; border-bottom: 1px solid #E7E7EB;"><span style="color: #8A8A96;">settledAt</span><span>1789047127 · block 41,208,377</span></div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: #6E54FF; color: #FFFFFF; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Open on Monadscan ↗</div>
+              <div style="display: inline-flex; align-items: center; height: 44px; padding: 0 18px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Copy permalink</div>
+              <span style="margin-left: auto; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Indexed by Envio</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── W2 · /rates ─── -->
+  <div id="W2" style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 12px; width: 1280px;"><span><a href="#W2">W2</a> · /rates</span><span style="color: #8A8A96;">three tiers · Envio index · Nansen labels · closed-market banner behind the marketClosed tweak</span></div>
+    <div style="width: 1280px; background: #FBFBFC; background-image: radial-gradient(#D6D6DC 1px, transparent 1.2px); background-size: 20px 20px; border: 1px solid #D9D9DE; color: #0E091C; font-family: Inter, system-ui, sans-serif;">
+      <sc-if value="{{ marketClosed }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 14px; height: 40px; background: #17171B; color: #FFFFFF; font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .1em; text-transform: uppercase;">
+          <span style="padding: 3px 8px; background: #FFAE45; color: #0E091C; border-radius: 3px;">Closed</span>
+          <span>FX market closed · Mento GBPm/USDm reopens Sun 13 Sep 22:00 UTC · last settled 1 USD = £0.78003 · receipts stay open</span>
+        </div>
+      </sc-if>
+      <div style="margin: 0 40px; background: #FBFBFC; border-left: 1px solid #E7E7EB; border-right: 1px solid #E7E7EB; display: flex; flex-direction: column;">
+        <nav style="display: flex; align-items: center; justify-content: space-between; height: 72px; padding: 0 36px; border-bottom: 1px solid #E7E7EB;">
+          <div style="display: flex; align-items: center; gap: 48px;">
+            <div style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -.03em;">Henad</div>
+            <div style="display: flex; gap: 28px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;"><a href="#S1" style="color: #0E091C;">Send</a><a href="#W2" style="color: #0E091C; border-bottom: 1px solid #6E54FF;">Rates</a><a href="#W1" style="color: #0E091C;">Receipts</a><a href="#L1" style="color: #0E091C;">Docs</a></div>
+          </div>
+          <div style="display: inline-flex; align-items: center; height: 40px; padding: 0 16px; background: #FFFFFF; color: #0E091C; border: 1px solid #D9D9DE; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;" style-active="transform: scale(.98);">Sign in</div>
+        </nav>
+
+        <div style="position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; padding: 64px 36px 36px; border-bottom: 1px solid #E7E7EB;">
+          <div style="position: absolute; right: 24px; top: -34px; font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 220px; line-height: 1; letter-spacing: -.06em; color: #ECECF0; white-space: nowrap; pointer-events: none;">01</div>
+          <div style="position: relative; display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #6E54FF;">Rates · every settlement on Monad mainnet</div>
+            <h1 style="margin: 0; font-family: 'Instrument Sans', 'Britti Sans', Inter, sans-serif; font-weight: 500; font-size: 48px; letter-spacing: -.03em; line-height: 1.05;">What the spread actually was.</h1>
+          </div>
+          <div style="position: relative; display: grid; grid-template-columns: repeat(3, auto); border: 1px solid #E7E7EB; border-radius: 12px; background: #FFFFFF; overflow: hidden;">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 22px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Settlements</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em;">1</span></div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 22px; border-right: 1px solid #E7E7EB;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Spread paid</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em;">£0.61 · 31 bps</span></div>
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 16px 22px;"><span style="font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;">Delivered</span><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 24px; letter-spacing: -.03em;">£195.01</span></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; border-bottom: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 24px 36px 12px;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.02em;">Corridors</span><span style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Live feeds only · stale past heartbeat is shown as stale</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 10px 36px; border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;"><span>Status</span><span>Corridor</span><span>Reference rate</span><span>Source · feed</span><span>Updated</span><span style="text-align: right;">Send</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3; background: #F7F6FD;"><span style="justify-self: start; padding: 4px 8px; background: #6E54FF; color: #FFFFFF; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Live</span><span style="font-weight: 500;">USD → GBP</span><span style="font-weight: 500;">1 USD = £0.78247</span><span>Mento GBPm/USDm · Chainlink GBP/USD</span><span>14:32:07 UTC</span><a href="#S1" style="text-align: right;">Send a payout →</a></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → EUR</span><span>1 USD = €0.85959</span><span>Chainlink EUR/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CHF</span><span>1 USD = CHF 0.80857</span><span>Chainlink CHF/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → JPY</span><span>1 USD = ¥153.46</span><span>Chainlink JPY/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no venue yet</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → CAD</span><span>1 USD = C$1.3773</span><span>Chainlink CAD/USD · <a href="#W2">feed ↗</a></span><span>14:31:40 UTC</span><span style="text-align: right; color: #8A8A96;">Priced · no asset on Monad</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px; border-bottom: 1px solid #EFEFF3;"><span style="justify-self: start; padding: 4px 8px; background: #DDD7FE; color: #3B2A9E; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Quote</span><span>USD → ZAR</span><span>1 USD = R15.993</span><span>Pyth USD/ZAR · pull oracle · <a href="#W2">feed ↗</a></span><span>on request</span><span style="text-align: right; color: #8A8A96;">Priced · no asset on Monad</span></div>
+          <div style="display: grid; grid-template-columns: 100px 120px 1fr 310px 120px 190px; gap: 16px; align-items: center; padding: 16px 36px;"><span style="justify-self: start; padding: 4px 8px; background: #F1F1F4; color: #6B6B78; border: 1px solid #D9D9DE; border-radius: 3px; font-size: 10px; letter-spacing: .12em; text-transform: uppercase;">Unpriced</span><span>USD → NGN</span><span style="color: #8A8A96;">No rate on Monad</span><span style="color: #8A8A96;">No NGN feed on Monad · Chainlink NGN/USD exists on Celo</span><span style="color: #8A8A96;">—</span><a href="#L1" style="text-align: right;">Read the MRC →</a></div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 400px 1fr;">
+          <div style="display: flex; flex-direction: column; border-right: 1px solid #E7E7EB; padding: 24px 36px 28px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 8px;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.02em;">Routes</span><span style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">USD → GBP</span></div>
+            <div style="display: flex; flex-direction: column; gap: 5px; padding: 16px 0; border-top: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;"><div style="display: flex; justify-content: space-between;"><span style="font-weight: 500;">Mento GBPm/USDm</span><span style="font-weight: 500;">31 bps</span></div><div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 11px;"><span>reference-rate venue · Chainlink GBP/USD</span><span>1 of 1 fills</span></div></div>
+            <div style="display: flex; flex-direction: column; gap: 5px; padding: 16px 0; border-top: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;"><div style="display: flex; justify-content: space-between;"><span style="font-weight: 500;">Kuru Flow</span><span style="color: #8A8A96;">—</span></div><div style="display: flex; justify-content: space-between; color: #8A8A96; font-size: 11px;"><span>fallback · armed, never used</span><span>0 fills</span></div></div>
+            <div style="display: flex; flex-direction: column; gap: 5px; padding: 16px 0 0; border-top: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 11px; color: #8A8A96; line-height: 1.6;">Counterparties by Nansen label: 1 retail wallet. Medians and distributions appear once there are enough settlements to mean something.</div>
+          </div>
+          <div style="display: flex; flex-direction: column; padding: 24px 0 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 36px 12px;"><span style="font-family: 'Instrument Sans', Inter, sans-serif; font-weight: 500; font-size: 20px; letter-spacing: -.02em;">Settlements</span><span style="font-family: 'Roboto Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">Live · every receipt is a permalink</span></div>
+            <div style="display: grid; grid-template-columns: 40px 150px 90px 1fr 150px 120px; gap: 16px; align-items: center; padding: 10px 36px; border-top: 1px solid #E7E7EB; border-bottom: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #8A8A96;"><span>#</span><span>Settled</span><span>Corridor</span><span>Amount</span><span style="text-align: right;">Spread</span><span style="text-align: right;">Receipt</span></div>
+            <div style="display: grid; grid-template-columns: 40px 150px 90px 1fr 150px 120px; gap: 16px; align-items: center; padding: 14px 36px; border-bottom: 1px solid #EFEFF3; font-family: 'Roboto Mono', monospace; font-size: 12px; font-variant-numeric: tabular-nums;"><span style="color: #8A8A96;">01</span><span>09 Sep · 14:32:07</span><span>USD/GBP</span><span>$250.00 → £195.01</span><span style="text-align: right;">£0.61 · 31 bps</span><a href="#W1" style="text-align: right;">0x8e12…44af ↗</a></div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 28px 36px 20px; font-family: 'Roboto Mono', monospace; font-size: 11px; color: #8A8A96; line-height: 1.6;">
+              <span style="max-width: 420px;">That is the whole ledger. The next settlement appears here within a second of finality, indexed by Envio.</span>
+              <a href="#S1" style="white-space: nowrap; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;">Be settlement #2 →</a>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 18px 36px; border-top: 1px solid #E7E7EB; font-family: 'Roboto Mono', monospace; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8A8A96;">
+          <div style="display: flex; gap: 24px;"><span>Indexed by Envio · 0.4 s behind head</span><span>Labels by Nansen</span><span>Rates by Chainlink · Pyth · Mento</span></div>
+          <div style="display: flex; align-items: center; gap: 8px;">Verified on <img src="./assets/monad-full-black.svg" alt="Monad" style="height: 12px; display: block; opacity: .85;"><span>· Monadscan ↗</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;sourceAsset&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;AUSD&quot;,&quot;options&quot;:[&quot;AUSD&quot;,&quot;USDC&quot;],&quot;tsType&quot;:&quot;'AUSD' | 'USDC'&quot;,&quot;section&quot;:&quot;Product&quot;},&quot;marketClosed&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;States&quot;},&quot;quoteState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;fresh&quot;,&quot;options&quot;:[&quot;fresh&quot;,&quot;expiring&quot;,&quot;expired&quot;],&quot;tsType&quot;:&quot;'fresh' | 'expiring' | 'expired'&quot;,&quot;section&quot;:&quot;States&quot;},&quot;spreadUnit&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;both&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;amount&quot;,&quot;bps&quot;],&quot;tsType&quot;:&quot;'both' | 'amount' | 'bps'&quot;,&quot;section&quot;:&quot;Copy&quot;},&quot;printAnimation&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
+class Component extends DCLogic {
+  state = { showReceipt: true };
+  renderVals() {
+    const spreadUnit = this.props.spreadUnit ?? 'both';
+    const quoteState = this.props.quoteState ?? 'fresh';
+    const motion = this.props.printAnimation ?? true;
+    return {
+      assetLabel: this.props.sourceAsset ?? 'AUSD',
+      marketClosed: this.props.marketClosed ?? false,
+      showReceipt: this.state.showReceipt,
+      replay: () => {
+        this.setState({ showReceipt: false });
+        setTimeout(() => this.setState({ showReceipt: true }), 80);
+      },
+      spreadBoth: spreadUnit === 'both',
+      spreadAmount: spreadUnit === 'amount',
+      spreadBps: spreadUnit === 'bps',
+      quoteFresh: quoteState === 'fresh',
+      quoteExpiring: quoteState === 'expiring',
+      quoteExpired: quoteState === 'expired',
+      quoteLive: quoteState !== 'expired',
+      feedAnim: motion ? 'henadFeed 1.6s cubic-bezier(.22,1,.36,1) both' : 'none',
+      stampAnim: motion ? 'henadStamp .45s 1.75s cubic-bezier(.2,1.4,.4,1) both' : 'none',
+      toastAnim: motion ? 'henadToast .5s cubic-bezier(.22,1,.36,1) both' : 'none',
+    };
+  }
+}
+</script>
+</body>
+</html>

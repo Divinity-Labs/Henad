@@ -6,17 +6,17 @@ import {IRateAttestation} from "./interfaces/IRateAttestation.sol";
 /// @title RateAttestation
 /// @notice Append-only receipt store. See IRateAttestation for the shape and the
 ///         reasons behind it. There is no owner, no upgrade path, and no function
-///         that modifies an existing record.
+///         that modifies an existing record. Receipt ids are also kept in an
+///         append-only list so a reader can page the ledger without an indexer.
 contract RateAttestation is IRateAttestation {
     /// @inheritdoc IRateAttestation
     address public immutable router;
 
-    /// @inheritdoc IRateAttestation
-    uint256 public count;
-
     mapping(bytes32 intentId => Attestation) private _receipts;
+    bytes32[] private _ids;
 
     error ZeroAddress();
+    error IndexOutOfRange(uint256 index, uint256 count);
 
     /// @param router_ The CorridorRouter. Predicted with CREATE address math at
     ///                deploy time so neither contract needs a setter.
@@ -39,9 +39,7 @@ contract RateAttestation is IRateAttestation {
         if (a.settledAt == 0) revert ValueOverflow(); // a zero timestamp would read as "no receipt"
 
         _receipts[intentId] = a;
-        unchecked {
-            ++count;
-        }
+        _ids.push(intentId);
 
         emit PayoutSettled(intentId, a.corridor, payer, recipient, sourceAsset, targetAsset, a);
     }
@@ -49,5 +47,16 @@ contract RateAttestation is IRateAttestation {
     /// @inheritdoc IRateAttestation
     function get(bytes32 intentId) external view returns (Attestation memory) {
         return _receipts[intentId];
+    }
+
+    /// @inheritdoc IRateAttestation
+    function count() external view returns (uint256) {
+        return _ids.length;
+    }
+
+    /// @notice Receipt id at a position in settlement order (0 = first ever).
+    function intentIdAt(uint256 index) external view returns (bytes32) {
+        if (index >= _ids.length) revert IndexOutOfRange(index, _ids.length);
+        return _ids[index];
     }
 }
