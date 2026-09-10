@@ -278,7 +278,7 @@ Source: https://raw.githubusercontent.com/monad-crypto/MIPs/main/mip-template.md
 | # | Decision | Chosen | Date |
 | --- | --- | --- | --- |
 | D1 | Corridor (§11) | **C** — ship AUSD/USDC → USDm → GBPm on mainnet; corridor and rate-source registry generic so NGN plugs in later; no fake naira | 2026-09-10 |
-| D2 | Gas for zero-MON users (§12.3) | **Research EIP-7702 + paymaster first (§13); ERC-3009 + own relayer is the fallback** | 2026-09-10, pending §13 |
+| D2 | Gas for zero-MON users (§12.3, §13) | **EIP-7702 + Pimlico paymaster primary; ERC-3009 + own relayer fallback.** Router exposes both entry points over one internal settle (§13.5) | 2026-09-10 |
 
 ---
 
@@ -367,3 +367,59 @@ A first-time Mera user has AUSD and no MON. Mera has no paymaster. Options:
 3. Drip MON to new accounts from a faucet wallet. Works for a demo, leaks value, does not scale. Fallback only.
 
 Consequence for the recipient side: GBPm arrives in the recipient's EOA with no gas needed to receive. To spend it they need MON or another relayed flow, which is out of scope.
+
+---
+
+## 13. EIP-7702 gas sponsorship on Monad — researched for D2
+
+### 13.1 Monad's 7702 rules — VERIFIED
+
+- Type `0x04` delegation transactions are supported "with the same workflow as in Ethereum"; "after delegating with EIP-7702, any EOA may behave like an EIP-4337 smart account"; delegation persists until another `0x04` tx. https://docs.monad.xyz/developer-essentials/eip-7702.md
+- Reserve rule, verbatim: "If an EOA is EIP-7702-delegated, transactions that would reduce its balance to below 10 MON will unconditionally revert." "'Dips below' means 'decrements **and** drops below'." "Transactions where the EOA's balance is unchanged or increases are fine." https://docs.monad.xyz/developer-essentials/reserve-balance.md
+- **The decisive sentence:** "a delegated EOA *A* with a balance of 5 MON can still be called by a gas sponsor, and the transaction will succeed as long as *A* ends with 5 MON or more still." https://docs.monad.xyz/developer-essentials/eip-7702.md
+- So a **zero-MON delegated EOA works for sponsored transactions**: in a paymaster-sponsored userOp the bundler is the tx sender, the paymaster prefunds gas, and the user's EOA balance goes 0 → 0. The docs never use the word "paymaster", so this is the rule text applied to the 4337 case, not a sentence about 4337 itself. What breaks: the EOA paying its own gas or sending MON `value` while under 10 MON. Our flow moves only ERC-20s, so the rule is a no-op as long as no call from the EOA carries MON value.
+- Delegated EOAs cannot CREATE/CREATE2 in code context. Irrelevant to us. https://docs.monad.xyz/developer-essentials/differences
+- EntryPoint v0.7 `0x0000000071727De22E5E9d8BAf0edAc6f37da032` and v0.8 `0x4337084d9e255ff0702461cf8895ce9e3b5ff108` both have code on 143 (RPC). https://docs.monad.xyz/developer-essentials/network-information
+- 7702 is demonstrably live on mainnet: MetaMask's Monad gas-sponsorship program "uses smart accounts (EIP-7702)", but it is wallet-side and requires the user to hold 10 MON, so it is useless for our users. https://monad.xyz/blog/metamask-gasless-transactions
+- Monad's AA provider list: mainnet ✅ Alchemy, Biconomy, Pimlico, Sequence, thirdweb, ZeroDev; testnet-only Gelato, Openfort. https://docs.monad.xyz/tooling-and-infra/wallet-infra/account-abstraction
+- Monad's own sponsored-tx template is Privy + Pimlico + Kernel on EntryPoint v0.7, testnet. https://docs.monad.xyz/templates/react-native-privy-pimlico-sponsored-transactions
+
+### 13.2 Providers — VERIFIED per row
+
+| Provider | Monad 143 | 7702 on Monad | Mainnet sponsorship tier | Verdict |
+| --- | --- | --- | --- | --- |
+| **Pimlico** | ✅ listed, "EIP-7702 support: ✅", paymaster on EP v0.6/0.7/0.8. https://docs.pimlico.io/guides/supported-chains | ✅ | Pay-as-you-go, card required, gas cost + 10%. No free mainnet tier. https://www.pimlico.io/pricing | **Use this** |
+| Alchemy | ✅ bundler + gas sponsorship. https://www.alchemy.com/docs/wallets/supported-chains | ⚠️ "EIP-7702 on Monad is currently allowlisted… contact support@alchemy.com". https://www.alchemy.com/docs/wallets/transactions/using-eip-7702 | Free tier: mainnet sponsorship N/A | Backup only |
+| ZeroDev | ✅ 143 listed. https://docs.zerodev.app/sdk/faqs/chains | Kernel v3.3 has code on 143; Monad-specific 7702 not stated | $69/mo for mainnet sponsorship | Backup |
+| Biconomy | MEE only on mainnet; 4337 bundler testnet-only. 7702 singleton has **no code** on 143 (RPC) | ❌ | — | No |
+| thirdweb | Monad listed for bundler; 7702 chain list does not name Monad. https://blog.thirdweb.com/changelog/expanding-eip-7702-chain-support/ | UNVERIFIED | Mainnet needs billing | No |
+| Coinbase CDP, Candide, Etherspot, Openfort, Gelato | Not on Monad mainnet | — | — | No |
+
+Pimlico SDK: `permissionless` ≥0.2.24 + `viem` ≥2.28, `to7702SimpleSmartAccount` (delegate Simple7702Account `0xe6Cae83BdE06E4c305530e199D7217f42808555B`, EP v0.8, **has code on 143**, source unverified on monadscan) or `to7702KernelSmartAccount` (Kernel v3.3 `0xd6CEDDe84be40893d153Be9d467CD6aD37875b28`, **has code on 143**). The 7702 authorization is signed with Mera's viem `LocalAccount.signAuthorization` and embedded in the first userOp, so the user never pays for the delegation tx either. https://docs.pimlico.io/guides/eip7702/demo ; https://docs.pimlico.io/references/permissionless/reference/accounts/to7702SimpleSmartAccount ; https://github.com/zerodevapp/kernel/blob/release/v3.3/README.md
+
+UNVERIFIED: Pimlico's paymaster contract address on 143 is not published; it is resolved by their API at runtime.
+
+Other delegates with code on 143: Alchemy MAv2-7702 `0x69007702764179f14F51cdce752f4f775d74E139` (allowlisted program only), MetaMask EIP7702StatelessDeleGator `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (no paymaster of its own). https://www.alchemy.com/docs/wallets/smart-contracts/deployed-addresses ; https://github.com/MetaMask/delegation-framework/blob/main/documents/Deployments.md
+
+### 13.3 ERC-3009 on AUSD and USDC — VERIFIED on-chain (the fallback)
+
+- AUSD mainnet is a verified EIP-1967 proxy, implementation `0xc1e3C7D486d6A92fBE920232E439EeC2cEb112dA` ("AgoraDollar", solc 0.8.28, exact match) exposing `receiveWithAuthorization`, `transferWithAuthorization`, `cancelAuthorization`, `permit`, `eip712Domain`. https://monadscan.com/address/0xc1e3C7D486d6A92fBE920232E439EeC2cEb112dA
+- RPC `eip712Domain()` → name **"Agora Dollar"**, version **"1"**, chainId 143. Canonical ERC-3009/2612 typehashes confirmed. AUSD has an asset-freezing mechanism; handle reverts. https://docs.agora.finance/developer/advanced-erc-features.md
+- USDC mainnet is FiatTokenV2_2 (exact match), same ERC-3009 functions; EIP-712 domain name "USDC", version "2" (by FiatToken convention, separator not recomputed). https://monadscan.com/address/0x754704Bc059F8C67012fEd69BC8A327a5aafb603
+- x402 and its Permit2 proxy on Monad are not relevant: AUSD has native ERC-3009 and x402 facilitators cannot atomically call our router. https://docs.monad.xyz/guides/x402.md
+
+### 13.4 Mera and sponsorship — UNVERIFIED
+
+Mera's docs, repo and launch post contain no mention of 7702, gas, paymasters or smart accounts. The bounty sentence about "gas sponsorship, intents, recovery flows" is from the logged-in platform (docs/BOUNTIES.md) and is judged as bonus credit. There is no Monad Foundation paymaster program. https://mera.category.xyz/ ; https://www.monad.xyz/blog/introducing-mera
+
+### 13.5 D2 outcome
+
+**Primary: EIP-7702 + Pimlico paymaster.** The user's passkey EOA delegates to Simple7702Account (or Kernel v3.3) via an authorization signed by Mera's viem account, embedded in the first userOp. One sponsored userOp batches `approve(CorridorRouter)` + `settle(intent)`. The user holds zero MON throughout, which the reserve rule permits because their balance never decreases. This earns the Mera UX bounty's "stack composability" bonus and lets a scoped session key later cover prompt-free actions.
+
+**Fallback: ERC-3009 `receiveWithAuthorization` + our relayer.** No delegation, no bundler, no reserve-rule exposure. The sender signs the authorization with the same passkey EOA; our relayer submits one tx. Verified on-chain for both AUSD and USDC.
+
+Both paths share the same passkey EOA and the same router. `CorridorRouter` therefore exposes two entry points that call one internal settle:
+- `settle(intentId)` — called by the payer (their delegated account, via a sponsored userOp) after an approve in the same batch;
+- `settleWithAuthorization(intentId, validAfter, validBefore, nonce, sig)` — called by anyone; pulls funds via `receiveWithAuthorization`, which requires `msg.sender == to`, so the authorization can only be consumed by the router.
+
+Cost to know: Pimlico mainnet sponsorship needs a card on file and charges gas plus 10%. One trivial mainnet payout costs well under a cent of MON, so this is a formality, not a budget line.
