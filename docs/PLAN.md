@@ -34,6 +34,28 @@ To verify in week 5 before starting mobile: `react-native-passkey` version pinne
 by Mera (3.6.1), its Expo config plugin, and PRF support on the test phone (Android
 9+ with Google Password Manager; iOS 18+).
 
+## Domains and passkeys
+
+A WebAuthn passkey is bound to the relying-party id (rpId) it was created under, and
+the rpId must be the site's host or a registrable parent of it. `vercel.app` is on
+the Public Suffix List, so every `*.vercel.app` host is its own island; preview
+deployments with random hostnames are islands too.
+
+- **Testnet: Vercel.** The web app runs on its Vercel domain with rpId set to that
+  exact host. Passkeys created there hold only testnet AUSD, so it does not matter
+  that they can never be used on another domain.
+- **Mainnet: henad.xyz.** rpId is `henad.xyz`, which also covers any future
+  subdomain such as `app.henad.xyz`. No passkey that will hold real value is
+  created under any other rpId.
+- **Guard in code.** `packages/core` refuses to build a mainnet (chain 143) client
+  unless `rpId === "henad.xyz"`. A misconfigured deploy fails loudly instead of
+  minting accounts on the wrong domain.
+- **Preview deployments** must never pick up the mainnet chain id; they get the
+  testnet config from Vercel's preview environment variables.
+- "Porting" is not a migration of passkeys; there is no such thing. It is a fresh
+  deploy on the new domain where every user creates a passkey once. The old Vercel
+  deployment stays up so anyone who did hold testnet funds there can still reach them.
+
 ## Repo layout
 
 ```
@@ -53,8 +75,10 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
 - [x] Interfaces: `IRateSource`, `IVenueAdapter`, `IRateAttestation`, `Corridor` lib
       with fuzz tests.
 - [x] `foundryup` to 1.8.1 in WSL, `network = "monad"` enabled.
-- [ ] Pimlico account with card on file; Envio API token; pick the production
-      domain (Mera rpId is permanent).
+- [x] Pimlico account set up (2026-09-10).
+- [ ] Envio API token.
+- [ ] Production domain: **henad.xyz** (being acquired). Needed before the week-4
+      mainnet deploy on 25 Sep. See "Domains and passkeys" below.
 
 **Week 2 (11–17 Sep) — contracts, forked mainnet.**
 - `PayoutIntent`, `CorridorRouter` (both entry points), `RateAttestation`.
