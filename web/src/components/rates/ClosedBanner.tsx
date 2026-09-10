@@ -3,6 +3,7 @@ import type { Corridor } from '@/lib/corridors'
 import { rateLine, utcDayTime } from '@/lib/format'
 import { nextTransition } from '@/lib/market-hours'
 import type { Receipt } from '@/lib/receipts'
+import { noSept } from './ledger'
 
 /**
  * Next instant the FX pools reopen, from render time: the coming transition
@@ -15,7 +16,9 @@ export function reopensAt(now = Math.floor(Date.now() / 1000)): number {
 
 /** The 40px dark strip above the page while Mento's market-hours breaker is closed. */
 export function ClosedBanner({ corridor, lastSettled }: { corridor: Corridor; lastSettled: Receipt | null }) {
-  const parts = ['FX market closed', `${corridor.venue?.label ?? corridor.key} reopens ${utcDayTime(reopensAt())}`]
+  // "Sun 13 Sep 23:00 UTC" as on the canvas: the helper's own " · " would read as another banner segment.
+  const reopens = noSept(utcDayTime(reopensAt())).replace(' · ', ' ')
+  const parts = ['FX market closed', `${corridor.venue?.label ?? corridor.key} reopens ${reopens}`]
   if (lastSettled) parts.push(`last settled ${rateLine(lastSettled.executedRate, corridor.targetSymbol, corridor.rateDp)}`)
   parts.push('receipts stay open')
   return (

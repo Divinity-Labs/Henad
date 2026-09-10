@@ -46,9 +46,14 @@ export function currencyDp(target: string): number {
   return CORRIDORS.find((c) => c.target === target)?.currencyDp ?? 2
 }
 
-/** "09 Sep · 14:32:07" for the ledger's Settled column. Newer ICU spells en-GB September "Sept"; the canvas says "Sep". */
+/** Newer ICU spells en-GB September "Sept"; the canvas says "Sep". */
+export function noSept(s: string): string {
+  return s.replace('Sept', 'Sep')
+}
+
+/** "09 Sep · 14:32:07" for the ledger's Settled column. */
 export function ledgerStamp(unixSeconds: number): string {
-  const date = new Date(unixSeconds * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }).replace('Sept', 'Sep')
+  const date = noSept(new Date(unixSeconds * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }))
   return `${date} · ${utcTime(unixSeconds).replace(' UTC', '')}`
 }
 

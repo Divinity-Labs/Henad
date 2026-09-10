@@ -18,9 +18,12 @@ import { listReceipts, totals } from '@/lib/receipts'
 export const metadata: Metadata = { title: 'Rates' }
 export const revalidate = 30
 
+/** Rows the Settlements block lists; the hero and Routes are totalled over the whole ledger. */
+const LEDGER_ROWS = 50
+
 /** /rates — artboards W2 (md and up) and S4 (below md) as one page. */
 export default async function RatesPage() {
-  const [rates, receipts] = await Promise.all([liveRates(), listReceipts()])
+  const [rates, receipts] = await Promise.all([liveRates(), listReceipts(Infinity)])
   const t = totals(receipts)
   const sample = receipts.some((r) => r.sample)
   const live = rates.find((r) => r.corridor.tier === 'live')
@@ -51,7 +54,7 @@ export default async function RatesPage() {
         <CorridorsBlock rates={rates} />
         <div className="hidden md:grid md:grid-cols-[400px_1fr]">
           <RoutesBlock corridors={CORRIDORS} totals={t} sample={sample} />
-          <SettlementsBlock receipts={receipts} />
+          <SettlementsBlock receipts={receipts.slice(-LEDGER_ROWS)} />
         </div>
         <div className="flex-1" />
       </main>

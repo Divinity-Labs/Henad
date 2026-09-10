@@ -25,7 +25,9 @@ export function SettlementsBlock({ receipts, title = 'Settlements', heading: Hea
   const newest = rows[0]
   const sample = receipts.some((r) => r.sample)
   const whole = !newest || newest.index === null || newest.index === receipts.length
-  const next = settled(receipts).length + 1
+  const real = settled(receipts)
+  const latest = real[real.length - 1]
+  const next = (latest?.index ?? real.length) + 1
   return (
     <section className="flex flex-col pt-5 pb-2 md:pt-6">
       <div className="flex items-baseline justify-between px-4 pb-2 md:px-9 md:pb-3">
