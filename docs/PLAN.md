@@ -85,11 +85,20 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
       market hours, reference-rate decision, ERC-3009 + 7702 paths proven on a fork,
       Pimlico paymaster on 143, MonadTen hardfork, gas (facts §14).
 - [x] `docs/CONTRACTS-SPEC.md`; interfaces; `PayoutIntent`; `RateAttestation`; fork test base.
-- [ ] `ChainlinkRateSource`, `MentoVenueAdapter`, `CorridorRouter` + tests (in progress).
-- [ ] Integration fork suite: both paths on real Mento with real feeds, real EntryPoint.
-- [ ] `script/Deploy.s.sol`; throwaway mainnet broadcast to prove the toolchain.
+- [x] `ChainlinkRateSource`, `MentoVenueAdapter`, `CorridorRouter` + tests: 141 tests
+      green incl. 26 fork tests on real Mento and Chainlink (merged 10 Sep).
+- [ ] Integration fork suite: both paths on real Mento with real feeds, real EntryPoint (in progress).
+- [ ] `script/Deploy.s.sol` (in progress); throwaway mainnet broadcast to prove the toolchain.
 - [x] `packages/core`: intent typed data + ERC-3009 authorization helpers (vector-checked).
 - [ ] `packages/core`: ABIs from `forge build`.
+
+**Design (10 Sep).** The "Henad v4" canvas (claude.ai/design project, exported to
+`design/Henad-v4.dc.html`) is the UI source of truth; `docs/DESIGN.md` maps its
+artboards to routes. Direction is Monad's institutional-clean language, not
+neobrutalism (supersedes §4.3 of the build prompt). The web foundation (tokens,
+receipt slip, nav, footer, corridor rows, live-rate and receipt data layer with a
+Sample-labelled fixture) is committed; the pages are being built from it, pulled
+forward from week 3.
 
 **Week 3 (18–24 Sep) — web `/send`, testnet.**
 - Mera onboarding in Next.js: create/sign-in ceremony, derive account, show AUSD
