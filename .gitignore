@@ -1,0 +1,22 @@
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# node
+node_modules/
+.pnpm-store/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/**/dry-run/
+
+# misc
+.DS_Store
+Thumbs.db
+*.log
