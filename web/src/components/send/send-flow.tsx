@@ -9,7 +9,16 @@ import { Button } from '@/components/ui/Button'
 import { appChainId } from '@/lib/chain'
 import { LIVE_CORRIDOR, corridorByKey } from '@/lib/corridors'
 import { isFxMarketOpen } from '@/lib/market-hours'
-import { continueWithPasskey, describeAccountError, readBalance, signInWithPasskey, sourceToken, type MeraAccount } from '@/lib/send-mera'
+import {
+  continueWithPasskey,
+  describeAccountError,
+  loadStoredAccount,
+  readBalance,
+  signInWithPasskey,
+  sourceToken,
+  unlockStoredAccount,
+  type MeraAccount,
+} from '@/lib/send-mera'
 import { quoteMaths, type QuoteDto } from '@/lib/send-quote'
 import { receiptFromDto, type ReceiptDto } from '@/lib/send-serial'
 import { settle } from '@/lib/send-settle'
@@ -51,6 +60,14 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     },
     [],
   )
+
+  // A reload destroys the signing session, because the key is never persisted, but it
+  // should not destroy the account. The stored address puts the chip and the balance
+  // back immediately; the passkey is asked for later, when something must be signed.
+  useEffect(() => {
+    const stored = loadStoredAccount()
+    if (stored) dispatch({ type: 'signedIn', address: stored.address, credentialId: stored.credentialId })
+  }, [])
 
   const address = s.account?.address
   useEffect(() => {
@@ -126,10 +143,29 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     }
   }
 
+  /**
+   * The live signing session, asking for the passkey only if this tab does not have one.
+   * After a reload that is the first prompt the user sees, and it lands on the send
+   * action rather than on arrival.
+   */
+  async function ensureSession(): Promise<MeraAccount> {
+    if (session.current) return session.current
+    const acc = await unlockStoredAccount()
+    session.current = acc
+    return acc
+  }
+
   async function sendPayout() {
-    const acc = session.current
     const quote = s.quote
-    if (!acc || !quote || !venue || !deployment || !isAddress(s.recipient)) return
+    if (!quote || !venue || !deployment || !isAddress(s.recipient)) return
+    dispatch({ type: 'busy', busy: 'send' })
+    let acc: MeraAccount
+    try {
+      acc = await ensureSession()
+    } catch (e) {
+      dispatch({ type: 'fail', message: describeAccountError(e) })
+      return
+    }
     const m = quoteMaths(quote, SOURCE_DECIMALS, venue.targetDecimals)
     const intent: Intent = {
       payer: acc.address,
@@ -145,7 +181,6 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
       salt: toHex(crypto.getRandomValues(new Uint8Array(32))),
     }
     const intentId = hashIntent(intent, chainId, deployment.corridorRouter)
-    dispatch({ type: 'busy', busy: 'send' })
     let settled
     try {
       settled = await settle(intent, acc.account)

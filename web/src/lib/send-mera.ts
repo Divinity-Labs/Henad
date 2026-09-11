@@ -10,7 +10,7 @@ import {
   type PasskeyCredentialMetadata,
 } from '@category-labs/mera'
 import { toViemAccount } from '@category-labs/mera/viem'
-import type { Address, LocalAccount } from 'viem'
+import { isAddress, type Address, type LocalAccount } from 'viem'
 import { RpIdMismatchError, TOKENS, assertRpIdForChain, erc20Abi, type TokenInfo } from '@henad/core'
 import { appChain, appChainId } from './chain'
 import type { SourceAssetSymbol } from './corridors'
@@ -59,11 +59,46 @@ export function loadStoredPasskey(): StoredPasskey | null {
   }
 }
 
-function storePasskey(meta: StoredPasskey) {
+function storePasskey(meta: StoredPasskey, address?: Address) {
   try {
-    window.localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify({ credentialId: meta.credentialId, transports: meta.transports }))
+    const prev = loadStoredAccount()
+    window.localStorage.setItem(
+      PASSKEY_STORAGE_KEY,
+      JSON.stringify({
+        credentialId: meta.credentialId,
+        transports: meta.transports,
+        // The public address only. The derived key is never written anywhere: it lives in
+        // the Mera session for the life of the tab and dies with it. Keeping the address
+        // is what lets a reload show you as signed in and read your balance without a
+        // biometric prompt, while still demanding the passkey before anything is signed.
+        address: address ?? (prev?.credentialId === meta.credentialId ? prev.address : undefined),
+        rpId: rpId(),
+      }),
+    )
   } catch {
     // Blocked storage: the passkey still works, the next sign-in is just not pinned.
+  }
+}
+
+/**
+ * The address and credential of the last account signed in on this device, or null.
+ *
+ * Scoped to the current rpId, because a passkey is bound to its relying party forever
+ * and an address derived under one host means nothing under another.
+ */
+export function loadStoredAccount(): { address: Address; credentialId: string } | null {
+  try {
+    const raw = window.localStorage.getItem(PASSKEY_STORAGE_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null) return null
+    const { credentialId, address, rpId: storedRp } = parsed as { credentialId?: unknown; address?: unknown; rpId?: unknown }
+    if (typeof credentialId !== 'string' || credentialId.length === 0) return null
+    if (typeof address !== 'string' || !isAddress(address)) return null
+    if (typeof storedRp === 'string' && storedRp !== rpId()) return null
+    return { address, credentialId }
+  } catch {
+    return null
   }
 }
 
@@ -104,8 +139,9 @@ export async function createPasskeyAccount(): Promise<MeraAccount> {
     rp: { id, name: RP_NAME },
     user: { name: `henad · ${new Date().toISOString().slice(0, 10)}`, displayName: 'Henad account' },
   })
-  storePasskey({ credentialId: created.credentialId, transports: created.transports })
-  return accountFromPrf(created.prfOutput, created.credentialId)
+  const account = accountFromPrf(created.prfOutput, created.credentialId)
+  storePasskey({ credentialId: created.credentialId, transports: created.transports }, account.address)
+  return account
 }
 
 /**
@@ -116,8 +152,33 @@ export async function signInWithPasskey(credential?: StoredPasskey): Promise<Mer
   const id = rpId()
   assertRpIdForChain(appChainId(), id)
   const asserted = await getPasskeyPrfOutput({ rpId: id, ...(credential ? { credential } : {}) })
-  storePasskey(credential?.credentialId === asserted.credentialId ? credential : { credentialId: asserted.credentialId })
-  return accountFromPrf(asserted.prfOutput, asserted.credentialId)
+  const account = accountFromPrf(asserted.prfOutput, asserted.credentialId)
+  storePasskey(credential?.credentialId === asserted.credentialId ? credential : { credentialId: asserted.credentialId }, account.address)
+  return account
+}
+
+/**
+ * Re-derive the session for the account already stored on this device.
+ *
+ * A reload throws away the signing session, deliberately, because the key is never
+ * written down. It does not throw away who you are: `loadStoredAccount` still knows the
+ * address, so the interface can show you signed in and read your balance. This is the
+ * ceremony that gets the key back, and it runs at the moment something must be signed
+ * rather than on arrival, which is where a user expects to be asked.
+ *
+ * The derived address is checked against the stored one. A mismatch means a different
+ * passkey answered the prompt, which would silently sign from an account the screen is
+ * not showing, so it fails loudly instead.
+ */
+export async function unlockStoredAccount(): Promise<MeraAccount> {
+  const stored = loadStoredAccount()
+  if (!stored) throw new Error('No account on this device. Sign in with your passkey.')
+  const account = await signInWithPasskey({ credentialId: stored.credentialId })
+  if (account.address.toLowerCase() !== stored.address.toLowerCase()) {
+    account.end()
+    throw new Error('That passkey belongs to a different account from the one on screen. Reload and sign in again.')
+  }
+  return account
 }
 
 /** Plain-language failure copy. Says what happened and what to do next. */
