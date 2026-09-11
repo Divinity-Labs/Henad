@@ -5,7 +5,8 @@ current: items get ticked, added and re-ordered as work lands. Everything here i
 blocked on a human — an account, a card, a domain, a device, or a judgement call.
 
 **Submissions close 14 Oct 2026, 03:59 UTC.** The week-4 gate (one real mainnet payout)
-is 25 Sep – 1 Oct. Last updated 11 Sep 2026, with sign-up URLs confirmed against each service.
+is 25 Sep – 1 Oct. Last updated 11 Sep 2026, after verifying every key you added by
+actually calling the service with it.
 
 ---
 
@@ -32,80 +33,68 @@ Run `pnpm dev` in `web/`, open `/send`, press "Continue with passkey", and tell 
 happens. Then clear the site data and press "I already have a passkey" — the account
 must come back from the passkey alone.
 
-### 3. Pimlico — the key and the policy are two different pages
-You created the account. Two things remain, and they live in separate places:
+### 3. Pimlico — put money on the account before 25 Sep
+Your key works. I called the API with it, and the free plan really is free, so your
+dashboard is not lying to you. What it will not do is mainnet.
 
-- **API key** — https://dashboard.pimlico.io/apikeys → Create API key. Put it in
-  `web/.env.local` as `PIMLICO_API_KEY`. There is a shortcut that writes it for you:
-  `pnpm dlx @pimlico/cli@latest`.
-- **Sponsorship policy** — https://dashboard.pimlico.io/sponsorship-policies → Create
-  Policy. Paymaster calls are rejected without one. The id looks like
-  `sp_amused_gladiator`.
+- **Testnet, today, free.** `pm_getPaymasterData` on chain 10143 returns a real signed
+  sponsorship from your key, with no policy and no card. Everything we build and demo
+  on testnet is covered.
+- **Mainnet, chain 143, same call, same key.** It answers: `Insufficient Pimlico balance
+  for sponsorship, please top up - Balance required: 0.000005 USD, Balance available:
+  0 USD`. The gate is your account balance at the moment their paymaster signs, not a
+  block on the key.
 
-Two things to know. The free tier is **testnets only**; mainnet sponsorship needs a card
-on file, billed at gas plus ten percent with a $1,000 monthly threshold. And
-`PIMLICO_SPONSORSHIP_POLICY_ID` is our own variable name, not theirs — the wire field is
-`sponsorshipPolicyId`, so do not go hunting for our name in their docs.
+Their marketing pricing page lists only Pay-as-you-go and Enterprise, which is why I
+doubted the Free plan existed. It does, on the docs pricing page: 1,000,000 credits a
+month, 500 requests a minute, all testnets, **no mainnets**, no card. Pay-as-you-go is
+$0 a month with a card on file, 10,000,000 credits, and mainnet gas billed at cost plus
+ten percent with a $1,000 monthly threshold.
 
-Policies have no calldata filter, so the policy webhook is the only thing stopping the
-key from sponsoring arbitrary transactions.
+**What to do:** add a card at https://dashboard.pimlico.io/billing before the week-4
+payout. One payout costs about **0.16 MON** of gas plus their ten percent, so the real
+bill for the demo is a few payouts, not a subscription.
 
-### 4. Etherscan API key — needed at deploy time
-Register at https://etherscan.io/register, then create the key at
-https://etherscan.io/myapikey. **One key covers Monad**: Etherscan's V2 API lists chain
-143 pointing at monadscan.com, and 10143 for testnet. Free tier is 3 calls a second and
-100,000 a day across all chains. No card.
+A sponsorship policy turned out **not** to be required — the free-plan key signs without
+one. Create one anyway at https://dashboard.pimlico.io/sponsorship-policies before
+mainnet, because a policy is the only limit on what that key can be made to sponsor.
+Put the id in `.env` as `PIMLICO_SPONSORSHIP_POLICY_ID`, which is our variable name; the
+wire field is `sponsorshipPolicyId`.
 
-Goes in `.env` as `ETHERSCAN_API_KEY`, the name forge reads by default. I confirmed our
-forge 1.8.1 resolves chain 143 on its own, so no extra flags are needed. Without the key
-the contracts deploy but stay unverified, which a judge will notice.
+### 4. Mainnet MON, and a little real AUSD
+The week-4 gate is one real settlement. The deployer `0x6639edb9…4776` holds **0 MON on
+mainnet**. It needs enough for the deploy — I measured the dry run at 6,190,540 gas,
+about **1.25 MON** at today's 102 gwei — plus a throwaway probe deploy first at 0.031
+MON, plus gas to register the corridors. Call it 2 MON to be comfortable.
 
-### 5. Testnet gas — 50 MON a day
-https://faucet.monad.xyz — paste the deployer address. Up to **50 testnet MON per 24
-hours**, which is plenty. No GitHub account needed; connecting Discord and X qualifies
-you for larger drips. The page sits behind a browser challenge, so use a real browser
-rather than a script.
+Then a small amount of real AUSD to actually send. The payout itself can be a dollar.
 
-Ignore the third-party claims that you need mainnet history to qualify. That appears
-nowhere in Monad's own faucet page or docs.
-
-### 6. Testnet AUSD — get this early, the faucet is running low
-Permissionless, no sign-up, one transaction:
+### 5. A mainnet deployer key that does not live in a file
+`DEPLOYER_PRIVATE_KEY` in `.env` is a throwaway. It is fine for testnet, where it is
+already funded and working. Do not fund it on mainnet. Before the real deploy, import a
+fresh key into Foundry's keystore:
 
 ```
-cast send 0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C "requestFunds(address)" <yourAddress> --rpc-url https://testnet-rpc.monad.xyz --private-key $PRIVATE_KEY
+cast wallet import henad-mainnet --interactive
 ```
 
-It sends **10,000 AUSD** per call. I traced the contract: it holds about 700,000 AUSD,
-so roughly seventy claims remain and nobody is refilling it. That is the reason to do
-this early rather than in week four. It also reads your balance before transferring, so
-a second call from an address that already holds 10,000 will probably revert.
-
-### 7. Mainnet MON for the real payout
-The week-4 gate is one real settlement. That needs mainnet MON in the deployer for the
-deploy, and a small amount of real AUSD to send. The payout itself can be trivial.
+Then deploy with `--account henad-mainnet --sender <address>`. One caveat came out of
+the contracts review: `script/Deploy.s.sol` reads `PRIVATE_KEY` from the environment and
+otherwise falls back to a placeholder address, so `--account` on its own would broadcast
+from the wrong sender. Tell me when the keystore exists and I will fix the script to
+match it.
 
 ---
 
 ## Not blocking yet, but dated
 
-### 8. Envio API token — now mandatory, not optional
-https://envio.dev/app/api-tokens (their API error message points at
-https://app.envio.dev/api-tokens if that one does not load). Goes in `.env` as
-`ENVIO_API_TOKEN`.
-
-This changed since the plan was written. Querying HyperSync without a token now returns
-401 — I confirmed it against Monad's endpoint. Tokens became mandatory in November 2025.
-Needed for the `/rates` indexer and the $1,000 Envio bounty. Not on the critical path
-until week 5, but free and quick.
-
-### 9. Register the project on hackathon.monad.xyz
+### 6. Register the project on hackathon.monad.xyz
 Pick the main track — **02 Consumer Products & Payments** — since you must choose one to
 be eligible for any bounty. Also still behind the login and unread: the official rules,
 the judging rubric, the team-size cap, and the demo-video length. Those change what gets
 built in week 6.
 
-### 10. Re-run the verification and restamp before submitting
+### 7. Re-run the verification and restamp before submitting
 The naira panel says "Read on-chain 10 Sep 2026". Judges read it in late October. The
 date is a single exported constant, so it is one edit once I re-run the reads. Ask me
 to do this in the last week.
@@ -114,7 +103,7 @@ to do this in the last week.
 
 ## Decisions I need from you
 
-### 11. Which optional bounties to chase in week 5
+### 8. Which optional bounties to chase in week 5
 Only if the mainnet payout is done. My read on each:
 
 - **Aurora Intents, $5,000.** Fits honestly as "fund your payout from any chain". Scope
@@ -125,7 +114,7 @@ Only if the mainnet payout is done. My read on each:
 - **Mera "One Passkey, Many Keys", $2,500.** A passkey-encrypted address book and private
   receipt memos. Small, and it also solves the stateless test.
 
-### 12. The MRC draft
+### 9. The MRC draft
 It has to be written and posted to forum.monad.xyz before it can be cited. The forum
 thread must exist first, because the standard's `discussions-to` field cannot point at a
 GitHub PR. Say when you want me to draft it.
@@ -134,16 +123,31 @@ GitHub PR. Say when you want me to draft it.
 
 ## Done
 
+Everything in this section was verified on 11 Sep 2026 by calling the service, not by
+looking at the config file.
+
+- ~~Pimlico API key~~ — works, and signed a real testnet sponsorship. What is left is
+  money rather than setup; see item 3.
+- ~~Etherscan API key~~ — works on Monad. Etherscan's own chain list confirms 143 is
+  Monad Mainnet at monadscan.com and 10143 is the testnet, and a live query on 143
+  returned `status 1`. Contract verification will work at deploy time.
+- ~~Envio API token~~ — works. The same HyperSync query returns 200 with your token and
+  401 without it, against Monad at height 103,744,618. Both `ENVIO_API_TOKEN_HS` and
+  `ENVIO_API_TOKEN_HR` are set.
+- ~~Testnet gas~~ — the deployer holds **24.53 testnet MON**, plenty.
+- ~~Testnet AUSD~~ — **I claimed it for you** rather than leave it to rot: 10,000 AUSD,
+  tx `0x17bd25db…a64e9`, block 61464510. The faucet had 700,000 AUSD left and nobody is
+  refilling it, so this is one fewer thing to lose. About 69 claims remain for everyone.
+- ~~Testnet deployer key~~ — funded and working at `0x6639edb9…4776`.
 - ~~Foundry upgraded to 1.8.1~~ — done 10 Sep, both Windows and WSL.
-- ~~Pimlico account~~ — created 10 Sep. Key and policy still outstanding, see item 3.
 - ~~Corridor decision~~ — option C: ship USD to GBP/EUR/CHF/JPY, design for the naira,
   never ship a fake one.
 - ~~Gas decision~~ — EIP-7702 with a Pimlico paymaster, ERC-3009 relayer as fallback.
 - ~~The unpriced-corridor panel~~ — rebuilt 11 Sep from verified on-chain evidence.
 - ~~Brand mark~~ — the Spread H is in the nav, footer, receipts and the favicon.
 - ~~The rand's tier~~ — dropped to Unpriced; it had no usable price on Monad.
-- ~~Pyth Hermes key~~ — not needed, and not worth getting. Confirmed: their price
-  endpoint returns 401 since an upgrade on 26 Aug 2026, a key means a new account at
-  pythdata.app plus a move to a different base URL, and the free tier is rate-limited
-  with paid plans from $500 a month. The dependency was removed instead, because
-  quoting Hermes would show a price that is not on the chain we settle on.
+- ~~Pyth Hermes key~~ — not needed, and not worth getting. Their price endpoint returns
+  401 since an upgrade on 26 Aug 2026, a key means a new account at pythdata.app plus a
+  different base URL, and paid plans start at $500 a month. The dependency was removed
+  instead, because quoting Hermes would show a price that is not on the chain we settle
+  on.

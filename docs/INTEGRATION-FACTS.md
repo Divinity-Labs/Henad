@@ -405,7 +405,7 @@ Consequence for the recipient side: GBPm arrives in the recipient's EOA with no 
 
 Pimlico SDK: `permissionless` ≥0.2.24 + `viem` ≥2.28, `to7702SimpleSmartAccount` (delegate Simple7702Account `0xe6Cae83BdE06E4c305530e199D7217f42808555B`, EP v0.8, **has code on 143**, source unverified on monadscan) or `to7702KernelSmartAccount` (Kernel v3.3 `0xd6CEDDe84be40893d153Be9d467CD6aD37875b28`, **has code on 143**). The 7702 authorization is signed with Mera's viem `LocalAccount.signAuthorization` and embedded in the first userOp, so the user never pays for the delegation tx either. https://docs.pimlico.io/guides/eip7702/demo ; https://docs.pimlico.io/references/permissionless/reference/accounts/to7702SimpleSmartAccount ; https://github.com/zerodevapp/kernel/blob/release/v3.3/README.md
 
-UNVERIFIED: Pimlico's paymaster contract address on 143 is not published; it is resolved by their API at runtime.
+~~UNVERIFIED: Pimlico's paymaster contract address on 143 is not published; it is resolved by their API at runtime.~~ **Resolved 2026-09-11, see 13.6.**
 
 Other delegates with code on 143: Alchemy MAv2-7702 `0x69007702764179f14F51cdce752f4f775d74E139` (allowlisted program only), MetaMask EIP7702StatelessDeleGator `0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B` (no paymaster of its own). https://www.alchemy.com/docs/wallets/smart-contracts/deployed-addresses ; https://github.com/MetaMask/delegation-framework/blob/main/documents/Deployments.md
 
@@ -415,6 +415,49 @@ Other delegates with code on 143: Alchemy MAv2-7702 `0x69007702764179f14F51cdce7
 - RPC `eip712Domain()` → name **"Agora Dollar"**, version **"1"**, chainId 143. Canonical ERC-3009/2612 typehashes confirmed. AUSD has an asset-freezing mechanism; handle reverts. https://docs.agora.finance/developer/advanced-erc-features.md
 - USDC mainnet is FiatTokenV2_2 (exact match), same ERC-3009 functions; EIP-712 domain name "USDC", version "2" (by FiatToken convention, separator not recomputed). https://monadscan.com/address/0x754704Bc059F8C67012fEd69BC8A327a5aafb603
 - x402 and its Permit2 proxy on Monad are not relevant: AUSD has native ERC-3009 and x402 facilitators cannot atomically call our router. https://docs.monad.xyz/guides/x402.md
+
+### 13.6 Pimlico plans and the mainnet gate — VERIFIED 2026-09-11 against the live API
+
+| Plan | Price | Credits / month | Rate limit | Testnets | Mainnets |
+| --- | --- | --- | --- | --- | --- |
+| **Free** | $0, no card | 1,000,000 | 500 req/min | YES, all 25+ | **NO** |
+| Pay-as-you-go | $0/mo, card required, then $1 per 100,000 credits | 10,000,000 | 5,000 req/min | YES | YES, all 25+ |
+
+Credit costs: `pm_sponsorUserOperation` 500, `pm_getPaymasterData` 300, `eth_chainId` 1, so the free
+million is roughly 2,000 sponsored testnet operations once the surrounding RPC calls are counted.
+Mainnet gas is fronted by Pimlico and billed at cost plus 10%; testnets carry no surcharge; the
+default billing threshold is $1,000 a month.
+https://docs.pimlico.io/guides/pricing ; https://www.pimlico.io/pricing
+
+Probed with our own free-plan key, one userOp, no `sponsorshipPolicyId`:
+
+- `pm_getPaymasterData` on **10143** returns real signed `paymasterData` (`0x0100006aa34309…`) from
+  paymaster `0x888888888888Ec68A58AB8094Cc1AD20Ba3D2402`. Testnet sponsorship works today, free,
+  with no policy and no card.
+- `pm_getPaymasterData` on **143** returns `-32603 "Insufficient Pimlico balance for sponsorship,
+  please top up - Balance required: 0.000005 USD, Balance available: 0 USD"`.
+- `eth_chainId` and `pm_getPaymasterStubData` succeed on **both** chains. The stub is a canned
+  response that commits nothing, so it is not a probe of the gate; only `pm_getPaymasterData` is.
+
+The mainnet gate is therefore an account balance checked when the paymaster signs, not a 4xx on the
+key, and the error names the shortfall in USD. Nothing about the key or the code changes between
+chains — only the funding.
+
+The paymaster itself is now verified rather than inferred: `0x888888888888Ec68A58AB8094Cc1AD20Ba3D2402`
+carries identical code on 143 and 10143 and holds a **2,587 MON deposit at EntryPoint v0.8** on
+mainnet. It matches `PIMLICO_PAYMASTER_V08` in `.env`.
+
+At the mainnet basefee measured the same day, 102 gwei, one payout sponsored at the 1,550,000
+path-A gas guard costs **0.1581 MON** before Pimlico's 10%. Gas is billed on the limit, so that is
+the real figure, not the 0.1501 MON the 1,471,301 measurement suggests.
+
+### 13.7 Testnet AUSD faucet — VERIFIED by execution 2026-09-11
+
+`0xd236c18D274E54FAccC3dd9DDA4b27965a73ee6C.requestFunds(address)` on Monad testnet sends **10,000
+AUSD** (6 dp) of `0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC`. Executed from the deployer:
+tx `0x17bd25db921c3432c29f855464a13b2ce68e2bb73fa0abbe4d62d79921ba64e9`, block 61464510, status 1,
+130,600 gas. Faucet reserves were 700,000 AUSD before the claim and are 690,000 after, so about 69
+claims remain and nobody is refilling it. The earlier note that execution was UNVERIFIED is closed.
 
 ### 13.4 Mera and sponsorship — UNVERIFIED
 
@@ -497,6 +540,6 @@ are under `scratch/` (git-ignored). Corrections to earlier sections are marked �
 ### 14.6 Still unverified after week-2 research
 
 - No transaction has been broadcast on Monad mainnet with this toolchain (follow-up agent hit a usage limit). Plan: deploy a throwaway contract first.
-- Pimlico `pm_sponsorUserOperation` in verifying mode was not executed (needs the paid key plus a policy id); the paymaster address is inferred from the singleton design and live ERC-20-mode responses.
+- ~~Pimlico `pm_sponsorUserOperation` in verifying mode was not executed…~~ **Closed 2026-09-11 (13.6):** `pm_getPaymasterData` now returns a real signed commitment on testnet from a free-plan key with no policy id, and the paymaster address is read from the API and confirmed on both chains. What remains untested is a sponsored userOp that actually lands, which needs the mainnet balance.
 - Mento's OracleAdapter, SortedOracles, ChainlinkRelayerFactory and relayer implementations are not source-verified on Sourcify; behaviour was matched by selector set and on-chain reads.
 - Monad's 10 MON reserve rule is enforced in Pimlico's simulation ("reserve balance violation") but was not reproduced with a broadcast; Foundry forks do not emulate it. Our flow never decrements payer MON.
