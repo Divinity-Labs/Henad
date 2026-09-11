@@ -107,19 +107,51 @@ receipt slip, nav, footer, corridor rows, live-rate and receipt data layer with 
 Sample-labelled fixture) is committed; the pages are being built from it, pulled
 forward from week 3.
 
-**Week 3 (18–24 Sep) — web `/send`, testnet.**
+**Week 3 (18–24 Sep) — web `/send`, on a local fork of mainnet.**
+
+> Corrected 11 Sep. This week previously said "testnet", and settling "against the
+> testnet pool". **There is no testnet pool.** Verified by reading chain 10143: the
+> Mento router, USDm, GBPm and every Chainlink fiat feed have no code there. Only
+> AUSD, USDC and WMON exist. `Deploy.s.sol` already refuses 10143 with
+> `NoMentoDeployment`, by design, because a corridor registered there could never
+> settle. A testnet deployment would have to be backed by a fake venue quoting a
+> made-up rate, which is the one thing this project exists not to do.
+
+The substitute is better than testnet, not worse: `anvil -n monad --hardfork
+monad:MonadTen --fork-url $MONAD_MAINNET_RPC_URL --chain-id 143` serves a real copy
+of mainnet, with the real pools, the real feeds and real AUSD, and the whole stack
+deploys onto it (§14.7). Payouts there are indistinguishable from mainnet payouts
+except that the money is not real.
+
 - Mera onboarding in Next.js: create/sign-in ceremony, derive account, show AUSD
-  balance. Stateless test passes.
+  balance. Stateless test passes. **Done 11 Sep** on desktop Chrome under
+  `rpId=localhost`; recovery from the passkey alone is the remaining half.
+- Wire the three walls between the interface and the transport: `HENAD` is an empty
+  literal, `sendPayout` returns early without a deployment, and `send-flow` imports
+  the `not wired` stub instead of the finished rail in `web/src/lib/settle/`. Widen
+  `assertRpIdForChain` so a local fork at chain 143 may use `localhost`, without
+  loosening the guard for real mainnet.
 - 7702 + Pimlico sponsored userOp: delegate + approve + settle in one batch.
-  ERC-3009 relayer path behind a feature flag.
-- Quote → spread disclosure in GBP and in bps → sign → receipt. Testnet AUSD from
-  Agora's faucet contract. Reference rate on testnet is UNAVAILABLE (no Chainlink
-  AUSD feed on 10143), so the testnet build uses the mainnet feed read-only for
-  display and settles against the testnet pool; label it.
+  ERC-3009 relayer path behind a feature flag. Pimlico signs for free on testnet but
+  the fork is chain 143, so path A (our own relayer) is the local rail.
+- Quote → spread disclosure in GBP and in bps → sign → receipt, end to end, on the
+  fork. Re-fork before each session: anvil stamps blocks with wall-clock time while
+  the forked oracle report stays frozen, so a fork more than a few minutes old
+  answers `OracleStale` (§14.7).
 
 **Week 4 (25 Sep – 1 Oct) — mainnet. The gate.**
 - Deploy contracts to Monad mainnet. One real AUSD → GBPm payout of a trivial
   amount, on a weekday inside FX market hours.
+- **Deploy as soon as the local flow works, rather than waiting for this window.**
+  The contracts have no setters and no upgrade path, so waiting does not improve
+  them; only use does. The deploy costs 1.25 MON whichever day it happens, and
+  landing it early turns every later demo into a real one and leaves room to
+  redeploy at a new address if something is wrong.
+- Until henad.xyz exists, the Vercel site ships **read-only**: `/rates`, `/docs`,
+  `/receipts` and any `/receipt/<id>` permalink all work with no contracts and no
+  passkeys, so nothing binds an rpId. `/send` goes live on henad.xyz, because a
+  passkey created on a Vercel host can never control a mainnet account anywhere
+  else.
 - `/receipt/[intentId]` live, server-rendered, OG image, shareable.
 - PWA installable; tested on a real Android phone on throttled 3G.
 - **If real value has not moved by 1 Oct, cut scope, not quality.**
