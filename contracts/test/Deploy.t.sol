@@ -86,9 +86,31 @@ contract DeployTest is Test {
     /// completion, and the dry run is the first command in the deploy runbook, so without
     /// the split it would overwrite a real record with fiction on every rehearsal.
     function test_deploymentFile_onlyABroadcastWritesTheCanonicalRecord() public view {
-        assertEq(script.deploymentFile(143, true), "./deployments/143.json", "broadcast");
-        assertEq(script.deploymentFile(143, false), "./deployments/143.dry-run.json", "simulation");
-        assertEq(script.deploymentFile(10_143, true), "./deployments/10143.json", "chain id is not hardcoded");
+        assertEq(script.deploymentFile(143, true, false), "./deployments/143.json", "broadcast");
+        assertEq(script.deploymentFile(143, false, false), "./deployments/143.dry-run.json", "simulation");
+        assertEq(script.deploymentFile(10_143, true, false), "./deployments/10143.json", "chain id is not hardcoded");
+    }
+
+    /// A local fork of mainnet has the same chain id as mainnet, and `--broadcast` against
+    /// it is a real broadcast, so `isBroadcasting` alone cannot tell the two apart. Without
+    /// the third flag, `anvil --fork-url $MONAD_MAINNET_RPC_URL --chain-id 143` writes
+    /// laptop addresses into the record the backend reads as mainnet's.
+    function test_deploymentFile_aLocalForkNeverWritesTheCanonicalRecord() public view {
+        assertEq(script.deploymentFile(143, true, true), "./deployments/143.local.json", "local broadcast");
+        assertEq(script.deploymentFile(10_143, true, true), "./deployments/10143.local.json", "local, any chain");
+        // A simulation is a simulation whether or not the node was local.
+        assertEq(script.deploymentFile(143, false, true), "./deployments/143.dry-run.json", "local simulation");
+    }
+
+    /// The safety net under LOCAL_FORK=1: anvil publishes these ten keys in its own
+    /// startup banner, so an address derived from them can never own a real deployment.
+    /// Forgetting the environment variable is the likely mistake; this catches it.
+    function test_isLocalFork_anvilDefaultAccountsForceLocalMode() public view {
+        assertTrue(script.isLocalFork(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266), "anvil account 0");
+        assertTrue(script.isLocalFork(0xa0Ee7A142d267C1f36714E4a8F75612F20a79720), "anvil account 9");
+        assertTrue(script.isAnvilDefaultAccount(0x70997970C51812dc3A010C7d01b50e0d17dc79C8), "anvil account 1");
+        assertFalse(script.isAnvilDefaultAccount(address(this)), "an ordinary address is not anvil's");
+        assertFalse(script.isLocalFork(0x6639edb90BA4407a36E0d8ce2d9168A0d4844776), "our own deployer, no LOCAL_FORK set");
     }
 
     /// The guard that picks between them. Any context that is not a broadcast — this test,

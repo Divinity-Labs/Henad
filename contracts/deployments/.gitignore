@@ -2,3 +2,8 @@
 # from a simulated sender, so the file is never a deployment record; only the
 # broadcast's ./deployments/<chainId>.json is. See script/Deploy.s.sol:deploymentFile.
 *.dry-run.json
+
+# Local-node runs (`anvil --fork-url ... --chain-id 143` plus `--broadcast`). The chain id
+# is mainnet's and the broadcast is real, so only `localFork` separates these addresses
+# from the ones on Monad. See script/Deploy.s.sol:isLocalFork.
+*.local.json

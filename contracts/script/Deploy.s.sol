@@ -280,21 +280,60 @@ contract Deploy is Script {
         return vm.isContext(VmSafe.ForgeContext.ScriptBroadcast) || vm.isContext(VmSafe.ForgeContext.ScriptResume);
     }
 
-    /// @notice Path of the deployment record for `chainId`.
-    /// @dev Only a real broadcast may write `deployments/<chainId>.json` — that file is
-    ///      the deployment record the backend and the verification commands read. A dry
-    ///      run writes `<chainId>.dry-run.json` (git-ignored) instead, because its
-    ///      addresses come from a simulated sender. Without the split, the dry run that
-    ///      docs/CONTRACTS-SPEC.md tells you to run first would silently overwrite a real
-    ///      record with simulated addresses.
-    /// @param chainId   Chain the record describes.
-    /// @param broadcast Whether this run sends transactions; see `isBroadcasting`.
-    /// @return path Relative path under `./deployments`.
-    function deploymentFile(uint256 chainId, bool broadcast) public pure returns (string memory path) {
-        return string.concat("./deployments/", vm.toString(chainId), broadcast ? ".json" : ".dry-run.json");
+    /// @notice True when this run targets a local development node rather than the real
+    ///         chain, even though `block.chainid` says otherwise.
+    /// @dev `anvil -n monad --fork-url $MONAD_MAINNET_RPC_URL --chain-id 143` is a
+    ///      faithful copy of mainnet: the same Mento pools, the same feeds, the same
+    ///      chain id. A `--broadcast` against it IS a broadcast as far as
+    ///      `isBroadcasting` can tell, so without this check the local run writes
+    ///      `deployments/143.json` and the mainnet deployment record silently becomes a
+    ///      set of addresses that exist only on a laptop. That is the same class of bug
+    ///      as the dry-run overwrite, one layer down, and it is worse: the addresses are
+    ///      real, they are just real somewhere else.
+    ///
+    ///      Set `LOCAL_FORK=1` when pointing the script at a local node. As a safety net
+    ///      a deployer that is one of anvil's ten default accounts forces local mode on
+    ///      its own, since those keys are published in anvil's own banner and can never
+    ///      legitimately own a mainnet deployment.
+    /// @param deployer The address this run broadcasts from.
+    function isLocalFork(address deployer) public view returns (bool) {
+        if (vm.envOr("LOCAL_FORK", false)) return true;
+        return isAnvilDefaultAccount(deployer);
     }
 
-    /// @dev deployments/<chainId>.json. Needs the `write` fs_permission on ./deployments
+    /// @notice Whether `who` is one of the ten accounts anvil derives from its published
+    ///         test mnemonic ("test test ... junk").
+    function isAnvilDefaultAccount(address who) public pure returns (bool) {
+        return who == 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+            || who == 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+            || who == 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
+            || who == 0x90F79bf6EB2c4f870365E785982E1f101E93b906
+            || who == 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+            || who == 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc
+            || who == 0x976EA74026E726554dB657fA54763abd0C3a0aa9
+            || who == 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955
+            || who == 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f
+            || who == 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720;
+    }
+
+    /// @notice Path of the deployment record for `chainId`.
+    /// @dev Only a real broadcast against the real chain may write
+    ///      `deployments/<chainId>.json` — that file is the deployment record the
+    ///      backend and the verification commands read. A dry run writes
+    ///      `<chainId>.dry-run.json` instead, because its addresses come from a
+    ///      simulated sender; a local fork writes `<chainId>.local.json`, because its
+    ///      addresses live only on the node that made them. Both are git-ignored.
+    /// @param chainId   Chain the record describes.
+    /// @param broadcast Whether this run sends transactions; see `isBroadcasting`.
+    /// @param local     Whether those transactions go to a local node; see `isLocalFork`.
+    /// @return path Relative path under `./deployments`.
+    function deploymentFile(uint256 chainId, bool broadcast, bool local) public pure returns (string memory path) {
+        if (!broadcast) return string.concat("./deployments/", vm.toString(chainId), ".dry-run.json");
+        return string.concat("./deployments/", vm.toString(chainId), local ? ".local.json" : ".json");
+    }
+
+    /// @dev deployments/<chainId>[.local|.dry-run].json; see `deploymentFile`. Needs the
+    ///      `write` fs_permission on ./deployments
     ///      in foundry.toml. `corridorsRegistered` is false when OWNER is a third party
     ///      and this run only printed the calldata: the file must never claim corridors
     ///      that are not on-chain.
@@ -309,6 +348,8 @@ contract Deploy is Script {
             entries[i] = vm.serializeBytes32(key, "id", Corridor.id(specs[i].source, specs[i].target));
         }
 
+        bool local = isLocalFork(owner);
+
         string memory root = "henad";
         vm.serializeAddress(root, "rateSource", address(rateSource));
         vm.serializeAddress(root, "venueAdapter", address(venueAdapter));
@@ -316,12 +357,16 @@ contract Deploy is Script {
         vm.serializeAddress(root, "corridorRouter", address(corridorRouter));
         vm.serializeAddress(root, "owner", owner);
         vm.serializeBool(root, "corridorsRegistered", corridorsRegistered);
+        vm.serializeBool(root, "localFork", local);
         vm.serializeUint(root, "deployedAtBlock", block.number);
         string memory json = vm.serializeString(root, "corridors", entries);
 
-        string memory path = deploymentFile(block.chainid, isBroadcasting());
+        string memory path = deploymentFile(block.chainid, isBroadcasting(), local);
         vm.writeJson(json, path);
         console2.log("wrote", path);
+        if (local) {
+            console2.log("  localFork=true: these addresses exist only on the local node, not on chain", block.chainid);
+        }
         if (!corridorsRegistered) {
             console2.log("  corridorsRegistered=false: the owner must submit the calldata printed above");
         }

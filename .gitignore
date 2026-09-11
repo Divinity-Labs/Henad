@@ -15,6 +15,11 @@ web/next-env.d.ts
 contracts/out/
 contracts/cache/
 contracts/broadcast/**/dry-run/
+# A local fork of mainnet broadcasts under the same chain id as mainnet, so a local run's
+# artefacts sit at the same path as a real one and nothing in the path can tell them
+# apart. The deployment record we actually rely on is contracts/deployments/<chainId>.json,
+# which script/Deploy.s.sol:isLocalFork keeps separate; this directory is forge's cache.
+contracts/broadcast/
 
 # misc
 .DS_Store

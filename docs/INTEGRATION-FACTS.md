@@ -537,6 +537,34 @@ are under `scratch/` (git-ignored). Corrections to earlier sections are marked �
 - ⚠ Windows-native Foundry was 1.4.4 and could not compile 0.8.31 (checksum bug) or read `network = "monad"`; it has been upgraded to 1.8.1 (`foundryup -i 1.8.1`). Plain `foundryup` and the foundry-toolchain action's `stable` still install 1.5.1 — **CI must pin `version: v1.8.1`**.
 - Sourcify match levels: Router and FPMM implementation are "match" (bytecode equal, metadata hash differs), not "exact match". USDC implementation and EntryPoint v0.8 are exact.
 
+### 14.7 A local Monad on anvil — VERIFIED by running it, 2026-09-11
+
+`anvil -n monad --hardfork monad:MonadTen --fork-url $MONAD_MAINNET_RPC_URL --chain-id 143`
+serves a faithful copy of mainnet on `127.0.0.1:8545`: real Mento router code, real AUSD,
+and the GBP/USD feed reading 1.3507. `forge script script/Deploy.s.sol:Deploy --broadcast`
+against it deploys the whole stack and registers all five corridors, because the script's
+chain guard sees chain id 143 and is satisfied.
+
+Two things that follow, both learned the hard way.
+
+**A local broadcast is a broadcast.** `isBroadcasting()` cannot tell anvil from Monad, so
+the first local run wrote `deployments/143.json` — the canonical mainnet record — with
+laptop addresses owned by anvil's account 0. `deploymentFile` now takes a third flag and
+`isLocalFork` sets it, from `LOCAL_FORK=1` or from recognising anvil's ten published
+default accounts, so a local run lands on `<chainId>.local.json` and carries
+`"localFork": true`. `contracts/broadcast/` is git-ignored for the same reason: a local
+run's artefacts sit at the same path as a real one and nothing in the path separates them.
+
+**The fork goes oracle-stale in minutes.** anvil stamps each new block with wall-clock
+time while the forked Mento price report stays frozen at the fork block, so the gap
+between forking and transacting becomes staleness. Measured: `OracleAdapter.getRate` for
+the GBPm feed returns `isRecent = true` at the fork block on real mainnet and
+`isRecent = false` on the fork about five minutes later, which makes
+`CorridorRouter.previewQuote` answer `OracleStale` and blocks every FX settlement. Fork
+and transact inside the same few minutes, or re-fork. Forge's own fork tests are immune
+because `vm.createSelectFork` pins `block.timestamp` to the forked block and no wall time
+passes.
+
 ### 14.6 Still unverified after week-2 research
 
 - No transaction has been broadcast on Monad mainnet with this toolchain (follow-up agent hit a usage limit). Plan: deploy a throwaway contract first.
