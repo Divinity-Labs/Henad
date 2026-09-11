@@ -19,19 +19,20 @@ exist before the first mainnet user, and the code already refuses to build a mai
 client under any other rpId. If it is not in hand by 25 Sep, the mainnet demo happens on
 the Vercel domain and the receipt permalink lives there permanently.
 
-### 2. Test the Mera passkey ceremony on a real device
-**The highest-risk untested thing in the project.** The account layer for the entire
-product has never actually run. The code typechecks and builds, but no passkey has been
-created, no key derived, no signature produced. The Agora bounty explicitly requires
-passkey onboarding in the demo, so a problem here is a problem with the main prize.
+### 2. Finish the passkey test — creation works, restore is untested
+**Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
+Manager under `rpId=localhost`, the ceremony completed: a passkey was created, the PRF
+output derived a key, and the account chip rendered `0xC8C7…2Db6`. The account layer of
+the product runs. That was the single highest-risk unknown and it is closed.
 
-Needs a passkey-capable device: Android with Google Password Manager, or iOS 18+, or
-desktop Chrome with a synced Google profile. It will not work on a desktop Chrome local
-profile, Bitwarden or Dashlane — those lack the PRF extension the derivation depends on.
+**What is still untested is the half that matters for a lost device.** Clear the site
+data for localhost, reload `/send`, and press "I already have a passkey". The same
+address must come back from the passkey alone, with nothing in browser storage to help
+it. If it does not, the product has no recovery story and the Agora bounty's passkey
+requirement is not really met.
 
-Run `pnpm dev` in `web/`, open `/send`, press "Continue with passkey", and tell me what
-happens. Then clear the site data and press "I already have a passkey" — the account
-must come back from the passkey alone.
+Note the derivation is deterministic per passkey, so a *second* passkey gives a
+different address. Restore must reuse the first one.
 
 ### 3. Pimlico — put money on the account before 25 Sep
 Your key works. I called the API with it, and the free plan really is free, so your
