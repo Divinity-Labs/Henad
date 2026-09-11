@@ -13,22 +13,22 @@ export const revalidate = 60
 
 type Props = { params: Promise<{ intentId: string }> }
 
-async function receiptFor(params: Props['params']): Promise<Receipt> {
+async function receiptFor(params: Props['params']): Promise<Receipt | null> {
   const { intentId } = await params
-  if (!isIntentId(intentId)) notFound()
-  const receipt = await loadReceipt(intentId)
-  if (!receipt) notFound()
-  return receipt
+  return isIntentId(intentId) ? loadReceipt(intentId) : null
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const r = await receiptFor(params)
+  // The page throws notFound(); throwing it from here as well leaves the 404 to client-side rendering.
+  if (!r) return { title: 'No receipt with that id' }
   const c = r.corridor
   const delivered = money(r.deliveredAmount, r.targetAsset.decimals, c.targetSymbol, c.currencyDp)
-  const title = `Receipt · ${delivered} · ${c.source} → ${c.target}`
+  const title = `${r.sample ? 'Sample receipt' : 'Receipt'} · ${delivered} · ${c.source} → ${c.target}`
   const paid = money(r.sourceAmount, r.sourceAsset.decimals, '$')
   const spread = spreadLine(r.spreadCost, r.targetAsset.decimals, c.targetSymbol, r.spreadBps, { dp: c.currencyDp })
   const description =
+    (r.sample ? "The design's sample settlement, nothing on chain. " : '') +
     `${shortAddress(r.recipient)} received ${delivered} for ${paid} on Monad. Spread ${spread} against ${c.feed?.label ?? 'the reference'}. ` +
     `Reference ${rateLine(r.referenceRate, c.targetSymbol, c.rateDp)}, executed ${rateLine(r.executedRate, c.targetSymbol, c.rateDp)}.`
   return {
@@ -41,6 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ReceiptPage({ params }: Props) {
   const r = await receiptFor(params)
+  if (!r) notFound()
   const { host, origin } = await requestOrigin()
   const permalink = `${origin}/receipt/${r.intentId}`
   const deployment = deploymentAddresses()
@@ -72,11 +73,13 @@ export default async function ReceiptPage({ params }: Props) {
                   Open on Monadscan ↗
                 </Button>
               ) : (
-                <Button variant="disabled" size="lg" title="Sample settlement · nothing on chain">
+                <Button variant="disabled" size="lg">
                   Open on Monadscan ↗
                 </Button>
               )}
               <CopyPermalink url={permalink} />
+              {/* The trailing slot from the canvas; says why the explorer button is off. A disabled button cannot show a title. */}
+              {!explorer && <span className="label text-muted sm:ml-auto">{r.sample ? 'Sample settlement · nothing on chain' : 'No transaction recorded'}</span>}
             </div>
           </section>
         </main>

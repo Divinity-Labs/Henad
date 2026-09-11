@@ -270,11 +270,11 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
         }
         mobileRight={chip ?? <BuiltOnMonad height={11} />}
       />
-      <div className="dotgrid flex flex-1 flex-col md:items-center md:px-6 md:py-12">
+      <main className="dotgrid flex flex-1 flex-col md:items-center md:px-6 md:py-12">
         <section aria-label="Send a payout" className="flex w-full flex-1 flex-col bg-canvas md:w-[420px] md:min-h-[728px] md:flex-none md:border md:border-hairline">
           {view}
         </section>
-      </div>
+      </main>
     </div>
   )
 }

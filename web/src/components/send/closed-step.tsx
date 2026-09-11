@@ -33,7 +33,9 @@ export function ClosedStep({
 }) {
   const c = corridor
   const nowS = Math.floor(now / 1000)
-  const next = nextTransition(nowS)
+  // While the market is open (the state forced by ?demo=closed), the first transition is the close; the open is the one after it.
+  const first = nextTransition(nowS)
+  const next = first.opens ? first : nextTransition(first.at)
   const opens = hm(next.at)
   const day = weekday(next.at, 'long')
   const name = c.targetName.charAt(0).toUpperCase() + c.targetName.slice(1)
