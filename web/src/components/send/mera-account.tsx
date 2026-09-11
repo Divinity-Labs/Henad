@@ -1,16 +1,69 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { MONAD_MAINNET_ID, type MonadChainId } from '@henad/core'
 import { shortAddress } from '@/lib/format'
 import { Button } from '@/components/ui/Button'
 import { Notice } from './send-ui'
 
-/** The signed-in address as the header chip: "0x7a3f…9c2e". */
-export function AccountChip({ address }: { address: string }) {
+function ClipboardIcon() {
   return (
-    <span title={address} className="rounded-[4px] border border-border bg-surface px-[10px] py-[6px] font-mono text-[11px] text-ink">
-      {shortAddress(address)}
-    </span>
+    <svg aria-hidden viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.4">
+      <rect x="5.2" y="2.2" width="8.6" height="10.6" rx="1.6" />
+      <path d="M10.8 5.2H3.8a1.6 1.6 0 0 0-1.6 1.6v6.6a1.6 1.6 0 0 0 1.6 1.6h5.4a1.6 1.6 0 0 0 1.6-1.6" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M3 8.4 6.3 11.7 13 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/**
+ * The signed-in address as the header chip: "0x7a3f…9c2e", click to copy the full 42
+ * characters. The chip is the only place the address appears, and a truncated address is
+ * useless for funding an account or pasting into an explorer, so it has to be reachable
+ * without devtools. The address text never changes width on copy — only the icon and the
+ * accent do — so the nav does not jump.
+ */
+export function AccountChip({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(address)
+      setCopied(true)
+      window.clearTimeout(timer.current)
+      timer.current = window.setTimeout(() => setCopied(false), 1800)
+    } catch {
+      // Clipboard blocked (insecure origin, or permission denied). The title attribute
+      // still carries the full address, so selecting it by hand remains possible.
+      setCopied(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={address}
+      aria-label={`Copy full address ${address}`}
+      className={`press flex items-center gap-[7px] rounded-[4px] border bg-surface px-[10px] py-[6px] font-mono text-[11px] transition-colors ${
+        copied ? 'border-purple text-purple' : 'border-border text-ink hover:border-muted'
+      }`}
+    >
+      <span>{shortAddress(address)}</span>
+      {copied ? <CheckIcon /> : <ClipboardIcon />}
+      <span className="sr-only" aria-live="polite">
+        {copied ? 'Address copied' : ''}
+      </span>
+    </button>
   )
 }
 
