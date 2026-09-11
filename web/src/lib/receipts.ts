@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
-import { parseAbiItem } from 'viem'
-import { HENAD, rateAttestationAbi, spreadCost } from '@henad/core'
+import { getAddress, isAddress, parseAbiItem } from 'viem'
+import { HENAD, TOKENS, rateAttestationAbi, spreadCost, type HenadDeployment } from '@henad/core'
 import { appChain, appChainId } from './chain'
 import { CORRIDORS, corridorById, type Corridor } from './corridors'
 import { SAMPLE_RECEIPT, fixturesEnabled } from './fixtures'
@@ -32,22 +32,52 @@ export interface Receipt {
   sample: boolean
 }
 
-export function deploymentAddresses() {
-  return HENAD[appChainId()] ?? null
+/**
+ * Henad's own contracts on the configured chain, or null when none are deployed.
+ *
+ * `HENAD` in @henad/core is the registry once a deployment is permanent. Until then
+ * the two NEXT_PUBLIC addresses fill in, which is what makes a local fork and a fresh
+ * testnet deploy usable without editing a package. Both must be present and valid:
+ * half a deployment reads as no deployment, because a router without its attestation
+ * can produce a payout whose receipt cannot be found.
+ *
+ * This is the single place the interface asks "are we deployed?". `settle/config.ts`
+ * applies the same fallback for the router alone.
+ */
+export function deploymentAddresses(): HenadDeployment | null {
+  const deployed = HENAD[appChainId()]
+  if (deployed) return deployed
+  const router = process.env.NEXT_PUBLIC_CORRIDOR_ROUTER_ADDRESS?.trim()
+  const attestation = process.env.NEXT_PUBLIC_RATE_ATTESTATION_ADDRESS?.trim()
+  if (!router || !attestation || !isAddress(router) || !isAddress(attestation)) return null
+  const block = Number(process.env.NEXT_PUBLIC_DEPLOYED_AT_BLOCK ?? 0)
+  return {
+    corridorRouter: getAddress(router),
+    rateAttestation: getAddress(attestation),
+    deployedAtBlock: BigInt(Number.isFinite(block) && block > 0 ? block : 0),
+  }
 }
 
 const payoutSettledEvent = parseAbiItem(
   'event PayoutSettled(bytes32 indexed intentId, bytes32 indexed corridor, address indexed payer, address recipient, address sourceAsset, address targetAsset, (bytes32 corridor, bytes32 referenceObservation, uint128 referenceRate, uint128 executedRate, uint128 sourceAmount, uint128 deliveredAmount, address rateSource, int32 spreadBps, uint64 settledAt, address venue, uint64 settledAtBlock) a)',
 )
 
+/**
+ * Symbol and decimals for an asset named in a receipt.
+ *
+ * The stablecoins are taken from the token registry for the configured chain rather
+ * than written out here. They used to be two literals with no `address` field, which
+ * the address lookup could therefore never match, so every real receipt fell through
+ * to the "token, 18 decimals" default and reported $10.00 paid as 0.00000000001. The
+ * design fixture hid it, because a hand-built receipt carries its own asset info.
+ */
 function assetInfo(address: Address) {
+  const chainTokens = Object.values(TOKENS[appChainId()] ?? {})
   const all = [
-    { symbol: 'AUSD', decimals: 6 },
-    { symbol: 'USDC', decimals: 6 },
+    ...chainTokens.map((t) => ({ symbol: t.symbol, decimals: t.decimals, address: t.address })),
     ...CORRIDORS.filter((c) => c.targetAsset).map((c) => ({ symbol: c.targetAsset!.symbol, decimals: c.targetAsset!.decimals, address: c.targetAsset!.address })),
   ]
-  const byAddr = (a: string) => all.find((x) => 'address' in x && (x as { address: string }).address.toLowerCase() === a.toLowerCase())
-  const known = byAddr(address)
+  const known = all.find((x) => x.address.toLowerCase() === address.toLowerCase())
   return { symbol: known?.symbol ?? 'token', address, decimals: known?.decimals ?? 18 }
 }
 

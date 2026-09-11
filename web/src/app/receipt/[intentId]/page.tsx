@@ -9,7 +9,10 @@ import { money, rateLine, shortAddress, spreadLine } from '@/lib/format'
 import { headline, isIntentId, loadReceipt, monadscanAddress, monadscanTx, requestOrigin } from '@/lib/receipt-page'
 import { deploymentAddresses, type Receipt } from '@/lib/receipts'
 
-export const revalidate = 60
+// Read per request: the rate and the receipt are read from the chain, and a build
+// artefact of either would be a number the chain no longer has. liveRates() coalesces
+// concurrent reads for 12 s in process, which is the throttle this used to get from ISR.
+export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ intentId: string }> }
 

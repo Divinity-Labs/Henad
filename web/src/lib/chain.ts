@@ -9,6 +9,29 @@ import {
   type MonadChainId,
 } from '@henad/core'
 
+/**
+ * True when the configured chain is served by a local fork rather than the real
+ * network (`anvil -n monad --fork-url … --chain-id 143`, docs/INTEGRATION-FACTS.md
+ * §14.7). A fork reports mainnet's chain id because it is a copy of mainnet, so
+ * nothing derived from the chain id can tell them apart and the operator has to say.
+ *
+ * It has one job beyond relaxing the passkey domain guard, and it matters more: the
+ * public Monad endpoints are dropped from the transport entirely. Without that, a
+ * `fallback()` whose first entry is a dead local node quietly promotes real mainnet
+ * to primary, and the relayer broadcasts a real transaction while the screen still
+ * says local. Failing is the only acceptable behaviour there.
+ */
+export function isLocalFork(): boolean {
+  return process.env.NEXT_PUBLIC_LOCAL_FORK?.trim() === '1'
+}
+
+/** On a local fork the custom RPC is the only endpoint; there is no falling back to the real chain. */
+function localOnly(custom: string | undefined): string[] | null {
+  if (!isLocalFork()) return null
+  if (!custom) throw new Error('NEXT_PUBLIC_LOCAL_FORK=1 needs NEXT_PUBLIC_MONAD_RPC_URL pointing at the local node')
+  return [custom]
+}
+
 /** Chain the app is configured for. Mainnet only when explicitly set. */
 export function appChainId(): MonadChainId {
   const raw = Number(process.env.NEXT_PUBLIC_MONAD_CHAIN_ID ?? MONAD_TESTNET_ID)
@@ -36,7 +59,7 @@ let mainnetClient: PublicClient | undefined
 export function mainnet(): PublicClient {
   if (!mainnetClient) {
     const custom = process.env.NEXT_PUBLIC_MONAD_RPC_URL
-    const urls = custom && appChainId() === MONAD_MAINNET_ID ? [custom, ...MAINNET_RPCS] : [...MAINNET_RPCS]
+    const urls = localOnly(custom) ?? (custom && appChainId() === MONAD_MAINNET_ID ? [custom, ...MAINNET_RPCS] : [...MAINNET_RPCS])
     mainnetClient = createPublicClient({
       chain: chainFor(MONAD_MAINNET_ID),
       transport: fallback(urls.map((u) => http(u, { fetchOptions: { cache: 'no-store' }, batch: true }))),
@@ -52,7 +75,7 @@ export function appChain(): PublicClient {
     const id = appChainId()
     const custom = process.env.NEXT_PUBLIC_MONAD_RPC_URL
     const defaults = id === MONAD_MAINNET_ID ? MAINNET_RPCS : TESTNET_RPCS
-    const urls = custom ? [custom, ...defaults] : [...defaults]
+    const urls = localOnly(custom) ?? (custom ? [custom, ...defaults] : [...defaults])
     appClient = createPublicClient({
       chain: chainFor(id),
       transport: fallback(urls.map((u) => http(u, { fetchOptions: { cache: 'no-store' }, batch: true }))),

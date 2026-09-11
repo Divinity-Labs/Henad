@@ -22,7 +22,10 @@ import { liveRates } from '@/lib/rates'
 import { deploymentAddresses, listReceipts } from '@/lib/receipts'
 
 /** Rate reads and the ledger are cached 30 s; the page follows them. */
-export const revalidate = 30
+// Read per request: the rate and the receipt are read from the chain, and a build
+// artefact of either would be a number the chain no longer has. liveRates() coalesces
+// concurrent reads for 12 s in process, which is the throttle this used to get from ISR.
+export const dynamic = 'force-dynamic'
 
 /**
  * Landing, artboards L1 (desktop) and L1m (mobile) as one responsive page.

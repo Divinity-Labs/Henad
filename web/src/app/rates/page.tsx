@@ -16,7 +16,10 @@ import { liveRates } from '@/lib/rates'
 import { listReceipts, totals } from '@/lib/receipts'
 
 export const metadata: Metadata = { title: 'Rates' }
-export const revalidate = 30
+// Read per request: the rate and the receipt are read from the chain, and a build
+// artefact of either would be a number the chain no longer has. liveRates() coalesces
+// concurrent reads for 12 s in process, which is the throttle this used to get from ISR.
+export const dynamic = 'force-dynamic'
 
 /** Rows the Settlements block lists; the hero and Routes are totalled over the whole ledger. */
 const LEDGER_ROWS = 50

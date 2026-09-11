@@ -5,7 +5,10 @@ import { notFound } from 'next/navigation'
 import { money, rateLine, shortAddress, shortHash, utcStamp } from '@/lib/format'
 import { isIntentId, loadReceipt, requestOrigin } from '@/lib/receipt-page'
 
-export const revalidate = 60
+// Read per request: the rate and the receipt are read from the chain, and a build
+// artefact of either would be a number the chain no longer has. liveRates() coalesces
+// concurrent reads for 12 s in process, which is the throttle this used to get from ISR.
+export const dynamic = 'force-dynamic'
 export const alt = 'Henad settlement receipt'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'

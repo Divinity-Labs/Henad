@@ -12,7 +12,7 @@ import {
 import { toViemAccount } from '@category-labs/mera/viem'
 import { isAddress, type Address, type LocalAccount } from 'viem'
 import { RpIdMismatchError, TOKENS, assertRpIdForChain, erc20Abi, type TokenInfo } from '@henad/core'
-import { appChain, appChainId } from './chain'
+import { appChain, appChainId, isLocalFork } from './chain'
 import type { SourceAssetSymbol } from './corridors'
 
 /**
@@ -134,7 +134,7 @@ export async function continueWithPasskey(): Promise<MeraAccount> {
 
 export async function createPasskeyAccount(): Promise<MeraAccount> {
   const id = rpId()
-  assertRpIdForChain(appChainId(), id)
+  assertRpIdForChain(appChainId(), id, isLocalFork())
   const created = await createPasskeyWithPrfOutput({
     rp: { id, name: RP_NAME },
     user: { name: `henad · ${new Date().toISOString().slice(0, 10)}`, displayName: 'Henad account' },
@@ -150,7 +150,7 @@ export async function createPasskeyAccount(): Promise<MeraAccount> {
  */
 export async function signInWithPasskey(credential?: StoredPasskey): Promise<MeraAccount> {
   const id = rpId()
-  assertRpIdForChain(appChainId(), id)
+  assertRpIdForChain(appChainId(), id, isLocalFork())
   const asserted = await getPasskeyPrfOutput({ rpId: id, ...(credential ? { credential } : {}) })
   const account = accountFromPrf(asserted.prfOutput, asserted.credentialId)
   storePasskey(credential?.credentialId === asserted.credentialId ? credential : { credentialId: asserted.credentialId }, account.address)

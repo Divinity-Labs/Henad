@@ -48,8 +48,36 @@ async function readChainlink(feed: FeedRef) {
  * on-chain through the Pyth contract with getPriceNoOlderThan and let it revert.
  */
 
+/**
+ * Coalesce the per-request rate reads.
+ *
+ * Every page that shows a rate is dynamic, so each view would otherwise issue one
+ * `latestRoundData` per corridor against a public RPC capped at 25 requests a second.
+ * This is a deliberately small, deliberately in-process cache: it lives in module
+ * scope, dies with the server, and cannot outlive its TTL. That is the whole point —
+ * the framework cache it replaces persisted to disk, survived restarts, and served a
+ * 15-hour-old rate under a badge that said "stale" (see chain.ts).
+ *
+ * 12 seconds sits under the 240 s feed heartbeat by a wide margin, so the age and the
+ * staleness badge stay honest to within a rounding error.
+ */
+const RATES_TTL_MS = 12_000
+let ratesCache: { at: number; value: Promise<LiveRate[]> } | null = null
+
 /** Live reference rates for every corridor in the registry. Unpriced rows return rate null. */
 export async function liveRates(): Promise<LiveRate[]> {
+  const now = Date.now()
+  if (ratesCache && now - ratesCache.at < RATES_TTL_MS) return ratesCache.value
+  const value = readAllRates()
+  ratesCache = { at: now, value }
+  // A failed read must not be cached, or one RPC hiccup freezes the site for 12 s.
+  value.catch(() => {
+    if (ratesCache?.value === value) ratesCache = null
+  })
+  return value
+}
+
+async function readAllRates(): Promise<LiveRate[]> {
   const now = Math.floor(Date.now() / 1000)
   const closed = !isFxMarketOpen(now)
   return Promise.all(

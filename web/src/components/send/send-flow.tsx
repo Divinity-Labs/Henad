@@ -2,7 +2,7 @@
 
 import { useEffect, useReducer, useRef } from 'react'
 import { isAddress, toHex } from 'viem'
-import { HENAD, MONAD_MAINNET_ID, hashIntent, type Intent } from '@henad/core'
+import { MONAD_MAINNET_ID, hashIntent, type Intent } from '@henad/core'
 import { Nav } from '@/components/Nav'
 import { BuiltOnMonad } from '@/components/ui/Brand'
 import { Button } from '@/components/ui/Button'
@@ -19,9 +19,10 @@ import {
   unlockStoredAccount,
   type MeraAccount,
 } from '@/lib/send-mera'
+import { deploymentAddresses } from '@/lib/receipts'
 import { quoteMaths, type QuoteDto } from '@/lib/send-quote'
 import { receiptFromDto, type ReceiptDto } from '@/lib/send-serial'
-import { settle } from '@/lib/send-settle'
+import { settle } from '@/lib/settle'
 import { AmountStep } from './amount-step'
 import { ClosedStep } from './closed-step'
 import { AccountChip, MeraSignIn } from './mera-account'
@@ -46,7 +47,7 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
   const [s, dispatch] = useReducer(sendReducer, initial, initialState)
   const session = useRef<MeraAccount | null>(null)
   const chainId = appChainId()
-  const deployment = HENAD[chainId] ?? null
+  const deployment = deploymentAddresses()
 
   useEffect(() => {
     const id = window.setInterval(() => dispatch({ type: 'tick', now: Date.now() }), 1000)
@@ -89,8 +90,15 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
   const corridor = corridorByKey(s.corridorKey) ?? LIVE_CORRIDOR
   const rate = s.rates.find((r) => r.key === corridor.key)
   const closed = s.forceClosed || (corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(s.now / 1000)) || rate?.marketClosed === true))
+  // Mento is mainnet-only: its router, USDm and every fiat stable have no code on
+  // chain 10143, and neither does any Chainlink fiat feed (verified 11 Sep, §14.7).
+  // The corridor registry names mainnet addresses whatever chain the app is pointed
+  // at, so without this the flow would build an intent that pays a mainnet token out
+  // of a testnet one and could never settle anywhere. A local fork counts as mainnet
+  // here, and correctly: it is a copy of it, with the real pools.
+  const settleable = chainId === MONAD_MAINNET_ID
   const venue: LiveVenue | null =
-    corridor.tier === 'live' && corridor.targetAsset && corridor.feed && corridor.venue
+    settleable && corridor.tier === 'live' && corridor.targetAsset && corridor.feed && corridor.venue
       ? {
           targetDecimals: corridor.targetAsset.decimals,
           targetAddress: corridor.targetAsset.address,
@@ -183,11 +191,11 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     const intentId = hashIntent(intent, chainId, deployment.corridorRouter)
     let settled
     try {
-      settled = await settle(intent, acc.account)
+      settled = await settle(intent, acc.account, { chainId, router: deployment.corridorRouter })
       if (settled.intentId.toLowerCase() !== intentId.toLowerCase()) throw new Error('The transport settled a different intent from the one you approved.')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Settlement failed.'
-      dispatch({ type: 'fail', message: msg.startsWith('not wired') ? 'Settlement is not wired to Monad yet. Nothing moved.' : `${msg} Nothing moved.` })
+      dispatch({ type: 'fail', message: `${msg} Nothing moved.` })
       return
     }
     try {
