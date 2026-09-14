@@ -320,6 +320,32 @@ stands.
 
 ---
 
+## 11.1 Naira, re-researched 14 Sep 2026 — see docs/NAIRA.md
+
+Two corrections to what §11 assumed, both verified by reading chains rather than docs.
+
+- **"Chainlink runs NGN/USD on Celo, where Mento relays it into a naira market" is half
+  wrong.** The feed is real and live (`0xc17cBE2dB40e53F4984C46F608DA6DA1fF074c11`,
+  ₦1,326.01/USD, 240 s heartbeat). The Mento naira market is **dead**: SortedOracles on
+  Celo returns an empty oracle list for NGNm, `numRates` 0, `medianTimestamp` 0, no Mento
+  NGN pool on any deployment, and no NGNm transfers in the last 5,000 blocks. Controls on
+  the same contract read correctly. Mento's naira is dormant, not merely absent from Monad,
+  so `ngn: address(0)` in their Monad config is a symptom rather than the disease.
+- **No naira-denominated token exists on Monad at all.** `eth_getCode` returns zero bytes
+  for every cNGN address the issuer publishes, including their own Monad testnet address.
+  Their docs list Monad as "Not yet deployed". The entire on-chain naira market across all
+  chains is about $400k of liquidity and under $5k a day, concentrated in one Celo pool.
+
+Two findings that change what is buildable:
+
+- **Chainlink CRE supports Monad.** The production KeystoneForwarder
+  `0x76c9cf548b4179F8901cda1f8623568b58215E62` has 8,591 bytes of live code on chain 143.
+  A workflow can publish an NGN rate into a consumer contract, moving USD→NGN from
+  unpriced to quotable. It is **not** a Chainlink feed and must never be described as one.
+- **Aurora Intents Deposits supports Tron USDT and BNB stablecoins as sources with Monad
+  as a destination**, which is the funding gap for Nigerian users. None of its 189 assets
+  is naira-denominated.
+
 ## 12. Mera and Agora — researched after the bounty texts arrived
 
 ### 12.1 Mera (`@category-labs/mera`) — VERIFIED, preview software
