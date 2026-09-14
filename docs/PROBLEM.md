@@ -123,6 +123,56 @@ checkable rather than internal.
 
 ---
 
+## Who would actually use this, and who would not
+
+The honest observation first: **the corridor we can demonstrate is not the corridor with
+the pain.** USD to GBP, EUR, CHF and JPY are already cheap and competitive. The corridor
+where people are genuinely gouged, USD to NGN, is exactly the one with no price on this
+chain. Demand and capability do not currently overlap, and saying otherwise would be the
+same dishonesty the product exists to attack.
+
+Who it serves today:
+
+- **Businesses and DAOs paying remote contractors** out of stablecoins, who need a
+  defensible record of the rate applied.
+- **Anyone answering to an auditor or an accountant**, because the receipt is independent
+  of the party that set the rate.
+- **Recipients**, who need nothing at all. No app, no account, no wallet. A link.
+
+What deliberately keeps it from being a mass consumer product: Henad never touches fiat
+ramps. The recipient receives a pound-denominated token, not pounds in a bank account.
+That last mile belongs to licensed institutions, and the product says so rather than
+implying it will get there.
+
+## How it would make money
+
+Today it takes nothing. The 19 basis points measured in testing is the venue's pool
+spread, not a Henad fee, and there is no fee mechanism in the contract at all.
+
+The design makes charging easier to defend rather than harder. Every incumbent has to
+bury margin in the rate, because showing it invites the question "why so much?". Henad
+can show a fee on its own line beside the venue spread, and the payer sees exactly what
+they are paying for. The realistic business is not consumer FX margin: it is the receipt.
+Companies that must evidence the rate applied are buying an artifact, and that artifact
+is the thing this product is actually good at.
+
+Adding a fee means deploying new contracts, because there is no upgrade path. See below.
+
+## The contracts cannot be upgraded, on purpose
+
+No proxy, no delegatecall, no initializer, no pause, no sweep, no selfdestruct, no
+fallback. The owner has exactly one power, `registerCorridor`, and that is write-once per
+token pair. The owner cannot move a user's funds, alter a receipt, or stop the contract.
+
+This is load-bearing. The claim is that the spread was not chosen privately. An owner who
+could upgrade the router could change how the spread is computed after receipts were
+issued, and every receipt would then prove nothing. Upgradeability would quietly falsify
+the thesis.
+
+The cost is real: a bug means deploying new contracts and repointing the app, with no
+migration. Receipts already written stay readable at the old attestation address forever,
+which is the correct behaviour for a receipt system rather than a limitation of it.
+
 ## In one paragraph
 
 Cross-border payments hide their cost in the exchange rate, and you cannot audit it
