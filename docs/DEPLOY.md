@@ -47,6 +47,14 @@ locks a new registration for 60 days, and the record already carries
    ```
 
 5. Vercel issues the TLS certificate automatically once the records resolve.
+6. **Make the bare domain primary, and redirect `www` to it.** Not cosmetic. Android fetches
+   `/.well-known/assetlinks.json` from the passkey domain itself and will not follow a redirect,
+   so a bare domain that 308s to `www` fails verification with `ERROR_CODE_REDIRECT` even when
+   the file is perfect. Check with Google's verifier, which caches for about ten minutes:
+
+   ```
+   curl -s "https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://usehenad.xyz&relation=delegate_permission/common.get_login_creds"
+   ```
 
 ---
 

@@ -108,24 +108,21 @@ match it.
 
 ---
 
-### 5a. GitHub pushes from this repo need the Miracle656 account
-Found 14 Sep. Two GitHub accounts are signed in on this machine, and the **active** one is
-`Salmatcre8`, which has read-only access to `Miracle656/Henad` (`push: false`). Every push
-from here now fails with 403, and Vercel only deploys what reaches `main`.
+### 5a. Make usehenad.xyz the primary domain in Vercel — blocks the Android passkey
+Found 14 Sep, confirmed by Google's own verifier. Android fetches
+`https://usehenad.xyz/.well-known/assetlinks.json` from the bare domain and **refuses to
+follow redirects** for it. The bare domain currently answers `308` to `www`, so
+`digitalassetlinks.googleapis.com` returns `ERROR_CODE_REDIRECT`, and the app cannot use
+usehenad.xyz passkeys even though the file itself is correct and live at `www`.
 
-**One commit is waiting locally, unpushed:** `6d2ffa3`, which publishes
-`web/public/.well-known/assetlinks.json`. Until it deploys, the Android app cannot use
-usehenad.xyz passkeys, so the device test in item 8 is blocked on it.
+In Vercel → henad → Settings → Domains:
 
-Left alone on purpose while you are using `Salmatcre8` in another terminal. When you are
-free, either of these works; the first changes it for the whole machine, the second only
-for the one command:
+1. Edit `usehenad.xyz` and remove its redirect, so it serves Production directly.
+2. Edit `www.usehenad.xyz` and set it to redirect to `usehenad.xyz`.
 
-```
-gh auth switch --user Miracle656
-```
-
-or tell me and I will push this repo with the right account without touching the active one.
+Existing passkeys are unaffected. They bind to `usehenad.xyz`, which is valid from either
+host. It also removes the extra redirect hop on every quote the mobile app requests, and
+receipt links then read `usehenad.xyz/receipt/…` as the film treatment assumes.
 
 ---
 
@@ -154,8 +151,9 @@ pnpm build:android     # EAS cloud build, ~10-20 min, generates the keystore
 pnpm credentials       # read the SHA-256 fingerprint it generated
 ```
 
-Then I write that fingerprint into `web/public/.well-known/assetlinks.json`, push, and the
-passkey works on any Android 9+ phone with Google Password Manager. Full steps and the
+Done 14 Sep: the fingerprint was read out of the built APK and published in
+`web/public/.well-known/assetlinks.json`. It works once item 5a is done and the rebuilt APK is
+installed. Full steps and the
 things people get wrong are in `docs/TESTING-MOBILE.md`.
 
 ⚠ The keystore EAS generates on that first build becomes part of the app's identity. The
@@ -196,6 +194,9 @@ GitHub PR. Say when you want me to draft it.
 Everything in this section was verified on 11 Sep 2026 by calling the service, not by
 looking at the config file.
 
+- ~~GitHub pushes~~ — fixed 14 Sep. The active `gh` account had been `Salmatcre8`, which cannot push
+  here. Switched back to `Miracle656`. Commit authorship was never affected: git identity is set
+  globally to Miracle656 and every commit carries it.
 - ~~Pimlico API key~~ — works, and signed a real testnet sponsorship. What is left is
   money rather than setup; see item 3.
 - ~~Etherscan API key~~ — works on Monad. Etherscan's own chain list confirms 143 is
