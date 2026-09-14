@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "xyz.usehenad.app",
+      "sha256_cert_fingerprints": [
+        "75:D9:EA:6D:7F:06:5A:BE:8F:EA:5D:37:17:66:3F:91:64:D9:87:0A:A5:B2:58:DD:77:01:C2:FA:7C:D7:12:22"
+      ]
+    }
+  }
+]
