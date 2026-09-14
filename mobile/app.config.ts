@@ -42,8 +42,18 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
   },
   plugins: ['expo-router', 'expo-secure-store'],
+  // No `updates` or `runtimeVersion`: expo-updates is not installed and over-the-air
+  // updates are not wanted here. A dev build loads JS from the Metro server on your
+  // machine, and shipping a second update channel would only be a way to run code nobody
+  // reviewed on a device holding real accounts.
   experiments: { typedRoutes: true },
+  owner: 'miracle_codes',
   extra: {
+    /**
+     * EAS could not write this itself: a TypeScript config is code, not data, so the CLI
+     * refuses to rewrite it. Set by hand from the project EAS created.
+     */
+    eas: { projectId: 'b127e143-4325-421b-9d12-a9da111d8304' },
     rpId: RP_ID,
     rpName: 'Henad',
     /** Monad testnet until the mainnet contracts are deployed; see docs/DEPLOY.md. */
