@@ -7,7 +7,7 @@ import { MONAD_MAINNET_ID, type MonadChainId } from './chains'
  * domain. This guard makes a misconfigured mainnet deploy fail at startup instead
  * of minting accounts on the wrong domain.
  */
-export const PRODUCTION_RP_ID = 'henad.xyz'
+export const PRODUCTION_RP_ID = 'usehenad.xyz'
 
 export class RpIdMismatchError extends Error {
   constructor(chainId: number, rpId: string) {

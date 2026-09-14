@@ -211,7 +211,7 @@ This is what separates a submission from a demo. Do not cut it.
 
 **1:35**
 
-> **Henad** — henad.xyz
+> **Henad** — usehenad.xyz
 > Built on Monad
 
 **1:38** Out.

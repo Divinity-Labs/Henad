@@ -12,12 +12,31 @@ actually calling the service with it.
 
 ## Blocking, soonest first
 
-### 1. henad.xyz — needed before 25 Sep
-Mera passkeys bind permanently to the domain they were created under. A passkey made on
-a Vercel URL can never control a mainnet account on henad.xyz. So the domain has to
-exist before the first mainnet user, and the code already refuses to build a mainnet
-client under any other rpId. If it is not in hand by 25 Sep, the mainnet demo happens on
-the Vercel domain and the receipt permalink lives there permanently.
+### 1. usehenad.xyz — buy it, and never let it lapse
+**Decided 14 Sep.** `henad.xyz` could not be had: it has belonged to a third party since
+11 June 2026, registered through GMO Internet Group and parked on the Afternic aftermarket
+at $699. A ₦3,652 order for it at Truehost was accepted, charged, and could never complete;
+the refund is outstanding on invoice 553722.
+
+`usehenad.xyz` is free, confirmed against the registry and DNS on 14 Sep. About $2 for the
+first year and $11 to $14 a year after. `PRODUCTION_RP_ID` in `packages/core/src/rpid.ts`
+already points at it, so mainnet will refuse to run under any other host.
+
+Two things that matter more than the price:
+
+- **It can never be allowed to expire.** Every passkey binds to this domain permanently.
+  If it lapses, every account created under it becomes unreachable, and whoever registers
+  it next can mint passkeys in your name. Turn auto-renew on and keep a live card on it.
+  This is now a permanent running cost of the product existing.
+- **Buy where the renewal is cheap.** Porkbun is about $2.04 the first year; Cloudflare
+  renews .xyz at $11.20 with no markup. A domain can be transferred out 60 days after
+  registration, so buying at Truehost with the refund and moving later is also fine — just
+  ask their .xyz renewal price first.
+
+Mobile will later need `/.well-known/assetlinks.json` and
+`/.well-known/apple-app-site-association` served from this domain as JSON with no redirect.
+Those need an Apple Team ID and the Android signing fingerprints, both of which are yours
+to obtain; see item 8.
 
 ### 2. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
@@ -102,9 +121,28 @@ to do this in the last week.
 
 ---
 
+### 8. Mobile signing identity — needed before any native passkey works
+Not urgent, and it cannot be rushed later either, so it is here to be seen.
+
+A passkey created on the web at `usehenad.xyz` only works inside a native app if the
+domain vouches for that app. That means two files served from the domain as JSON with no
+redirect, and both need values only you can obtain:
+
+- `/.well-known/apple-app-site-association` needs your **Apple Developer Team ID**, which
+  needs a paid Apple Developer account, plus the Associated Domains capability enabled on
+  the App ID.
+- `/.well-known/assetlinks.json` needs the **SHA-256 fingerprints of every Android signing
+  certificate** — the debug keystore, the EAS upload key, and the Play App Signing key. All
+  three, or builds silently fail to see the passkey.
+
+Also worth knowing before we start: the passkey library needs a real build, not Expo Go,
+and PRF requires iOS 18 or later and Android 9 or later.
+
+---
+
 ## Decisions I need from you
 
-### 8. Which optional bounties to chase in week 5
+### 9. Which optional bounties to chase in week 5
 Only if the mainnet payout is done. My read on each:
 
 - **Aurora Intents, $5,000.** Fits honestly as "fund your payout from any chain". Scope
@@ -115,7 +153,7 @@ Only if the mainnet payout is done. My read on each:
 - **Mera "One Passkey, Many Keys", $2,500.** A passkey-encrypted address book and private
   receipt memos. Small, and it also solves the stateless test.
 
-### 9. The MRC draft
+### 10. The MRC draft
 It has to be written and posted to forum.monad.xyz before it can be cited. The forum
 thread must exist first, because the standard's `discussions-to` field cannot point at a
 GitHub PR. Say when you want me to draft it.

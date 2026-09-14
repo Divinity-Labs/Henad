@@ -44,11 +44,11 @@ deployments with random hostnames are islands too.
 - **Testnet: Vercel.** The web app runs on its Vercel domain with rpId set to that
   exact host. Passkeys created there hold only testnet AUSD, so it does not matter
   that they can never be used on another domain.
-- **Mainnet: henad.xyz.** rpId is `henad.xyz`, which also covers any future
-  subdomain such as `app.henad.xyz`. No passkey that will hold real value is
+- **Mainnet: usehenad.xyz.** rpId is `usehenad.xyz`, which also covers any future
+  subdomain such as `app.usehenad.xyz`. No passkey that will hold real value is
   created under any other rpId.
 - **Guard in code.** `packages/core` refuses to build a mainnet (chain 143) client
-  unless `rpId === "henad.xyz"`. A misconfigured deploy fails loudly instead of
+  unless `rpId === "usehenad.xyz"`. A misconfigured deploy fails loudly instead of
   minting accounts on the wrong domain.
 - **Preview deployments** must never pick up the mainnet chain id; they get the
   testnet config from Vercel's preview environment variables.
@@ -77,7 +77,7 @@ docs/             INTEGRATION-FACTS, BOUNTIES, PLAN, MRC-DRAFT
 - [x] `foundryup` to 1.8.1 in WSL, `network = "monad"` enabled.
 - [x] Pimlico account set up (2026-09-10).
 - [ ] Envio API token.
-- [ ] Production domain: **henad.xyz** (being acquired). Needed before the week-4
+- [ ] Production domain: **usehenad.xyz** (being acquired). Needed before the week-4
       mainnet deploy on 25 Sep. See "Domains and passkeys" below.
 
 **Week 2 (11–17 Sep) — contracts, forked mainnet.** Started early on 10 Sep.
@@ -147,9 +147,9 @@ except that the money is not real.
   them; only use does. The deploy costs 1.25 MON whichever day it happens, and
   landing it early turns every later demo into a real one and leaves room to
   redeploy at a new address if something is wrong.
-- Until henad.xyz exists, the Vercel site ships **read-only**: `/rates`, `/docs`,
+- Until usehenad.xyz exists, the Vercel site ships **read-only**: `/rates`, `/docs`,
   `/receipts` and any `/receipt/<id>` permalink all work with no contracts and no
-  passkeys, so nothing binds an rpId. `/send` goes live on henad.xyz, because a
+  passkeys, so nothing binds an rpId. `/send` goes live on usehenad.xyz, because a
   passkey created on a Vercel host can never control a mainnet account anywhere
   else.
 - `/receipt/[intentId]` live, server-rendered, OG image, shareable.

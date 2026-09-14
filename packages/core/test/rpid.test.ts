@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MONAD_MAINNET_ID, MONAD_TESTNET_ID } from '../src/chains'
-import { RpIdMismatchError, assertRpIdForChain, isLoopbackRpId } from '../src/rpid'
+import { PRODUCTION_RP_ID, RpIdMismatchError, assertRpIdForChain, isLoopbackRpId } from '../src/rpid'
 
 describe('rpId guard', () => {
   it('allows any rpId on testnet', () => {
@@ -8,8 +8,10 @@ describe('rpId guard', () => {
     expect(() => assertRpIdForChain(MONAD_TESTNET_ID, 'localhost')).not.toThrow()
   })
 
-  it('allows only henad.xyz on mainnet', () => {
-    expect(() => assertRpIdForChain(MONAD_MAINNET_ID, 'henad.xyz')).not.toThrow()
+  it('allows only the production domain on mainnet', () => {
+    expect(() => assertRpIdForChain(MONAD_MAINNET_ID, PRODUCTION_RP_ID)).not.toThrow()
+    // The name that was wanted and could not be had. It must be refused like any other.
+    expect(() => assertRpIdForChain(MONAD_MAINNET_ID, 'henad.xyz')).toThrow(RpIdMismatchError)
     expect(() => assertRpIdForChain(MONAD_MAINNET_ID, 'henad.vercel.app')).toThrow(RpIdMismatchError)
     expect(() => assertRpIdForChain(MONAD_MAINNET_ID, 'localhost')).toThrow(RpIdMismatchError)
   })
@@ -38,6 +40,6 @@ describe('rpId guard', () => {
     expect(isLoopbackRpId('localhost')).toBe(true)
     expect(isLoopbackRpId('127.0.0.1')).toBe(true)
     expect(isLoopbackRpId('localhost.evil.example')).toBe(false)
-    expect(isLoopbackRpId('henad.xyz')).toBe(false)
+    expect(isLoopbackRpId(PRODUCTION_RP_ID)).toBe(false)
   })
 })
