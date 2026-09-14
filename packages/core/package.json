@@ -18,5 +18,9 @@
     "typescript": "^5",
     "viem": "^2.56.0",
     "vitest": "^3"
+  },
+  "dependencies": {
+    "@scure/bip32": "^2.4.0",
+    "@scure/bip39": "^2.4.0"
   }
 }

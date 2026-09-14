@@ -1,6 +1,3 @@
-import { HDKey } from '@scure/bip32'
-import { entropyToMnemonic, mnemonicToSeedSync } from '@scure/bip39'
-import { wordlist } from '@scure/bip39/wordlists/english.js'
 import {
   createPasskeyWithPrfOutput,
   createSecp256k1SigningSession,
@@ -11,7 +8,7 @@ import {
 } from '@category-labs/mera'
 import { toViemAccount } from '@category-labs/mera/viem'
 import { isAddress, type Address, type LocalAccount } from 'viem'
-import { RpIdMismatchError, TOKENS, assertRpIdForChain, erc20Abi, type TokenInfo } from '@henad/core'
+import { RpIdMismatchError, TOKENS, assertRpIdForChain, erc20Abi, privateKeyFromPrfOutput, type TokenInfo } from '@henad/core'
 import { appChain, appChainId, isLocalFork } from './chain'
 import type { SourceAssetSymbol } from './corridors'
 
@@ -26,7 +23,6 @@ import type { SourceAssetSymbol } from './corridors'
 
 export const PASSKEY_STORAGE_KEY = 'henad.passkey'
 const RP_NAME = 'Henad'
-const ETH_PATH = "m/44'/60'/0'/0/0"
 
 export type StoredPasskey = PasskeyCredentialMetadata
 
@@ -103,17 +99,13 @@ export function loadStoredAccount(): { address: Address; credentialId: string } 
 }
 
 function accountFromPrf(prfOutput: Uint8Array, credentialId: string): MeraAccount {
-  const seed = mnemonicToSeedSync(entropyToMnemonic(prfOutput, wordlist))
-  const root = HDKey.fromMasterSeed(seed)
-  const node = root.derive(ETH_PATH)
-  const privateKey = node.privateKey
-  if (!privateKey) throw new Error('Key derivation produced no private key')
+  // Shared with the mobile client and pinned by vectors in @henad/core. The same passkey
+  // must give the same address on both, or a person signing in on their phone finds an
+  // empty account. privateKeyFromPrfOutput zeroes the PRF output for us.
+  const privateKey = privateKeyFromPrfOutput(prfOutput)
   const session = createSecp256k1SigningSession({ privateKey })
-  // The session holds its own copy of the key; zero every intermediate we touched.
-  prfOutput.fill(0)
-  seed.fill(0)
-  node.wipePrivateData()
-  root.wipePrivateData()
+  // The session holds its own copy; drop ours.
+  privateKey.fill(0)
   return {
     address: getEvmAddress(session.publicKey),
     credentialId,
