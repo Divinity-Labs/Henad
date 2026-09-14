@@ -10,7 +10,7 @@ import { toViemAccount } from '@category-labs/mera/viem'
 import { isAddress, type Address, type LocalAccount } from 'viem'
 import { RpIdMismatchError, TOKENS, assertRpIdForChain, erc20Abi, privateKeyFromPrfOutput, type TokenInfo } from '@henad/core'
 import { appChain, appChainId, isLocalFork } from './chain'
-import type { SourceAssetSymbol } from './corridors'
+import type { SourceAssetSymbol } from '@henad/core'
 
 /**
  * The account layer: a Mera passkey is the only credential. The passkey's

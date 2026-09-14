@@ -1,5 +1,5 @@
 import type { Hex } from 'viem'
-import { deliveredAt, executedRate, spreadBps, spreadCost } from '@henad/core'
+import { deliveredAt, executedRate, spreadBps, spreadCost } from './corridor'
 import type { SourceAssetSymbol } from './corridors'
 
 /** A quote is good for 45 s; the last 10 s render amber. */

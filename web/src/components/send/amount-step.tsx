@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { isAddress, parseUnits } from 'viem'
 import { deliveredAt } from '@henad/core'
-import { CORRIDORS, SOURCE_ASSETS, type Corridor, type SourceAssetSymbol } from '@/lib/corridors'
+import { CORRIDORS, SOURCE_ASSETS, type Corridor, type SourceAssetSymbol } from '@henad/core'
 import { money, rateLine, shortAddress } from '@/lib/format'
 import type { RateDto } from '@/lib/send-serial'
 import { Button } from '@/components/ui/Button'

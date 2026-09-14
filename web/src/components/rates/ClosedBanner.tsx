@@ -1,7 +1,7 @@
 import { ClosedPill } from '@/components/ui/TierPill'
-import type { Corridor } from '@/lib/corridors'
+import type { Corridor } from '@henad/core'
 import { rateLine, utcDayTime } from '@/lib/format'
-import { nextTransition } from '@/lib/market-hours'
+import { nextTransition } from '@henad/core'
 import type { Receipt } from '@/lib/receipts'
 import { noSept } from './ledger'
 

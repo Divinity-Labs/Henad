@@ -48,6 +48,16 @@ const config: ExpoConfig = {
     rpName: 'Henad',
     /** Monad testnet until the mainnet contracts are deployed; see docs/DEPLOY.md. */
     chainId: 10143,
+    /**
+     * The phone signs; the server quotes and broadcasts. The reference rate must come
+     * from the same place for both clients or their receipts disagree, and the relayer
+     * key will never ship inside an app bundle.
+     */
+    apiBaseUrl: `https://${RP_ID}`,
+    /** Filled in at the mainnet deploy, from contracts/deployments/143.json. */
+    corridorRouter: '',
+    rateAttestation: '',
+    deployedAtBlock: 0,
   },
 }
 

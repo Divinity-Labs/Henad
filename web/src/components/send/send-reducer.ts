@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
-import type { SourceAssetSymbol } from '@/lib/corridors'
-import { MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, type QuoteDto } from '@/lib/send-quote'
+import type { SourceAssetSymbol } from '@henad/core'
+import { MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, type QuoteDto } from '@henad/core'
 import type { RateDto, ReceiptDto } from '@/lib/send-serial'
 
 /**

@@ -1,5 +1,7 @@
 import type { Address, Hex } from 'viem'
-import { CHAINLINK_MAINNET, MENTO_MAINNET, MONAD_MAINNET_ID, TOKENS, corridorId } from '@henad/core'
+import { CHAINLINK_MAINNET, MENTO_MAINNET, TOKENS } from './addresses'
+import { MONAD_MAINNET_ID } from './chains'
+import { corridorId } from './corridor'
 
 /**
  * The corridor registry as the product shows it. Three tiers, from

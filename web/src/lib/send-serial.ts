@@ -1,5 +1,5 @@
 import type { Address, Hex } from 'viem'
-import { corridorByKey, type Tier } from './corridors'
+import { corridorByKey, type Tier } from '@henad/core'
 import type { LiveRate } from './rates'
 import type { Receipt } from './receipts'
 

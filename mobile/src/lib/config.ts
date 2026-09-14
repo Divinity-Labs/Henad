@@ -1,6 +1,7 @@
 import Constants from 'expo-constants'
 import { createPublicClient, fallback, http, type PublicClient } from 'viem'
-import { MAINNET_RPCS, MONAD_MAINNET_ID, MONAD_TESTNET_ID, TESTNET_RPCS, chainFor, isMonadChainId, type MonadChainId } from '@henad/core'
+import { HENAD, MAINNET_RPCS, MONAD_MAINNET_ID, MONAD_TESTNET_ID, TESTNET_RPCS, chainFor, isMonadChainId, type HenadDeployment, type MonadChainId } from '@henad/core'
+import { getAddress, isAddress } from 'viem'
 
 /**
  * Runtime configuration, read from `app.config.ts` `extra` rather than inlined.
@@ -42,4 +43,24 @@ export function appChain(): PublicClient {
     })
   }
   return client
+}
+
+/**
+ * Henad's own contracts on the configured chain, or null when none are deployed.
+ *
+ * Mirrors the web client's `deploymentAddresses`. Both addresses must be present: a
+ * router without its attestation settles payouts whose receipts cannot be found, which is
+ * worse than not settling at all.
+ */
+export function deployment(): HenadDeployment | null {
+  const deployed = HENAD[appChainId()]
+  if (deployed) return deployed
+  const router = extra<string>('corridorRouter')
+  const attestation = extra<string>('rateAttestation')
+  if (!router || !attestation || !isAddress(router) || !isAddress(attestation)) return null
+  return {
+    corridorRouter: getAddress(router),
+    rateAttestation: getAddress(attestation),
+    deployedAtBlock: BigInt(extra<number>('deployedAtBlock') ?? 0),
+  }
 }

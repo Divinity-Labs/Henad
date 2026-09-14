@@ -11,7 +11,7 @@ import { RatesHero } from '@/components/rates/RatesHero'
 import { RoutesBlock } from '@/components/rates/RoutesBlock'
 import { SettlementsBlock } from '@/components/rates/SettlementsLedger'
 import { chainLabel, explorerHref, headline, settled } from '@/components/rates/ledger'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 import { liveRates } from '@/lib/rates'
 import { listReceipts, totals } from '@/lib/receipts'
 

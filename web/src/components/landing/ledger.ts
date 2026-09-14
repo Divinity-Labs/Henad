@@ -1,6 +1,6 @@
 import { MONAD_MAINNET_ID } from '@henad/core'
 import { appChainId } from '@/lib/chain'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 import { totals, type Receipt } from '@/lib/receipts'
 
 export type Network = 'mainnet' | 'testnet'

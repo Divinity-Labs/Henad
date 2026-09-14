@@ -1,4 +1,4 @@
-import type { Corridor } from '@/lib/corridors'
+import type { Corridor } from '@henad/core'
 import { bps } from '@/lib/format'
 import type { LedgerTotals } from '@/lib/receipts'
 import { meanBps } from './ledger'

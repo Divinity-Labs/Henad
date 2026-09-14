@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { LivePill } from '@/components/ui/TierPill'
-import { LIVE_CORRIDOR } from '@/lib/corridors'
+import { LIVE_CORRIDOR } from '@henad/core'
 import { money } from '@/lib/format'
 import type { Receipt } from '@/lib/receipts'
 import { capitalise, type Network } from './ledger'

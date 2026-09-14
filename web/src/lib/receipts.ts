@@ -2,7 +2,7 @@ import type { Address, Hex } from 'viem'
 import { getAddress, isAddress, parseAbiItem } from 'viem'
 import { HENAD, TOKENS, rateAttestationAbi, spreadCost, type HenadDeployment } from '@henad/core'
 import { appChain, appChainId } from './chain'
-import { CORRIDORS, corridorById, type Corridor } from './corridors'
+import { CORRIDORS, corridorById, type Corridor } from '@henad/core'
 import { SAMPLE_RECEIPT, fixturesEnabled } from './fixtures'
 
 /** A settled payout as the product shows it. Every figure is read from the chain. */

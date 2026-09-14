@@ -1,5 +1,5 @@
 import type { Receipt } from './receipts'
-import { CORRIDORS } from './corridors'
+import { CORRIDORS } from '@henad/core'
 import { spreadCost } from '@henad/core'
 
 /**

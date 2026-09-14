@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { SendFlow } from '@/components/send/send-flow'
 import type { SendInitial } from '@/components/send/send-reducer'
-import { CORRIDORS, LIVE_CORRIDOR } from '@/lib/corridors'
+import { CORRIDORS, LIVE_CORRIDOR } from '@henad/core'
 import { SAMPLE_RECEIPT } from '@/lib/fixtures'
 import { liveRates } from '@/lib/rates'
 import { listReceipts, type Receipt } from '@/lib/receipts'

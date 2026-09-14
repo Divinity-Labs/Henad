@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { TierPill } from '@/components/ui/TierPill'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 
 const PEACH =
   'radial-gradient(ellipse 90% 70% at 20% 0%, #FFAE45 0%, transparent 60%), radial-gradient(ellipse 80% 70% at 100% 100%, #FF8EE4 0%, transparent 65%)'

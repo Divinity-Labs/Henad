@@ -1,4 +1,4 @@
-import type { Tier } from '@/lib/corridors'
+import type { Tier } from '@henad/core'
 
 const styles: Record<Tier, string> = {
   live: 'bg-purple text-white',

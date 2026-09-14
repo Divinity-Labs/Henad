@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { BuiltOnMonad } from '@/components/ui/Brand'
 import { Button } from '@/components/ui/Button'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 import type { Receipt } from '@/lib/receipts'
 import { capitalise, countWord } from './ledger'
 

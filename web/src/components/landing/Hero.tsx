@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ReceiptSlip } from '@/components/ReceiptSlip'
 import { Button } from '@/components/ui/Button'
-import { LIVE_CORRIDOR, type Corridor, type Tier } from '@/lib/corridors'
+import { LIVE_CORRIDOR, type Corridor, type Tier } from '@henad/core'
 import { rateValue, spreadLine } from '@/lib/format'
 import type { LiveRate } from '@/lib/rates'
 import type { Receipt } from '@/lib/receipts'

@@ -1,6 +1,6 @@
 import { MONAD_MAINNET_ID, MONAD_TESTNET_ID } from '@henad/core'
 import { appChainId } from '@/lib/chain'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 import { utcTime } from '@/lib/format'
 import { deploymentAddresses, type LedgerTotals, type Receipt } from '@/lib/receipts'
 

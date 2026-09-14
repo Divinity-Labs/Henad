@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import type { ReactNode } from 'react'
 import type { Address } from 'viem'
-import type { Corridor, SourceAssetSymbol } from '@/lib/corridors'
+import type { Corridor, SourceAssetSymbol } from '@henad/core'
 import { bps, money, rateLine, spreadLine } from '@/lib/format'
 import {
   MAX_SPREAD_MAX,
@@ -14,7 +14,7 @@ import {
   quoteFreshness,
   quoteMaths,
   type QuoteDto,
-} from '@/lib/send-quote'
+} from '@henad/core'
 import { Button } from '@/components/ui/Button'
 import { firstName } from './amount-step'
 import { Card, Notice, Rows, StepHeader, linkLabel, type Row } from './send-ui'

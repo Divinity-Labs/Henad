@@ -1,6 +1,6 @@
 import { FINALITY_MS } from '@henad/core'
 import { PartnerMark } from '@/components/ui/Brand'
-import { CORRIDORS } from '@/lib/corridors'
+import { CORRIDORS } from '@henad/core'
 
 type Mark = Parameters<typeof PartnerMark>[0]['name']
 

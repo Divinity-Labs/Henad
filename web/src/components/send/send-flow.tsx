@@ -7,8 +7,8 @@ import { Nav } from '@/components/Nav'
 import { BuiltOnMonad } from '@/components/ui/Brand'
 import { Button } from '@/components/ui/Button'
 import { appChainId } from '@/lib/chain'
-import { LIVE_CORRIDOR, corridorByKey } from '@/lib/corridors'
-import { isFxMarketOpen } from '@/lib/market-hours'
+import { LIVE_CORRIDOR, corridorByKey } from '@henad/core'
+import { isFxMarketOpen } from '@henad/core'
 import {
   continueWithPasskey,
   describeAccountError,
@@ -20,7 +20,7 @@ import {
   type MeraAccount,
 } from '@/lib/send-mera'
 import { deploymentAddresses } from '@/lib/receipts'
-import { quoteMaths, type QuoteDto } from '@/lib/send-quote'
+import { quoteMaths, type QuoteDto } from '@henad/core'
 import { receiptFromDto, type ReceiptDto } from '@/lib/send-serial'
 import { settle } from '@/lib/settle'
 import { AmountStep } from './amount-step'
