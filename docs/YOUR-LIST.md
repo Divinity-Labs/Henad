@@ -108,22 +108,6 @@ match it.
 
 ---
 
-### 5a. Make usehenad.xyz the primary domain in Vercel — blocks the Android passkey
-Found 14 Sep, confirmed by Google's own verifier. Android fetches
-`https://usehenad.xyz/.well-known/assetlinks.json` from the bare domain and **refuses to
-follow redirects** for it. The bare domain currently answers `308` to `www`, so
-`digitalassetlinks.googleapis.com` returns `ERROR_CODE_REDIRECT`, and the app cannot use
-usehenad.xyz passkeys even though the file itself is correct and live at `www`.
-
-In Vercel → henad → Settings → Domains:
-
-1. Edit `usehenad.xyz` and remove its redirect, so it serves Production directly.
-2. Edit `www.usehenad.xyz` and set it to redirect to `usehenad.xyz`.
-
-Existing passkeys are unaffected. They bind to `usehenad.xyz`, which is valid from either
-host. It also removes the extra redirect hop on every quote the mobile app requests, and
-receipt links then read `usehenad.xyz/receipt/…` as the film treatment assumes.
-
 ---
 
 ## Not blocking yet, but dated
@@ -194,6 +178,9 @@ GitHub PR. Say when you want me to draft it.
 Everything in this section was verified on 11 Sep 2026 by calling the service, not by
 looking at the config file.
 
+- ~~Bare domain primary in Vercel~~ — done 14 Sep. `usehenad.xyz` serves directly and `www` redirects
+  to it. Google's asset links verifier now returns the `get_login_creds` statement for
+  `xyz.usehenad.app` with the APK's fingerprint, so the Android app may use usehenad.xyz passkeys.
 - ~~GitHub pushes~~ — fixed 14 Sep. The active `gh` account had been `Salmatcre8`, which cannot push
   here. Switched back to `Miracle656`. Commit authorship was never affected: git identity is set
   globally to Miracle656 and every commit carries it.
