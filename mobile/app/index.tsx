@@ -1,34 +1,41 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
-import { CORRIDORS, LIVE_CORRIDOR, MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, isFxMarketOpen, type Corridor, type QuoteDto } from '@henad/core'
-import { fetchQuote } from '@/lib/api'
+import { CORRIDORS, LIVE_CORRIDOR, MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, isFxMarketOpen, quoteMaths, type Corridor, type QuoteDto } from '@henad/core'
+import { fetchQuote, fetchRates, fetchReceipt, receiptUrl, type RatesPayload } from '@/lib/api'
 import { readBalance, sourceToken } from '@/lib/balance'
-import { deployment, rpId } from '@/lib/config'
+import { appChain, appChainId, deployment } from '@/lib/config'
+import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
+import { RatesScreen } from '@/rates/RatesScreen'
 import { AmountStep } from '@/send/AmountStep'
-import { shortId } from '@/send/format'
+import { ClosedStep } from '@/send/ClosedStep'
 import { QuoteStep } from '@/send/QuoteStep'
-import { SentStep } from '@/send/SentStep'
+import { SentStep, type SentReceipt } from '@/send/SentStep'
 import { SignInStep } from '@/send/SignInStep'
-import { color, mono } from '@/theme'
-import { Notice } from '@/ui'
+import { BuiltOnMonad, Chip, Header, TextLink } from '@/ui'
+import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
+type View_ = 'send' | 'rates'
 
 /**
- * The send flow: four steps, one screen, the same shape as the web client.
+ * The app: the send flow and the rates screen, in the canvas's six states.
  *
  * The signing session lives in a ref and dies with the screen, because the key is never
- * written down. The address outlives it in secure storage, so a relaunch shows you signed
- * in and reads your balance, and the passkey is asked for at the moment something must be
- * signed. That is where a person expects to be asked.
+ * written down. The address outlives it in secure storage, so a relaunch shows you signed in
+ * and reads your balance; the passkey is asked for when something must be signed.
  */
-export default function SendFlow() {
+export default function App() {
   const session = useRef<MeraAccount | null>(null)
+  const chainId = appChainId()
+  const dep = deployment()
+  const source = sourceToken()
+
+  const [view, setView] = useState<View_>('send')
   const [step, setStep] = useState<Step>('signin')
   const [address, setAddress] = useState<Address | null>(null)
   const [balance, setBalance] = useState<bigint | null>(null)
@@ -37,13 +44,13 @@ export default function SendFlow() {
   const [recipient, setRecipient] = useState('')
   const [quote, setQuote] = useState<QuoteDto | null>(null)
   const [maxSpreadBps, setMaxSpreadBps] = useState(MAX_SPREAD_DEFAULT)
-  const [settled, setSettled] = useState<{ intentId: Hex; txHash: Hex } | null>(null)
+  const [sent, setSent] = useState<SentReceipt | null>(null)
+  const [rates, setRates] = useState<RatesPayload | null>(null)
+  const [ratesLoading, setRatesLoading] = useState(false)
+  const [ratesError, setRatesError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
-
-  const source = sourceToken()
-  const dep = deployment()
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
@@ -72,7 +79,25 @@ export default function SendFlow() {
     }
   }, [address, step])
 
-  const marketClosed = corridor.tier === 'live' && !isFxMarketOpen(Math.floor(now / 1000))
+  const loadRates = useCallback(async () => {
+    setRatesLoading(true)
+    try {
+      setRates(await fetchRates())
+      setRatesError(null)
+    } catch (e) {
+      setRatesError(e instanceof Error ? e.message : 'Rates are unavailable.')
+    } finally {
+      setRatesLoading(false)
+    }
+  }, [])
+
+  // The feeds heartbeat every 240 s; reading every 30 s keeps the age honest without
+  // hammering a public RPC.
+  useEffect(() => {
+    void loadRates()
+    const id = setInterval(() => void loadRates(), 30_000)
+    return () => clearInterval(id)
+  }, [loadRates])
 
   const withAccount = useCallback(async (fn: () => Promise<MeraAccount>) => {
     setBusy(true)
@@ -94,136 +119,174 @@ export default function SendFlow() {
     setBusy(true)
     setError(null)
     try {
-      const q = await fetchQuote('AUSD', corridor.target, amount)
-      setQuote(q)
+      setQuote(await fetchQuote(source.symbol, corridor.target, amount))
       setStep('quote')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The quote failed. Try again.')
     } finally {
       setBusy(false)
     }
-  }, [amount, corridor.target])
+  }, [amount, corridor.target, source.symbol])
 
   const send = useCallback(async () => {
     if (!quote || !dep || !isAddress(recipient)) return
     setBusy(true)
     setError(null)
+    const started = Date.now()
     try {
       const account = session.current ?? (await unlockStoredAccount())
       session.current = account
-      const result = await settleFromPhone({
-        account,
-        corridor,
-        quote,
-        recipient: getAddress(recipient),
+      const result = await settleFromPhone({ account, corridor, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
+
+      // Finality measured here, tap to receipt, rather than copied from a design.
+      let finalMs: number | null = null
+      let block: bigint | null = null
+      try {
+        const receipt = await appChain().waitForTransactionReceipt({ hash: result.txHash, timeout: 30_000 })
+        finalMs = Date.now() - started
+        block = receipt.blockNumber
+      } catch {
+        // Still pending or unreachable: show the receipt without the figure.
+      }
+      const chainReceipt = await fetchReceipt(result.intentId)
+      const td = corridor.targetAsset?.decimals ?? 18
+      const m = quoteMaths(quote, source.decimals, td)
+      setSent({
+        intentId: result.intentId,
+        txHash: result.txHash,
+        chainId,
+        index: chainReceipt?.index ?? null,
+        settledAt: chainReceipt?.settledAt ?? null,
+        block: chainReceipt ? BigInt(chainReceipt.settledAtBlock) : block,
+        finalMs,
+        recipient,
+        sourceAmount: m.sourceAmount,
+        sourceSymbol: source.symbol,
+        sourceDecimals: source.decimals,
+        delivered: chainReceipt ? BigInt(chainReceipt.deliveredAmount) : m.delivered,
+        referenceRate: chainReceipt ? BigInt(chainReceipt.referenceRate) : m.referenceRate,
+        executedRate: chainReceipt ? BigInt(chainReceipt.executedRate) : m.executedRate,
+        spreadBps: chainReceipt?.spreadBps ?? m.spreadBps,
+        spreadCost: chainReceipt ? BigInt(chainReceipt.spreadCost) : m.spreadCost,
+        rateSource: chainReceipt?.rateSource ?? null,
         maxSpreadBps,
-        router: dep.corridorRouter,
       })
-      setSettled({ intentId: result.intentId, txHash: result.txHash })
       setStep('sent')
+      void loadRates()
     } catch (e) {
       setError(`${e instanceof Error ? e.message : 'Settlement failed.'} Nothing moved.`)
     } finally {
       setBusy(false)
     }
-  }, [quote, dep, recipient, corridor, maxSpreadBps])
+  }, [quote, dep, recipient, corridor, maxSpreadBps, source, chainId, loadRates])
 
   const reset = useCallback(() => {
-    setSettled(null)
+    setSent(null)
     setQuote(null)
     setAmount('')
     setRecipient('')
     setStep('amount')
   }, [])
 
-  const live = useMemo(() => CORRIDORS.filter((c) => c.tier !== 'unpriced' || c.target === 'NGN'), [])
+  const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
+
+  const header =
+    view === 'rates' ? (
+      <Header
+        right={
+          <View style={s.tabs}>
+            <TextLink label="Send" onPress={() => setView('send')} />
+            <TextLink label="Rates" style={s.tabOn} />
+          </View>
+        }
+      />
+    ) : step === 'signin' ? (
+      <Header right={<BuiltOnMonad />} />
+    ) : (
+      <Header right={address ? <Chip onPress={() => void Clipboard.setStringAsync(address)}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip> : undefined} />
+    )
+
+  let body
+  if (view === 'rates') {
+    body = (
+      <RatesScreen
+        data={rates}
+        loading={ratesLoading}
+        error={ratesError}
+        onRefresh={() => void loadRates()}
+        onSend={(c) => {
+          setCorridor(c)
+          setView('send')
+        }}
+      />
+    )
+  } else if (step === 'signin') {
+    body = <SignInStep busy={busy} error={error} chain={chainLabel(chainId)} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
+  } else if (step === 'sent' && sent) {
+    body = <SentStep corridor={corridor} r={sent} onDone={reset} />
+  } else if (closed) {
+    body = (
+      <ClosedStep
+        corridor={corridor}
+        now={now}
+        amount={amount}
+        source={source}
+        last={rates?.ledger.byCorridor[corridor.key] ?? null}
+        onBrowseRates={() => setView('rates')}
+        onOpenReceipt={(id) => void Linking.openURL(receiptUrl(id as Hex))}
+      />
+    )
+  } else if (step === 'quote' && quote) {
+    body = (
+      <QuoteStep
+        corridor={corridor}
+        quote={quote}
+        now={now}
+        source={source}
+        maxSpreadBps={maxSpreadBps}
+        onSpread={(bps) => setMaxSpreadBps(Math.min(MAX_SPREAD_MAX, Math.max(MAX_SPREAD_MIN, bps)))}
+        deployed={dep !== null}
+        busy={busy}
+        error={error}
+        onSend={() => void send()}
+        onBack={() => setStep('amount')}
+        onRequote={() => void getQuote()}
+      />
+    )
+  } else {
+    body = (
+      <AmountStep
+        corridors={CORRIDORS}
+        corridor={corridor}
+        onCorridor={setCorridor}
+        rate={rates?.rates.find((r) => r.key === corridor.key)}
+        now={now}
+        amount={amount}
+        onAmount={setAmount}
+        recipient={recipient}
+        onRecipient={setRecipient}
+        onPaste={() => void Clipboard.getStringAsync().then((t) => setRecipient(t.trim()))}
+        balance={balance}
+        source={source}
+        busy={busy}
+        error={error}
+        onQuote={() => void getQuote()}
+        onWhy={() => setView('rates')}
+      />
+    )
+  }
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      <View style={s.nav}>
-        <Text style={s.wordmark}>Henad</Text>
-        {address ? (
-          <Pressable onPress={() => void Clipboard.setStringAsync(address)} accessibilityLabel={`Copy address ${address}`}>
-            <Text style={s.chip}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Text>
-          </Pressable>
-        ) : (
-          <Text style={s.rp}>{rpId()}</Text>
-        )}
-      </View>
-
-      {marketClosed && step !== 'sent' ? (
-        <View style={s.banner}>
-          <Notice>FX market closed. Rates reopen Sunday at 23:00 UTC; nothing settles until then.</Notice>
-        </View>
-      ) : null}
-
-      {step === 'signin' ? (
-        <SignInStep busy={busy} error={error} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
-      ) : step === 'amount' ? (
-        <AmountStep
-          corridors={live}
-          corridor={corridor}
-          onCorridor={setCorridor}
-          amount={amount}
-          onAmount={setAmount}
-          recipient={recipient}
-          onRecipient={setRecipient}
-          balance={balance}
-          sourceSymbol={source.symbol}
-          sourceDecimals={source.decimals}
-          busy={busy}
-          error={error}
-          onQuote={() => void getQuote()}
-        />
-      ) : step === 'quote' && quote ? (
-        <QuoteStep
-          corridor={corridor}
-          quote={quote}
-          now={now}
-          sourceDecimals={source.decimals}
-          maxSpreadBps={maxSpreadBps}
-          onSpread={(bps) => setMaxSpreadBps(Math.min(MAX_SPREAD_MAX, Math.max(MAX_SPREAD_MIN, bps)))}
-          recipient={recipient}
-          deployed={dep !== null}
-          busy={busy}
-          error={error}
-          onSend={() => void send()}
-          onBack={() => setStep('amount')}
-          onRequote={() => void getQuote()}
-        />
-      ) : step === 'sent' && quote && settled ? (
-        <SentStep corridor={corridor} quote={quote} sourceDecimals={source.decimals} intentId={settled.intentId} txHash={settled.txHash} onDone={reset} />
-      ) : null}
-
-      <Text style={s.foot}>PASSKEY BY MERA · BUILT ON MONAD{settled ? ` · ${shortId(settled.intentId)}` : ''}</Text>
+      {header}
+      {body}
     </SafeAreaView>
   )
 }
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.canvas },
-  nav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: color.hairline,
-  },
-  wordmark: { fontSize: 20, fontWeight: '600', color: color.ink, letterSpacing: -0.5 },
-  chip: {
-    ...mono,
-    fontSize: 11,
-    color: color.ink,
-    borderWidth: 1,
-    borderColor: color.border,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    overflow: 'hidden',
-  },
-  rp: { ...mono, fontSize: 11, color: color.muted },
-  banner: { paddingHorizontal: 20, paddingTop: 12 },
-  foot: { ...mono, fontSize: 9, letterSpacing: 1, color: color.muted, textAlign: 'center', paddingVertical: 10 },
+  tabs: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  tabOn: { borderBottomWidth: 1, borderBottomColor: color.purple, paddingBottom: 1 },
 })
+

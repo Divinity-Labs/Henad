@@ -1,17 +1,14 @@
 import Constants from 'expo-constants'
-import type { Hex } from 'viem'
-import type { QuoteDto } from '@henad/core'
+import type { Address, Hex } from 'viem'
+import type { QuoteDto, Tier } from '@henad/core'
 
 /**
  * The mobile client talks to the web app's routes rather than reimplementing them.
  *
- * Two of them cannot live on a phone at all. `/api/quote` reads Chainlink and Mento
- * directly, which a phone could technically do but should not: the reference rate has to
- * come from the same place for both clients or their receipts disagree. `/api/relay`
- * holds the relayer key, which will never be shipped in an app bundle.
- *
- * So the phone signs, and the server broadcasts. The signature is the part only the
- * passkey can produce, and it never leaves the device in any other form.
+ * `/api/quote` and `/api/rates` read Chainlink and Mento. A phone could, but should not: the
+ * reference rate has to come from the same place for both clients or their receipts
+ * disagree. `/api/relay` holds the relayer key, which will never ship in an app bundle.
+ * The phone signs, and the server broadcasts.
  */
 function baseUrl(): string {
   const extra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined) ?? {}
@@ -20,7 +17,7 @@ function baseUrl(): string {
   return value.replace(/\/$/, '')
 }
 
-export interface QuoteError {
+interface ApiError {
   error: string
 }
 
@@ -28,10 +25,56 @@ export async function fetchQuote(source: string, target: string, amount: string)
   const params = new URLSearchParams({ source, target, amount })
   const res = await fetch(`${baseUrl()}/api/quote?${params}`, { headers: { accept: 'application/json' } })
   const body: unknown = await res.json()
-  if (!res.ok || (body as QuoteError).error) {
-    throw new Error((body as QuoteError).error ?? `The quote failed (${res.status}). Try again.`)
+  if (!res.ok || (body as ApiError).error) {
+    throw new Error((body as ApiError).error ?? `The quote failed (${res.status}). Try again.`)
   }
   return body as QuoteDto
+}
+
+/** Mirrors web/src/lib/send-serial.ts. Bigints are decimal strings. */
+export interface RateDto {
+  key: string
+  target: string
+  tier: Tier
+  rate: string | null
+  updatedAt: number | null
+  stale: boolean
+  marketClosed: boolean
+}
+
+export interface ReceiptDto {
+  intentId: Hex
+  index: number | null
+  corridorKey: string
+  payer: Address
+  recipient: Address
+  sourceAsset: { symbol: string; address: Address; decimals: number }
+  targetAsset: { symbol: string; address: Address; decimals: number }
+  sourceAmount: string
+  deliveredAmount: string
+  referenceRate: string
+  executedRate: string
+  spreadBps: number
+  spreadCost: string
+  rateSource: Address
+  venue: Address
+  settledAt: number
+  settledAtBlock: string
+  txHash: Hex | null
+  sample: boolean
+}
+
+export interface RatesPayload {
+  now: number
+  chainId: number
+  rates: RateDto[]
+  ledger: { count: number; last: ReceiptDto | null; byCorridor: Record<string, ReceiptDto> }
+}
+
+export async function fetchRates(): Promise<RatesPayload> {
+  const res = await fetch(`${baseUrl()}/api/rates`, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`Rates are unavailable (${res.status}).`)
+  return (await res.json()) as RatesPayload
 }
 
 export interface RelayResult {
@@ -39,8 +82,7 @@ export interface RelayResult {
   txHash: Hex
 }
 
-interface RelayFailure {
-  error: string
+interface RelayFailure extends ApiError {
   code?: string
   reason?: { name: string; source: string }
 }
@@ -64,11 +106,11 @@ export function receiptUrl(intentId: Hex): string {
   return `${baseUrl()}/receipt/${intentId}`
 }
 
-export async function fetchReceipt(intentId: Hex): Promise<Record<string, unknown> | null> {
+export async function fetchReceipt(intentId: Hex): Promise<ReceiptDto | null> {
   try {
     const res = await fetch(`${baseUrl()}/api/receipt/${intentId}`, { headers: { accept: 'application/json' } })
     if (!res.ok) return null
-    return (await res.json()) as Record<string, unknown>
+    return (await res.json()) as ReceiptDto
   } catch {
     return null
   }

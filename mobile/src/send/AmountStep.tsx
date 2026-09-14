@@ -1,149 +1,217 @@
-import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useMemo, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { isAddress } from 'viem'
 import type { Corridor } from '@henad/core'
-import { Button, Card, Label, Notice, Row, Rule } from '@/ui'
-import { color, mono } from '@/theme'
+import type { RateDto } from '@/lib/api'
+import { age, atRate, moneyText, rateLineText } from '@/lib/display'
+import { Button, Card, Chip, ErrorText, Eyebrow, TextLink, TierBadge } from '@/ui'
+import { color, font, track } from '@/theme'
 import { parseAmount, sanitizeAmount, units } from './format'
 
 /**
- * Step one. Amount, corridor, recipient.
+ * S1. Amount, corridor and recipient.
  *
- * The live reference rate is shown here rather than only on the quote, so the number a
- * person is about to be offered is never the first number they see. The button explains
- * why it is disabled instead of just being grey.
+ * Departures from the canvas, each because the design shows something this app does not do:
+ * - No "Fund from another chain · Aurora Intents" row. That route is not built, and a link
+ *   that goes nowhere is a claim.
+ * - The recipient has no name. Henad keeps no address book, so the card shows the address,
+ *   not "Ada Okonkwo".
+ * - The tier line is computed from the registry, so it says what is true today rather than
+ *   what was true when the canvas was drawn.
  */
 export function AmountStep({
   corridors,
   corridor,
   onCorridor,
+  rate,
+  now,
   amount,
   onAmount,
   recipient,
   onRecipient,
+  onPaste,
   balance,
-  sourceSymbol,
-  sourceDecimals,
+  source,
   busy,
   error,
   onQuote,
+  onWhy,
 }: {
   corridors: Corridor[]
   corridor: Corridor
   onCorridor: (c: Corridor) => void
+  rate: RateDto | undefined
+  now: number
   amount: string
   onAmount: (v: string) => void
   recipient: string
   onRecipient: (v: string) => void
+  onPaste: () => void
   balance: bigint | null
-  sourceSymbol: string
-  sourceDecimals: number
+  source: { symbol: string; decimals: number }
   busy: boolean
   error: string | null
   onQuote: () => void
+  onWhy: () => void
 }) {
-  const parsed = useMemo(() => parseAmount(amount, sourceDecimals), [amount, sourceDecimals])
+  const [picking, setPicking] = useState(false)
+  const parsed = useMemo(() => parseAmount(amount, source.decimals), [amount, source.decimals])
+  const reference = rate?.rate ? BigInt(rate.rate) : null
+  const targetDecimals = corridor.targetAsset?.decimals ?? 18
+
+  const receives = parsed && reference ? moneyText(atRate(parsed, source.decimals, reference, targetDecimals), targetDecimals, corridor) : '—'
+
+  const tierLine = useMemo(() => {
+    const others = corridors.filter((c) => c.key !== corridor.key)
+    const live = others.filter((c) => c.tier === 'live').map((c) => c.target)
+    const quote = others.filter((c) => c.tier === 'quote').map((c) => c.target)
+    return [live.length ? `${live.join(' ')} live` : null, quote.length ? `${quote.join(' ')} priced only` : null].filter(Boolean).join(' · ')
+  }, [corridors, corridor.key])
 
   const blocker = useMemo(() => {
     if (corridor.tier !== 'live') return corridor.note
     if (!parsed) return 'Enter an amount.'
-    if (balance !== null && parsed > balance) return `That is more than your ${sourceSymbol} balance.`
+    if (balance !== null && parsed > balance) return `That is more than your ${source.symbol} balance.`
     if (!recipient) return 'Add a recipient address.'
     if (!isAddress(recipient)) return 'That recipient address is not valid.'
+    if (!reference) return 'The reference rate is unavailable right now.'
     return null
-  }, [corridor, parsed, balance, recipient, sourceSymbol])
+  }, [corridor, parsed, balance, recipient, source.symbol, reference])
+
+  const rateMeta =
+    corridor.tier !== 'live' ? corridor.shortNote : rate?.stale ? 'stale' : rate?.updatedAt ? `Mento · Chainlink · ${age(now / 1000 - rate.updatedAt)}` : 'reading…'
 
   return (
-    <ScrollView contentContainerStyle={s.body} keyboardShouldPersistTaps="handled">
-      <Card>
-        <View style={s.headRow}>
-          <Label>YOU SEND</Label>
-          <Label>{balance === null ? 'BALANCE —' : `BALANCE ${units(balance, sourceDecimals, 2)}`}</Label>
+    <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <View style={s.body}>
+        <View style={s.rowBetween}>
+          <Eyebrow tone="purple">Send</Eyebrow>
+          <Eyebrow>Step 1 of 2</Eyebrow>
         </View>
-        <View style={s.amountRow}>
-          <Text style={s.currency}>$</Text>
-          <TextInput
-            style={s.amount}
-            value={amount}
-            onChangeText={(v) => onAmount(sanitizeAmount(v))}
-            placeholder="0.00"
-            placeholderTextColor={color.border}
-            keyboardType="decimal-pad"
-            inputMode="decimal"
-            accessibilityLabel="Amount to send"
-          />
-          <Text style={s.asset}>{sourceSymbol}</Text>
-        </View>
-      </Card>
 
-      <Label style={s.sectionLabel}>RECIPIENT RECEIVES</Label>
-      <View style={s.corridors}>
-        {corridors.map((c) => {
-          const on = c.key === corridor.key
-          return (
-            <Text
-              key={c.key}
-              onPress={() => onCorridor(c)}
-              accessibilityRole="button"
-              style={[s.chip, on && s.chipOn, c.tier !== 'live' && s.chipMuted]}
-            >
-              {c.targetSymbol} {c.target}
+        <Card style={s.card}>
+          <View style={s.rowBetween}>
+            <Eyebrow>You send</Eyebrow>
+            <Eyebrow>{balance === null ? 'Balance —' : `Balance ${units(balance, source.decimals, 2)}`}</Eyebrow>
+          </View>
+          <View style={s.amountRow}>
+            <View style={s.amountField}>
+              <Text style={s.amount}>$</Text>
+              <TextInput
+                style={[s.amount, s.amountInput]}
+                value={amount}
+                onChangeText={(v) => onAmount(sanitizeAmount(v))}
+                placeholder="0.00"
+                placeholderTextColor={color.border}
+                keyboardType="decimal-pad"
+                accessibilityLabel="Amount to send"
+              />
+            </View>
+            <Chip filled>{`${source.symbol} · Monad`}</Chip>
+          </View>
+        </Card>
+
+        <View style={s.rateLine}>
+          <Text style={s.rateValue}>{reference ? rateLineText(reference, corridor) : `1 USD = ${corridor.targetSymbol} —`}</Text>
+          <Text style={s.rateMeta}>{rateMeta}</Text>
+        </View>
+
+        <Card style={s.card}>
+          <Eyebrow>Recipient receives</Eyebrow>
+          <View style={s.amountRow}>
+            <Text style={s.amount} numberOfLines={1} adjustsFontSizeToFit>
+              {receives}
             </Text>
-          )
-        })}
+            <Chip filled onPress={() => setPicking((p) => !p)}>{`${corridor.target} ▾`}</Chip>
+          </View>
+          {picking ? (
+            <View style={s.picker}>
+              {corridors.map((c) => (
+                <Pressable
+                  key={c.key}
+                  onPress={() => {
+                    onCorridor(c)
+                    setPicking(false)
+                  }}
+                  style={[s.pickRow, c.key === corridor.key && s.pickRowOn]}
+                >
+                  <Text style={s.pickText}>{`USD → ${c.target}`}</Text>
+                  <TierBadge tier={c.tier} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <Text style={s.help}>At the reference rate. The exact amount after spread comes before you sign.</Text>
+          <View style={s.tierRow}>
+            <Text style={s.tierText}>{tierLine.toUpperCase()}</Text>
+            <TextLink label="Why →" tone="purple" onPress={onWhy} />
+          </View>
+        </Card>
+
+        <Card style={s.recipient}>
+          {isAddress(recipient) ? (
+            <>
+              <View style={s.avatar}>
+                <Text style={s.avatarText}>{recipient.slice(2, 4).toUpperCase()}</Text>
+              </View>
+              <View style={s.recipientText}>
+                <Text style={s.recipientName}>Recipient</Text>
+                <Text style={s.recipientAddr}>{`${recipient.slice(0, 6)}…${recipient.slice(-4)} · Monad`}</Text>
+              </View>
+              <TextLink label="Change" onPress={() => onRecipient('')} />
+            </>
+          ) : (
+            <>
+              <TextInput
+                style={s.recipientInput}
+                value={recipient}
+                onChangeText={onRecipient}
+                placeholder="0x… recipient on Monad"
+                placeholderTextColor={color.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Recipient address"
+              />
+              <TextLink label="Paste" tone="purple" onPress={onPaste} />
+            </>
+          )}
+        </Card>
+
+        {error ? <ErrorText>{error}</ErrorText> : null}
+        <View style={s.spacer} />
+        <Button label="Get quote" variant={blocker ? 'disabled' : 'primary'} onPress={onQuote} busy={busy} />
+        <Text style={s.foot}>{blocker ?? 'Nothing moves until you approve the rate.'}</Text>
       </View>
-
-      <Card>
-        {corridor.tier === 'live' ? (
-          <Row k="Rate source" v={corridor.feed?.label ?? '—'} />
-        ) : (
-          <Notice>{corridor.note}</Notice>
-        )}
-        <Rule />
-        <Label>RECIPIENT</Label>
-        <TextInput
-          style={s.address}
-          value={recipient}
-          onChangeText={onRecipient}
-          placeholder="0x… address on Monad"
-          placeholderTextColor={color.border}
-          autoCapitalize="none"
-          autoCorrect={false}
-          accessibilityLabel="Recipient address"
-        />
-      </Card>
-
-      {error ? <Notice tone="error">{error}</Notice> : null}
-
-      <Button onPress={onQuote} disabled={blocker !== null} busy={busy}>
-        GET QUOTE
-      </Button>
-      {blocker ? <Notice>{blocker}</Notice> : <Notice>Nothing moves until you approve the rate.</Notice>}
     </ScrollView>
   )
 }
 
 const s = StyleSheet.create({
-  body: { padding: 20, gap: 14, paddingBottom: 48 },
-  headRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  currency: { fontSize: 40, fontWeight: '300', color: color.muted },
-  amount: { flex: 1, fontSize: 40, fontWeight: '500', color: color.ink, padding: 0 },
-  asset: { ...mono, fontSize: 12, color: color.grey },
-  sectionLabel: { marginTop: 4 },
-  corridors: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    ...mono,
-    fontSize: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: color.border,
-    color: color.ink,
-    overflow: 'hidden',
-  },
-  chipOn: { backgroundColor: color.ink, color: '#fff', borderColor: color.ink },
-  chipMuted: { color: color.muted },
-  address: { ...mono, fontSize: 13, color: color.ink, paddingVertical: 6 },
+  scroll: { flexGrow: 1 },
+  body: { flex: 1, gap: 10, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  card: { padding: 16, gap: 10 },
+  amountRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  amountField: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  amount: { fontFamily: font.display, fontSize: 38, letterSpacing: track(38, -0.035), color: color.ink, flexShrink: 1 },
+  amountInput: { flex: 1, padding: 0, margin: 0 },
+  rateLine: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, gap: 8 },
+  rateValue: { fontFamily: font.mono, fontSize: 11, color: color.ink },
+  rateMeta: { fontFamily: font.mono, fontSize: 11, color: color.muted, flexShrink: 1, textAlign: 'right' },
+  picker: { borderTopWidth: 1, borderTopColor: color.hairline2 },
+  pickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
+  pickRowOn: { backgroundColor: color.rowTint },
+  pickText: { fontFamily: font.mono, fontSize: 12, color: color.ink },
+  help: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.grey },
+  tierRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hairline2 },
+  tierText: { flex: 1, fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.08), color: color.muted },
+  recipient: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 16 },
+  avatar: { width: 40, height: 40, borderRadius: 8, backgroundColor: color.lilac, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontFamily: font.displayBold, fontSize: 13, color: color.lilacInk },
+  recipientText: { flex: 1, gap: 2 },
+  recipientName: { fontFamily: font.sansMedium, fontSize: 15, color: color.ink },
+  recipientAddr: { fontFamily: font.mono, fontSize: 11, color: color.muted },
+  recipientInput: { flex: 1, fontFamily: font.mono, fontSize: 13, color: color.ink, paddingVertical: 8 },
+  spacer: { flex: 1, minHeight: 12 },
+  foot: { textAlign: 'center', fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.06), color: color.muted },
 })
