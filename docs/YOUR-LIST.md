@@ -123,22 +123,30 @@ to do this in the last week.
 
 ---
 
-### 8. Mobile signing identity — needed before any native passkey works
-Not urgent, and it cannot be rushed later either, so it is here to be seen.
+### 8. Mobile signing identity — one command gets the Android half
+The mobile app is built and bundles; it cannot run until the domain vouches for it.
 
-A passkey created on the web at `usehenad.xyz` only works inside a native app if the
-domain vouches for that app. That means two files served from the domain as JSON with no
-redirect, and both need values only you can obtain:
+**Android is entirely unblocked and needs no Apple account.** From `mobile/`:
 
-- `/.well-known/apple-app-site-association` needs your **Apple Developer Team ID**, which
-  needs a paid Apple Developer account, plus the Associated Domains capability enabled on
-  the App ID.
-- `/.well-known/assetlinks.json` needs the **SHA-256 fingerprints of every Android signing
-  certificate** — the debug keystore, the EAS upload key, and the Play App Signing key. All
-  three, or builds silently fail to see the passkey.
+```
+pnpm build:android     # EAS cloud build, ~10-20 min, generates the keystore
+pnpm credentials       # read the SHA-256 fingerprint it generated
+```
 
-Also worth knowing before we start: the passkey library needs a real build, not Expo Go,
-and PRF requires iOS 18 or later and Android 9 or later.
+Then I write that fingerprint into `web/public/.well-known/assetlinks.json`, push, and the
+passkey works on any Android 9+ phone with Google Password Manager. Full steps and the
+things people get wrong are in `docs/TESTING-MOBILE.md`.
+
+⚠ The keystore EAS generates on that first build becomes part of the app's identity. The
+fingerprint comes from it, and replacing it later invalidates the association file and
+every passkey bound through it. Do not let EAS regenerate it casually.
+
+**iOS needs money and a Mac.** A paid Apple Developer account for the Team ID and the
+Associated Domains capability, a physical device on iOS 18 or later, and `expo prebuild`
+run somewhere with Xcode. Worth deferring until Android proves the account model.
+
+Note: Expo Go cannot run this app at all. The passkey library is native code with no config
+plugin, so it crashes on import. That is not a setting.
 
 ---
 
