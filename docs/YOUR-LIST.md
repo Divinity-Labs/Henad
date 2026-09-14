@@ -12,31 +12,33 @@ actually calling the service with it.
 
 ## Blocking, soonest first
 
-### 1. usehenad.xyz — buy it, and never let it lapse
-**Decided 14 Sep.** `henad.xyz` could not be had: it has belonged to a third party since
-11 June 2026, registered through GMO Internet Group and parked on the Afternic aftermarket
-at $699. A ₦3,652 order for it at Truehost was accepted, charged, and could never complete;
-the refund is outstanding on invoice 553722.
+### 1. usehenad.xyz — bought; two settings left, then it is done
+**Bought 14 Sep**, through Truehost, sponsored by NameSilo, expiring 14 Sep 2027.
+`henad.xyz` could not be had: it has belonged to a third party since 11 June 2026 and is
+parked on the Afternic aftermarket at $699. The ₦3,652 Truehost order for it was charged
+and could never complete; that refund is still outstanding on invoice 553722.
 
-`usehenad.xyz` is free, confirmed against the registry and DNS on 14 Sep. About $2 for the
-first year and $11 to $14 a year after. `PRODUCTION_RP_ID` in `packages/core/src/rpid.ts`
-already points at it, so mainnet will refuse to run under any other host.
+The web app is deployed and public at https://henad-delta.vercel.app, reading live rates
+from Monad mainnet. What is left is two things in two dashboards, both in `docs/DEPLOY.md`:
 
-Two things that matter more than the price:
+- **Vercel → henad → Settings → Domains → add `usehenad.xyz`**, then put the records it
+  shows into Truehost's DNS Management. Truehost holds the nameservers, so DNS is edited
+  there, not at Vercel.
+- **Vercel → Settings → Environment Variables**, Production: set
+  `NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz` and `NEXT_PUBLIC_MERA_RP_NAME=Henad`. This is a
+  safety setting rather than a convenience: without it a passkey created on the
+  vercel.app URL would bind to that host forever. With it, the browser refuses to make a
+  passkey anywhere but usehenad.xyz.
+
+Two things that outlive all of this:
 
 - **It can never be allowed to expire.** Every passkey binds to this domain permanently.
   If it lapses, every account created under it becomes unreachable, and whoever registers
   it next can mint passkeys in your name. Turn auto-renew on and keep a live card on it.
-  This is now a permanent running cost of the product existing.
-- **Buy where the renewal is cheap.** Porkbun is about $2.04 the first year; Cloudflare
-  renews .xyz at $11.20 with no markup. A domain can be transferred out 60 days after
-  registration, so buying at Truehost with the refund and moving later is also fine — just
-  ask their .xyz renewal price first.
-
-Mobile will later need `/.well-known/assetlinks.json` and
-`/.well-known/apple-app-site-association` served from this domain as JSON with no redirect.
-Those need an Apple Team ID and the Android signing fingerprints, both of which are yours
-to obtain; see item 8.
+  Renewal is $11 to $14 a year and is now a permanent cost of the product existing.
+- **It cannot move registrar until about 13 November.** ICANN locks a new registration for
+  60 days and the record already says `server transfer prohibited`. If you want Cloudflare's
+  cheaper renewal, that is the earliest date.
 
 ### 2. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
