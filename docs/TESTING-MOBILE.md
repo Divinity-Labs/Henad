@@ -116,6 +116,8 @@ in `app.config.ts` under `extra`. The button says so rather than being silently 
 | `CRYPTO_UNAVAILABLE` | The polyfill in `index.ts` did not run first. Check nothing was reordered above it. |
 | Passkey prompt never appears | `assetlinks.json` is missing, malformed, redirecting, or names the wrong fingerprint. |
 | Different address from the web | Stop. Do not ship. The derivation has drifted, and `packages/core/test/account.test.ts` should have caught it. |
+| `Unable to resolve "@expo/metro-runtime/error-overlay"` | expo-router's **peer** dependencies were undeclared, so pnpm auto-installed the newest versions (SDK 57's) and hoisted them into `node_modules/.pnpm/node_modules`, where Metro looks. Fixed by pinning `@expo/metro-runtime`, `react-native-reanimated` and `react-native-worklets` to SDK 54 versions in `mobile/package.json`. After any dependency change, restart with `npx expo start -c` so Metro drops its cached resolution. |
+| App icon is the Expo default | The icon is baked into the APK at build time. Changing `assets/` does nothing to an installed build; it needs a new `pnpm build:android`. |
 
 ---
 

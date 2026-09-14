@@ -27,6 +27,10 @@ const config: ExpoConfig = {
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
+  // Rendered by mobile/scripts/render-icons.ps1 from the geometry of web/src/app/icon.svg,
+  // in Instrument Sans SemiBold, so the phone and the browser tab carry the same mark.
+  // The icon is baked into the APK: changing these files needs a new build.
+  icon: './assets/icon.png',
   // SDK 54 still allows the choice; SDK 55 onward makes it mandatory. Turned on here so
   // the app is already running what a later upgrade will force, rather than discovering
   // New Architecture problems during the upgrade.
@@ -39,9 +43,20 @@ const config: ExpoConfig = {
   },
   android: {
     package: BUNDLE_ID,
+    // The launcher masks this to a circle or squircle of its choosing, so the torn receipt
+    // edge cannot survive here. The H and the purple bar sit inside the safe zone on ink.
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#0E091C',
+    },
     edgeToEdgeEnabled: true,
   },
-  plugins: ['expo-router', 'expo-secure-store'],
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    // The launch screen is the first thing the app shows; left unset it shows Expo's mark.
+    ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 180, resizeMode: 'contain', backgroundColor: '#fbfbfc' }],
+  ],
   // No `updates` or `runtimeVersion`: expo-updates is not installed and over-the-air
   // updates are not wanted here. A dev build loads JS from the Metro server on your
   // machine, and shipping a second update channel would only be a way to run code nobody

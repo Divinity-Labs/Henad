@@ -108,6 +108,27 @@ match it.
 
 ---
 
+### 5a. GitHub pushes from this repo need the Miracle656 account
+Found 14 Sep. Two GitHub accounts are signed in on this machine, and the **active** one is
+`Salmatcre8`, which has read-only access to `Miracle656/Henad` (`push: false`). Every push
+from here now fails with 403, and Vercel only deploys what reaches `main`.
+
+**One commit is waiting locally, unpushed:** `6d2ffa3`, which publishes
+`web/public/.well-known/assetlinks.json`. Until it deploys, the Android app cannot use
+usehenad.xyz passkeys, so the device test in item 8 is blocked on it.
+
+Left alone on purpose while you are using `Salmatcre8` in another terminal. When you are
+free, either of these works; the first changes it for the whole machine, the second only
+for the one command:
+
+```
+gh auth switch --user Miracle656
+```
+
+or tell me and I will push this repo with the right account without touching the active one.
+
+---
+
 ## Not blocking yet, but dated
 
 ### 6. Register the project on hackathon.monad.xyz
