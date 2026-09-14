@@ -23,14 +23,21 @@ locks a new registration for 60 days, and the record already carries
 ### Attaching it
 
 1. Vercel → project **henad** → Settings → Domains → add `usehenad.xyz`.
-2. Vercel then shows the records it wants. Use **its** values rather than the ones below if
-   they differ, since Vercel sometimes issues a project-specific CNAME target.
-3. Truehost → My Domains → usehenad.xyz → DNS Management, and add:
+2. Vercel shows the records it wants. Read them from the dashboard rather than copying
+   from anywhere else: the apex IP moved off the old `76.76.21.21` range, and the `www`
+   target is issued per project, so no two projects share it.
+3. Truehost → My Domains → usehenad.xyz → DNS Management, and add what Vercel showed.
+   For this project on 14 Sep 2026 that was:
 
-   | Type | Name | Value |
+   | Type | Host | Value |
    | --- | --- | --- |
-   | A | `@` | `76.76.21.21` |
-   | CNAME | `www` | `cname.vercel-dns.com` |
+   | A | `@` (blank if the form rejects `@`) | `216.198.79.1` |
+   | CNAME | `www` | `5c8d86439a07234a.vercel-dns-017.com` |
+
+   Drop the trailing dot Vercel displays on the CNAME. That is fully qualified notation;
+   most panels append it themselves and will reject or mangle a value you type it into.
+   The older `76.76.21.21` and `cname.vercel-dns.com` still work but are not what Vercel
+   issues now.
 
 4. Wait for propagation, up to 24 hours but usually minutes. Verify from a shell rather
    than a browser, which caches aggressively:
