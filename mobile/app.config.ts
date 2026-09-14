@@ -27,8 +27,10 @@ const config: ExpoConfig = {
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
-  // No newArchEnabled and no edgeToEdgeEnabled: SDK 57 removed both keys because the New
-  // Architecture and edge-to-edge are mandatory now and cannot be turned off.
+  // SDK 54 still allows the choice; SDK 55 onward makes it mandatory. Turned on here so
+  // the app is already running what a later upgrade will force, rather than discovering
+  // New Architecture problems during the upgrade.
+  newArchEnabled: true,
   ios: {
     bundleIdentifier: BUNDLE_ID,
     supportsTablet: false,
@@ -37,6 +39,7 @@ const config: ExpoConfig = {
   },
   android: {
     package: BUNDLE_ID,
+    edgeToEdgeEnabled: true,
   },
   plugins: ['expo-router', 'expo-secure-store'],
   experiments: { typedRoutes: true },
