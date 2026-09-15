@@ -51,7 +51,7 @@ Create `web/public/.well-known/assetlinks.json`:
 ```json
 [
   {
-    "relation": ["delegate_permission/common.get_login_creds"],
+    "relation": ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
     "target": {
       "namespace": "android_app",
       "package_name": "xyz.usehenad.app",
@@ -63,8 +63,10 @@ Create `web/public/.well-known/assetlinks.json`:
 
 Three things people get wrong here:
 
-- The relation must be `get_login_creds`. `handle_all_urls` is the deep-linking one and
-  does nothing for passkeys.
+- The relation must include `get_login_creds`. Include `handle_all_urls` as well. On 15 Sep a
+  file with only `get_login_creds` verified cleanly with Google, yet the phone still refused
+  to create a passkey. Setups known to work carry both relations, plus the app-side link in
+  `app.config.ts`: an `autoVerify` App Link for `/app` and `asset_statements` meta-data.
 - **List every signing certificate you will ever use**: the EAS development keystore, and
   later the Play App Signing key. A build signed by a key not in this list silently fails
   to see the passkey rather than reporting an error.
@@ -115,6 +117,7 @@ in `app.config.ts` under `extra`. The button says so rather than being silently 
 | `PRF_UNAVAILABLE` | The authenticator has no PRF support. Use Google Password Manager on Android 9+. |
 | `CRYPTO_UNAVAILABLE` | The polyfill in `index.ts` did not run first. Check nothing was reordered above it. |
 | Passkey prompt never appears | `assetlinks.json` is missing, malformed, redirecting, or names the wrong fingerprint. Ask Google: its verifier names the exact fault. `ERROR_CODE_REDIRECT` means the bare domain redirects to `www`; make the bare domain primary in Vercel. |
+| "RP ID cannot be validated" | Android does not trust this app for usehenad.xyz, even though Google's verifier may say the site is linked. Seen 15 Sep with a file granting only `get_login_creds` and an APK without the app-side link. Fixed in commit 1a35739 by adding `handle_all_urls` and the app-side link, the same as Veil, which creates passkeys on the same phone. Not yet confirmed on a device. The site change reaches phones once Google's cache expires (up to an hour). The app-side half needs a new APK. |
 | "Sign in another way" sheet, then "No passkey for usehenad.xyz" | Android's Credential Manager found no passkey for usehenad.xyz in this Google account (`NoCredentialException`). Passkeys are bound to their domain forever, so one made on `localhost` during web testing never appears here. Create one in the app with Continue with passkey, or on usehenad.xyz first. |
 | App force-quits on launch | The JavaScript expects a native module the installed APK was built without. Compare what the APK contains against what autolinking now resolves; after adding any native dependency, rebuild with `pnpm build:android`. Seen 14 Sep with expo-splash-screen, react-native-reanimated and react-native-worklets. |
 | Different address from the web | Stop. Do not ship. The derivation has drifted, and `packages/core/test/account.test.ts` should have caught it. |

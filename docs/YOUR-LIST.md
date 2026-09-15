@@ -140,6 +140,18 @@ Done 14 Sep: the fingerprint was read out of the built APK and published in
 installed. Full steps and the
 things people get wrong are in `docs/TESTING-MOBILE.md`.
 
+**15 Sep: the phone says "RP ID cannot be validated".** Fix pushed in commit 1a35739:
+- `assetlinks.json` now grants `handle_all_urls` too. This is live.
+- The app now links back to the site. That half needs a new APK.
+
+Neither part is confirmed on a device yet.
+
+1. Retry with the installed APK after about 13:45 UTC (14:45 in Lagos), once Google's hour-long cache has expired. If it works, no rebuild is needed.
+2. If it still fails, a new APK is needed, but **EAS's free Android builds are used up until 1 Oct**. Pick one of these:
+   - Upgrade the Expo plan (https://expo.dev/accounts/miracle_codes/settings/billing).
+   - Let me build locally in WSL Ubuntu. That needs JDK 17 and the Android SDK, a few GB. A local debug key also means adding its fingerprint to `assetlinks.json`.
+   - Wait for 1 Oct.
+
 ⚠ The keystore EAS generates on that first build becomes part of the app's identity. The
 fingerprint comes from it, and replacing it later invalidates the association file and
 every passkey bound through it. Do not let EAS regenerate it casually.
