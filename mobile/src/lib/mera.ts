@@ -145,6 +145,64 @@ export async function unlockStoredAccount(): Promise<MeraAccount> {
   return account
 }
 
+/**
+ * The native reason behind a passkey failure, when there is one.
+ *
+ * mera wraps react-native-passkey's error as `cause`, and that error is a plain object such
+ * as `{ error: 'NoCredentials', message }`. Its Android side maps Credential Manager
+ * exceptions onto those codes: NoCredentialException to NoCredentials, a WebAuthn
+ * SecurityError to RequestFailed, NotAllowed and Abort to UserCancelled. Codes the JS layer
+ * has no case for, such as a provider configuration fault, arrive as "Native error" with
+ * Android's own message.
+ */
+function nativeReason(e: unknown): { code: string; message: string } | null {
+  let cur: unknown = e
+  for (let depth = 0; depth < 4 && cur !== null && typeof cur === 'object'; depth++) {
+    const o = cur as { error?: unknown; message?: unknown; cause?: unknown }
+    if (typeof o.error === 'string') return { code: o.error, message: typeof o.message === 'string' ? o.message : '' }
+    cur = o.cause
+  }
+  return null
+}
+
+/**
+ * Copy for a failed passkey ceremony that names what actually happened.
+ *
+ * This used to blame the domain link for every failure. On 14 Sep that sent a real test the
+ * wrong way: Android had found no passkey saved for the domain at all, and said so.
+ */
+function describePasskeyFailure(reason: { code: string; message: string } | null): string {
+  const domain = rpId()
+  const code = reason?.code
+  const message = reason?.message ?? ''
+  const detail = message ? ` Android says: ${message}` : ''
+  switch (code) {
+    case 'NoCredentials':
+      return (
+        `No passkey for ${domain} is saved on this phone. Tap Continue with passkey to create one, or use a passkey ` +
+        `made on ${domain} in the same Google account. A passkey made on another domain, localhost included, can never open this account.`
+      )
+    case 'UserCancelled':
+      return 'The passkey prompt was closed. Nothing was created or changed.'
+    case 'CredentialAlreadyExists':
+      return 'This phone already has a passkey for that account. Tap I already have a passkey instead.'
+    case 'NoCreateOption':
+      return 'No passkey provider on this phone can create one. Turn on Google Password Manager in Settings, then try again.'
+    case 'NotSupported':
+      return 'This phone does not support passkeys. Android 9 or later is required.'
+    case 'TimedOut':
+      return 'The passkey prompt timed out. Try again.'
+    case 'Interrupted':
+      return 'The passkey prompt was interrupted. Try again.'
+    case 'RequestFailed':
+      return /rp ?id|origin|domain|asset|associat/i.test(message)
+        ? `This phone does not yet trust the app for ${domain} passkeys.${detail}`
+        : `The passkey request failed.${detail}`
+    default:
+      return `The passkey prompt did not complete.${detail}`
+  }
+}
+
 /** Plain-language failure copy, adapted for a phone. */
 export function describeAccountError(e: unknown): string {
   if (e instanceof RpIdMismatchError) return e.message
@@ -156,7 +214,7 @@ export function describeAccountError(e: unknown): string {
           'On Android use Google Password Manager; on iOS you need iOS 18 or later with iCloud Keychain.'
         )
       case 'PASSKEY_OPERATION_FAILED':
-        return 'The passkey prompt did not complete. Check that usehenad.xyz is linked to this app, then try again.'
+        return describePasskeyFailure(nativeReason(e))
       case 'CRYPTO_UNAVAILABLE':
         return 'This device has no secure random source, so it cannot create a passkey.'
       default:

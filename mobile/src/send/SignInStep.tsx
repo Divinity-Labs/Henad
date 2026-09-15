@@ -67,7 +67,9 @@ export function SignInStep({
 const s = StyleSheet.create({
   scroll: { flexGrow: 1 },
   hero: { overflow: 'hidden', gap: 16, paddingTop: 40, paddingHorizontal: 20, paddingBottom: 32, borderBottomWidth: 1, borderBottomColor: color.hairline },
-  glow: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 160, width: '100%' },
+  // left and right pin it to the hero's edges. A width of 100% as well would size it to the
+  // content box inside the hero's padding, so it stopped 40dp short of the right edge.
+  glow: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 160 },
   title: { fontFamily: font.display, fontSize: 32, lineHeight: 33, letterSpacing: track(32, -0.035), color: color.ink },
   body: { fontFamily: font.sans, fontSize: 14, lineHeight: 22, color: color.grey },
   actions: { flex: 1, gap: 10, paddingTop: 24, paddingHorizontal: 16 },
