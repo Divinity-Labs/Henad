@@ -1,4 +1,5 @@
 import type { ExpoConfig } from 'expo/config'
+import { AndroidConfig, withAndroidManifest, withStringsXml, type ConfigPlugin } from 'expo/config-plugins'
 
 /**
  * The passkey domain is the whole configuration problem.
@@ -19,6 +20,34 @@ import type { ExpoConfig } from 'expo/config'
  */
 const RP_ID = 'usehenad.xyz'
 const BUNDLE_ID = 'xyz.usehenad.app'
+
+/**
+ * The app's half of the Android domain link: the site vouches for the app in assetlinks.json,
+ * and this points the app back at that file.
+ *
+ * On 15 Sep the site half alone verified with Google's own API and still left the phone
+ * refusing to create a passkey ("RP ID cannot be validated"). The setups known to work carry
+ * both halves plus a verified App Link, so this one does too (react-native-passkey#68, Google's
+ * seamless-credential-sharing codelab, and the author's own Veil app on the same phone).
+ *
+ * The quotes are backslash-escaped because Android's resource compiler strips bare double
+ * quotes from string resources, which would leave the value as invalid JSON.
+ */
+const withAssetStatements: ConfigPlugin<string> = (cfg, domain) => {
+  const value = `[{\\"include\\": \\"https://${domain}/.well-known/assetlinks.json\\"}]`
+  cfg = withStringsXml(cfg, (c) => {
+    c.modResults = AndroidConfig.Strings.setStringItem(
+      [{ $: { name: 'asset_statements', translatable: 'false' }, _: value }],
+      c.modResults,
+    )
+    return c
+  })
+  return withAndroidManifest(cfg, (c) => {
+    const app = AndroidConfig.Manifest.getMainApplicationOrThrow(c.modResults)
+    AndroidConfig.Manifest.addMetaDataItemToMainApplication(app, 'asset_statements', '@string/asset_statements', 'resource')
+    return c
+  })
+}
 
 const config: ExpoConfig = {
   name: 'Henad',
@@ -50,6 +79,17 @@ const config: ExpoConfig = {
       backgroundColor: '#0E091C',
     },
     edgeToEdgeEnabled: true,
+    // A verified App Link makes Android check assetlinks.json against this build's signing
+    // certificate at install, which is how the domain trust is established on the phone.
+    // One narrow path, /app, so receipt and rates links keep opening in the browser.
+    intentFilters: [
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        category: ['BROWSABLE', 'DEFAULT'],
+        data: [{ scheme: 'https', host: RP_ID, pathPrefix: '/app' }],
+      },
+    ],
   },
   plugins: [
     'expo-router',
@@ -86,4 +126,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default config
+export default withAssetStatements(config, RP_ID)
