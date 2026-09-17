@@ -5,6 +5,7 @@ import QRCode from 'qrcode'
 import type { Address } from 'viem'
 import { Button } from '@/components/ui/Button'
 import { Card, StepHeader } from '@/components/send/send-ui'
+import { TokenIcon } from '@/components/ui/TokenIcon'
 import { isLocalFork } from '@/lib/chain'
 import { tokens } from '@/lib/format'
 import { forgetStoredAccount, loadStoredAccount, readHoldings, type Holding } from '@/lib/send-mera'
@@ -30,14 +31,27 @@ export function AccountView({ network }: { network: string }) {
   const refresh = useCallback(async () => {
     if (!address) return
     setLoading(true)
-    setHoldings(await readHoldings(address))
+    const next = await readHoldings(address)
+    // A failed background read keeps the last good balances rather than blanking them.
+    setHoldings((prev) => next ?? prev)
     setLoading(false)
   }, [address])
 
   useEffect(() => {
     if (!address) return
     void refresh()
+    // Balances change when a payout lands, including one sent from the phone, so keep reading
+    // while the page is open and read again the moment the tab comes back into view.
+    const id = window.setInterval(() => void refresh(), 15_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     QRCode.toString(address, { type: 'svg', margin: 1, width: 224, color: { dark: '#0E091C', light: '#FFFFFF' } }).then(setQr, () => setQr(null))
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [address, refresh])
 
   async function copy() {
@@ -107,8 +121,11 @@ export function AccountView({ network }: { network: string }) {
           <p className="m-0 text-[13px] text-grey">Nothing on this account yet.</p>
         ) : (
           held.map((h) => (
-            <div key={h.symbol} className="flex items-baseline justify-between">
-              <span className="font-mono text-[12px] text-grey">{h.symbol}</span>
+            <div key={h.symbol} className="flex items-center justify-between">
+              <span className="flex items-center gap-2 font-mono text-[12px] text-grey">
+                <TokenIcon symbol={h.symbol} size={22} />
+                {h.symbol}
+              </span>
               <span className="font-display text-[22px] tracking-[-.02em] tabular">{tokens(h.value, h.decimals, h.symbol, 2)}</span>
             </div>
           ))

@@ -82,12 +82,19 @@ export default function App() {
   const loadHoldings = useCallback(async () => {
     if (!address) return
     setHoldingsLoading(true)
-    setHoldings(await readHoldings(address))
+    const next = await readHoldings(address)
+    // A failed background read keeps the last good balances rather than blanking them.
+    setHoldings((prev) => next ?? prev)
     setHoldingsLoading(false)
   }, [address])
 
+  // Balances change when a payout lands, including one sent from the web, so the account
+  // screen keeps reading while it is open.
   useEffect(() => {
-    if (view === 'profile') void loadHoldings()
+    if (view !== 'profile') return
+    void loadHoldings()
+    const id = setInterval(() => void loadHoldings(), 15_000)
+    return () => clearInterval(id)
   }, [view, loadHoldings])
 
   const copyAddress = useCallback(() => {

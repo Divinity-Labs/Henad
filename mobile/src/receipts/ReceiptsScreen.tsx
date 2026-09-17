@@ -3,6 +3,7 @@ import type { Address } from 'viem'
 import type { ReceiptDto } from '@/lib/api'
 import { tokenText } from '@/lib/display'
 import { units } from '@/send/format'
+import { TokenIcon } from '@/tokens/TokenIcon'
 import { Card, Eyebrow } from '@/ui'
 import { color, font, track } from '@/theme'
 
@@ -53,7 +54,10 @@ export function ReceiptsScreen({
                   <Text style={s.index}>{r.index !== null ? `#${String(r.index).padStart(2, '0')}` : '—'}</Text>
                   <Text style={s.meta}>{when(r.settledAt)}</Text>
                 </View>
-                <Text style={s.amount}>{`$${units(BigInt(r.sourceAmount), r.sourceAsset.decimals, 2)} → ${tokenText(BigInt(r.deliveredAmount), r.targetAsset.decimals, r.targetAsset.symbol, 2)}`}</Text>
+                <View style={s.amountRow}>
+                  <TokenIcon symbol={r.targetAsset.symbol} size={22} />
+                  <Text style={s.amount}>{`$${units(BigInt(r.sourceAmount), r.sourceAsset.decimals, 2)} → ${tokenText(BigInt(r.deliveredAmount), r.targetAsset.decimals, r.targetAsset.symbol, 2)}`}</Text>
+                </View>
                 <View style={s.rowBetween}>
                   <Text style={s.meta}>{`${r.spreadBps} bps · to ${r.recipient.slice(0, 6)}…${r.recipient.slice(-4)}`}</Text>
                   {tag ? <Text style={[s.tag, tag === 'Received' && s.tagIn]}>{tag.toUpperCase()}</Text> : <Text style={s.open}>Open ↗</Text>}
@@ -76,7 +80,8 @@ const s = StyleSheet.create({
   row: { padding: 14, gap: 6 },
   index: { fontFamily: font.mono, fontSize: 11, color: color.purple },
   meta: { fontFamily: font.mono, fontSize: 11, color: color.muted, flexShrink: 1 },
-  amount: { fontFamily: font.display, fontSize: 19, letterSpacing: track(19, -0.02), color: color.ink },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  amount: { flexShrink: 1, fontFamily: font.display, fontSize: 19, letterSpacing: track(19, -0.02), color: color.ink },
   tag: { fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.08), color: color.ink, backgroundColor: color.chip, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
   tagIn: { backgroundColor: color.lilac, color: color.lilacInk },
   open: { fontFamily: font.mono, fontSize: 10, color: color.purple },

@@ -75,7 +75,7 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     return () => {
       live = false
     }
-  }, [address, s.sourceAsset])
+  }, [address, s.sourceAsset, s.step])
 
   const corridor = corridorByKey(s.corridorKey) ?? LIVE_CORRIDOR
   const rate = s.rates.find((r) => r.key === corridor.key)
@@ -216,6 +216,7 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
         maxSpreadBps={receipt.sample ? null : s.maxSpreadBps}
         notice={s.notice}
         onShare={share}
+        onAgain={() => dispatch({ type: 'again' })}
       />
     )
   } else if (closed) {

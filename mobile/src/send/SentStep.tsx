@@ -4,7 +4,7 @@ import type { Hex } from 'viem'
 import type { Corridor } from '@henad/core'
 import { receiptUrl } from '@/lib/api'
 import { dateTimeStamp, explorerTx, moneyText, rateLineText, tokenText } from '@/lib/display'
-import { Button, Dashed, HenadMark, TextLink } from '@/ui'
+import { Button, Dashed, HenadMark } from '@/ui'
 import { color, font, track } from '@/theme'
 import { shortId, units } from './format'
 
@@ -120,7 +120,7 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
           <Button label="Share receipt" small style={s.flex} onPress={() => void Share.share({ message: url, url })} />
           <Button label="Monadscan ↗" small variant="secondary" style={s.flex} onPress={() => void Linking.openURL(explorerTx(r.chainId, r.txHash))} />
         </View>
-        <TextLink label="Send another" tone="muted" onPress={onDone} style={s.again} />
+        <Button label="Send another" variant="secondary" height={44} small onPress={onDone} />
       </View>
     </ScrollView>
   )

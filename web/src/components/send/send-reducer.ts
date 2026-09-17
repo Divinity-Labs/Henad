@@ -68,6 +68,8 @@ export type SendAction =
   | { type: 'spread'; delta: number }
   | { type: 'sent'; receipt: ReceiptDto; txHash: Hex | null }
   | { type: 'notice'; message: string | null }
+  /** After a payout: back to the amount screen for another, keeping the recipient. */
+  | { type: 'again' }
 
 /** Digits, one dot, two decimals, nine integer digits. Accepts a comma as the dot. */
 export function sanitizeAmount(raw: string): string {
@@ -151,5 +153,7 @@ export function sendReducer(s: SendState, a: SendAction): SendState {
       return { ...s, busy: null, error: null, receipt: a.receipt, txHash: a.txHash, step: 'sent' }
     case 'notice':
       return { ...s, notice: a.message }
+    case 'again':
+      return { ...s, step: 'amount', amount: '', quote: null, receipt: null, txHash: null, error: null, notice: null, busy: null }
   }
 }

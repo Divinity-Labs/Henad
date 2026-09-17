@@ -5,6 +5,7 @@ import type { Holding } from '@/lib/balance'
 import { Button, Card, Dashed, Eyebrow, TextLink } from '@/ui'
 import { color, font, track } from '@/theme'
 import { units } from '@/send/format'
+import { TokenIcon } from '@/tokens/TokenIcon'
 
 /**
  * The account: its address as text and as a QR code, what it holds, and sign out.
@@ -65,7 +66,10 @@ export function ProfileScreen({
           ) : (
             held.map((h) => (
               <View key={h.symbol} style={s.holding}>
-                <Text style={s.symbol}>{h.symbol}</Text>
+                <View style={s.token}>
+                  <TokenIcon symbol={h.symbol} size={24} />
+                  <Text style={s.symbol}>{h.symbol}</Text>
+                </View>
                 <Text style={s.value}>{units(h.value, h.decimals, 2)}</Text>
               </View>
             ))
@@ -89,7 +93,8 @@ const s = StyleSheet.create({
   address: { fontFamily: font.mono, fontSize: 13, lineHeight: 20, letterSpacing: track(13, 0.02), color: color.ink, textAlign: 'center' },
   card: { padding: 16, gap: 10 },
   help: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.grey, textAlign: 'center' },
-  holding: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  holding: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  token: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   symbol: { fontFamily: font.mono, fontSize: 13, color: color.grey },
   value: { fontFamily: font.display, fontSize: 22, letterSpacing: track(22, -0.02), color: color.ink },
   spacer: { flex: 1, minHeight: 12 },

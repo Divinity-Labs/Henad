@@ -7,6 +7,7 @@ import { age, atRate, rateLineText, tokenText } from '@/lib/display'
 import { Button, Card, Chip, ErrorText, Eyebrow, TextLink, TierBadge } from '@/ui'
 import { color, font, track } from '@/theme'
 import { parseAmount, sanitizeAmount, units } from './format'
+import { TokenIcon } from '@/tokens/TokenIcon'
 
 /**
  * S1. Amount, corridor and recipient.
@@ -113,7 +114,10 @@ export function AmountStep({
                 accessibilityLabel="Amount to send"
               />
             </View>
-            <Chip filled>{`${source.symbol} · Monad`}</Chip>
+            <View style={s.chipRow}>
+              <TokenIcon symbol={source.symbol} size={22} />
+              <Chip filled>{`${source.symbol} · Monad`}</Chip>
+            </View>
           </View>
         </Card>
 
@@ -128,7 +132,10 @@ export function AmountStep({
             <Text style={s.amount} numberOfLines={1} adjustsFontSizeToFit>
               {receives}
             </Text>
-            <Chip filled onPress={() => setPicking((p) => !p)}>{`${corridor.target} ▾`}</Chip>
+            <View style={s.chipRow}>
+              {corridor.targetAsset ? <TokenIcon symbol={corridor.targetAsset.symbol} size={22} /> : null}
+              <Chip filled onPress={() => setPicking((p) => !p)}>{`${corridor.target} ▾`}</Chip>
+            </View>
           </View>
           {picking ? (
             <View style={s.picker}>
@@ -141,7 +148,10 @@ export function AmountStep({
                   }}
                   style={[s.pickRow, c.key === corridor.key && s.pickRowOn]}
                 >
-                  <Text style={s.pickText}>{`USD → ${c.target}`}</Text>
+                  <View style={s.chipRow}>
+                    {c.targetAsset ? <TokenIcon symbol={c.targetAsset.symbol} size={20} /> : null}
+                    <Text style={s.pickText}>{`USD → ${c.target}`}</Text>
+                  </View>
                   <TierBadge tier={c.tier} />
                 </Pressable>
               ))}
@@ -196,6 +206,7 @@ export function AmountStep({
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
+  chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   scroll: { flexGrow: 1 },
   body: { flex: 1, gap: 10, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

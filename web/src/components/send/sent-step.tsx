@@ -16,6 +16,7 @@ export function SentStep({
   maxSpreadBps,
   notice,
   onShare,
+  onAgain,
 }: {
   receipt: Receipt
   explorerTx: string | null
@@ -23,6 +24,7 @@ export function SentStep({
   maxSpreadBps: number | null
   notice: string | null
   onShare: () => void
+  onAgain: () => void
 }) {
   const sample = receipt.sample
   return (
@@ -57,6 +59,14 @@ export function SentStep({
               Monadscan ↗
             </Button>
           )}
+        </div>
+        <div className="flex gap-2 pb-4">
+          <Button variant="secondary" size="lg" className="flex-1" onClick={onAgain}>
+            Send another
+          </Button>
+          <Button variant="secondary" size="lg" className="flex-1" href="/receipts">
+            All receipts
+          </Button>
         </div>
       </div>
     </div>
