@@ -4,7 +4,7 @@ import Image from 'next/image'
 import type { ReactNode } from 'react'
 import type { Address } from 'viem'
 import type { Corridor, SourceAssetSymbol } from '@henad/core'
-import { bps, money, rateLine, spreadLine } from '@/lib/format'
+import { bps, money, rateLine, spreadLine, tokens } from '@/lib/format'
 import {
   MAX_SPREAD_MAX,
   MAX_SPREAD_MIN,
@@ -150,7 +150,7 @@ export function QuoteStep({
 
       <div className="flex flex-col gap-1 rounded-[12px] bg-dark px-[14px] py-3 text-white">
         <div className="label text-lilac-2">{firstName(recipientName)} receives</div>
-        <div className="font-display text-[32px] font-medium leading-none tracking-[-.035em] tabular">{money(m.delivered, venue.targetDecimals, symbol, dp)}</div>
+        <div className="font-display text-[32px] font-medium leading-none tracking-[-.035em] tabular">{tokens(m.delivered, venue.targetDecimals, c.targetAsset?.symbol ?? c.target, dp)}</div>
         <div className="font-mono text-[11px] text-dim">
           for {money(m.sourceAmount, SOURCE_DECIMALS, '$')} {sourceAsset} · final in 0.6 s
         </div>

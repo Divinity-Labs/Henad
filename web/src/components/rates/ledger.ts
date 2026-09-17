@@ -11,6 +11,8 @@ import { deploymentAddresses, type LedgerTotals, type Receipt } from '@/lib/rece
  */
 export interface Headline {
   symbol: string
+  /** The token that arrives, e.g. GBPm */
+  token: string
   decimals: number
   dp: number
   delivered: bigint
@@ -27,6 +29,7 @@ export function headline(t: LedgerTotals): Headline | null {
   const c = t.byCurrency[key]
   return {
     symbol: c.symbol,
+    token: c.token,
     decimals: c.decimals,
     dp: currencyDp(key),
     delivered: c.delivered,

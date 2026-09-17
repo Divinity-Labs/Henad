@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer } from 'react'
 import { isAddress, toHex } from 'viem'
 import { MONAD_MAINNET_ID, hashIntent, type Intent } from '@henad/core'
 import { Nav } from '@/components/Nav'
@@ -45,7 +45,6 @@ function explorerTx(chainId: number, hash: string): string {
  */
 export function SendFlow({ initial }: { initial: SendInitial }) {
   const [s, dispatch] = useReducer(sendReducer, initial, initialState)
-  const session = useRef<MeraAccount | null>(null)
   const chainId = appChainId()
   const deployment = deploymentAddresses()
 
@@ -54,17 +53,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     return () => window.clearInterval(id)
   }, [])
 
-  useEffect(
-    () => () => {
-      session.current?.end()
-      session.current = null
-    },
-    [],
-  )
-
-  // A reload destroys the signing session, because the key is never persisted, but it
-  // should not destroy the account. The stored address puts the chip and the balance
-  // back immediately; the passkey is asked for later, when something must be signed.
+  // No signing key is kept between actions. The stored address puts the chip and the
+  // balance back on load; the passkey is asked for each time something must be signed.
   useEffect(() => {
     const stored = loadStoredAccount()
     if (stored) dispatch({ type: 'signedIn', address: stored.address, credentialId: stored.credentialId })
@@ -112,8 +102,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     dispatch({ type: 'busy', busy: 'account' })
     try {
       const acc = await run()
-      session.current?.end()
-      session.current = acc
+      // Signing in only needs the address. The key is dropped here; each payout asks again.
+      acc.end()
       dispatch({ type: 'signedIn', address: acc.address, credentialId: acc.credentialId })
     } catch (e) {
       dispatch({ type: 'fail', message: describeAccountError(e) })
@@ -151,25 +141,16 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     }
   }
 
-  /**
-   * The live signing session, asking for the passkey only if this tab does not have one.
-   * After a reload that is the first prompt the user sees, and it lands on the send
-   * action rather than on arrival.
-   */
-  async function ensureSession(): Promise<MeraAccount> {
-    if (session.current) return session.current
-    const acc = await unlockStoredAccount()
-    session.current = acc
-    return acc
-  }
-
   async function sendPayout() {
     const quote = s.quote
     if (!quote || !venue || !deployment || !isAddress(s.recipient)) return
     dispatch({ type: 'busy', busy: 'send' })
+    // Every payout asks for the passkey. A key held in the tab after the first payout let
+    // the next one go out with a single click from anyone at the open page, and the
+    // approval would not be tied to the payout it authorises.
     let acc: MeraAccount
     try {
-      acc = await ensureSession()
+      acc = await unlockStoredAccount()
     } catch (e) {
       dispatch({ type: 'fail', message: describeAccountError(e) })
       return
@@ -197,6 +178,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
       const msg = e instanceof Error ? e.message : 'Settlement failed.'
       dispatch({ type: 'fail', message: `${msg} Nothing moved.` })
       return
+    } finally {
+      acc.end()
     }
     try {
       const res = await fetch(`/api/receipt/${settled.intentId}`, { cache: 'no-store' })

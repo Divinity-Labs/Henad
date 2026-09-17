@@ -1,6 +1,6 @@
 import { FINALITY_MS } from '@henad/core'
 import { StatCell } from '@/components/ui/StatCell'
-import { bps, money } from '@/lib/format'
+import { bps, money, tokens } from '@/lib/format'
 import type { LandingLedger } from './ledger'
 
 /**
@@ -10,7 +10,7 @@ import type { LandingLedger } from './ledger'
 export function StatStrip({ ledger }: { ledger: LandingLedger }) {
   const p = ledger.primary
   const settlements = String(ledger.settlements)
-  const delivered = p ? money(p.delivered, p.decimals, p.symbol, p.dp) : '—'
+  const delivered = p ? tokens(p.delivered, p.decimals, p.token, p.dp) : '—'
   const deliveredSub = p && p.currencies > 1 ? `+${p.currencies - 1} more` : undefined
   const spread = p ? `${p.spreadCost < 0n ? '−' : ''}${money(p.spreadCost < 0n ? -p.spreadCost : p.spreadCost, p.decimals, p.symbol, p.dp)}` : '—'
   const spreadSub = p ? `· ${bps(p.spreadBps)}` : undefined

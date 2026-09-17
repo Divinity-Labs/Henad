@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import type { Hex } from 'viem'
-import { money, shortAddress } from './format'
+import { money, shortAddress, tokens } from './format'
 import { getReceipt, type Receipt } from './receipts'
 
 /**
@@ -62,7 +62,7 @@ export function spreadSentence(r: Receipt): string {
 /** The verification headline. There are no names in the data layer, so the recipient is its short address. */
 export function headline(r: Receipt): string {
   const c = r.corridor
-  const got = money(r.deliveredAmount, r.targetAsset.decimals, c.targetSymbol, c.currencyDp)
+  const got = tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, c.currencyDp)
   const paid = money(r.sourceAmount, r.sourceAsset.decimals, '$')
   return `${shortAddress(r.recipient)} received ${got} for ${paid}. ${spreadSentence(r)} Anyone can check.`
 }

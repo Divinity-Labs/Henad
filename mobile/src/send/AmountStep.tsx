@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { isAddress } from 'viem'
 import type { Corridor } from '@henad/core'
 import type { RateDto } from '@/lib/api'
-import { age, atRate, moneyText, rateLineText } from '@/lib/display'
+import { age, atRate, rateLineText, tokenText } from '@/lib/display'
 import { Button, Card, Chip, ErrorText, Eyebrow, TextLink, TierBadge } from '@/ui'
 import { color, font, track } from '@/theme'
 import { parseAmount, sanitizeAmount, units } from './format'
@@ -59,7 +59,7 @@ export function AmountStep({
   const reference = rate?.rate ? BigInt(rate.rate) : null
   const targetDecimals = corridor.targetAsset?.decimals ?? 18
 
-  const receives = parsed && reference ? moneyText(atRate(parsed, source.decimals, reference, targetDecimals), targetDecimals, corridor) : '—'
+  const receives = parsed && reference ? tokenText(atRate(parsed, source.decimals, reference, targetDecimals), targetDecimals, corridor.targetAsset?.symbol ?? corridor.target, corridor.currencyDp) : '—'
 
   const tierLine = useMemo(() => {
     const others = corridors.filter((c) => c.key !== corridor.key)

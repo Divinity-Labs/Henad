@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { MAX_SPREAD_STEP, countdown, deliveredAtSpreadCap, quoteFreshness, quoteMaths, type Corridor, type QuoteDto } from '@henad/core'
-import { explorerAddress, moneyText, rateLineText } from '@/lib/display'
+import { explorerAddress, moneyText, rateLineText, tokenText } from '@/lib/display'
 import { Button, Card, ErrorText, Eyebrow, Line, TextLink } from '@/ui'
 import { color, font, images, track } from '@/theme'
 import { units } from './format'
@@ -86,7 +86,7 @@ export function QuoteStep({
 
         <View style={s.delivered}>
           <Eyebrow tone="lavender">Recipient receives</Eyebrow>
-          <Text style={s.deliveredAmount}>{moneyText(m.delivered, td, corridor)}</Text>
+          <Text style={s.deliveredAmount}>{tokenText(m.delivered, td, corridor.targetAsset?.symbol ?? corridor.target, corridor.currencyDp)}</Text>
           <Text style={s.deliveredNote}>{`for $${units(m.sourceAmount, source.decimals, 2)} ${source.symbol} · final in under a second`}</Text>
         </View>
 

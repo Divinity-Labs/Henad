@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { isAddress, parseUnits } from 'viem'
 import { deliveredAt } from '@henad/core'
 import { CORRIDORS, SOURCE_ASSETS, type Corridor, type SourceAssetSymbol } from '@henad/core'
-import { money, rateLine, shortAddress } from '@/lib/format'
+import { money, rateLine, shortAddress, tokens } from '@/lib/format'
 import type { RateDto } from '@/lib/send-serial'
 import { Button } from '@/components/ui/Button'
 import { Card, ChipSelect, Notice, StepHeader, linkLabel } from './send-ui'
@@ -66,7 +66,7 @@ export function AmountStep(p: AmountStepProps) {
   const live = c.tier === 'live' && targetAsset !== null
   const receives =
     units !== null && rate !== null && targetAsset
-      ? money(deliveredAt(rate, units, SOURCE_DECIMALS, targetAsset.decimals), targetAsset.decimals, c.targetSymbol, c.currencyDp)
+      ? tokens(deliveredAt(rate, units, SOURCE_DECIMALS, targetAsset.decimals), targetAsset.decimals, targetAsset.symbol, c.currencyDp)
       : '—'
   const validRecipient = isAddress(p.recipient)
   const overBalance = units !== null && p.balance !== null && units > p.balance

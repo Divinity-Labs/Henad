@@ -1,5 +1,5 @@
 import { StatCell } from '@/components/ui/StatCell'
-import { bps, money, spreadLine } from '@/lib/format'
+import { bps, spreadLine, tokens } from '@/lib/format'
 import { pad2, type Headline } from './ledger'
 
 /**
@@ -12,7 +12,7 @@ export function RatesHero({ count, head, sample, chain }: { count: number; head:
   const sub = (extra: string | null) => [extra, sample ? 'sample' : null].filter(Boolean).join(' · ') || undefined
   const spread = head ? spreadLine(head.spreadCost, head.decimals, head.symbol, head.meanBps, { dp: head.dp }) : '—'
   const spreadBps = head ? bps(head.meanBps) : '—'
-  const delivered = head ? money(head.delivered, head.decimals, head.symbol, head.dp) : '—'
+  const delivered = head ? tokens(head.delivered, head.decimals, head.token, head.dp) : '—'
   return (
     <>
       <section className="relative flex flex-col gap-2 overflow-hidden border-b border-hairline px-4 pt-6 pb-5 md:flex-row md:items-end md:justify-between md:gap-10 md:px-9 md:pt-16 md:pb-9">

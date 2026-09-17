@@ -7,6 +7,8 @@ export type Network = 'mainnet' | 'testnet'
 
 export interface PrimaryTotals {
   symbol: string
+  /** The token that arrives, e.g. GBPm */
+  token: string
   decimals: number
   dp: number
   delivered: bigint
@@ -39,6 +41,7 @@ export function landingLedger(receipts: Receipt[]): LandingLedger {
       v.count === 1 ? v.spreadBpsSum : atReference > 0n ? Math.round((Number(v.spreadCost) * 10_000) / Number(atReference)) : 0
     primary = {
       symbol: v.symbol,
+      token: v.token,
       decimals: v.decimals,
       dp: CORRIDORS.find((c) => c.target === target)?.currencyDp ?? 2,
       delivered: v.delivered,

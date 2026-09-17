@@ -16,6 +16,15 @@ export function rateLineText(rate: bigint, corridor: Corridor): string {
   return `1 USD = ${rateText(rate, corridor)}`
 }
 
+/**
+ * A token amount named by its token: "745.13 GBPm". Used for what actually arrives: the
+ * recipient holds a pound-pegged token on Monad, not pounds in a bank. Rates and spreads keep
+ * the currency sign, because those are prices, not holdings.
+ */
+export function tokenText(value: bigint, decimals: number, tokenSymbol: string, dp: number): string {
+  return `${units(value, decimals, dp)} ${tokenSymbol}`
+}
+
 export function moneyText(value: bigint, decimals: number, corridor: Corridor): string {
   return `${symbolPrefix(corridor.targetSymbol)}${units(value, decimals, corridor.currencyDp)}`
 }

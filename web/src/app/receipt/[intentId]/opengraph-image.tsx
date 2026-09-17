@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ImageResponse } from 'next/og'
 import { notFound } from 'next/navigation'
-import { money, rateLine, shortAddress, shortHash, utcStamp } from '@/lib/format'
+import { money, rateLine, shortAddress, shortHash, tokens, utcStamp } from '@/lib/format'
 import { isIntentId, loadReceipt, requestOrigin } from '@/lib/receipt-page'
 
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -42,7 +42,7 @@ export default async function Image({ params }: { params: Promise<{ intentId: st
 
   const c = r.corridor
   const dp = c.currencyDp
-  const delivered = money(r.deliveredAmount, r.targetAsset.decimals, c.targetSymbol, dp)
+  const delivered = tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, dp)
   const paid = money(r.sourceAmount, r.sourceAsset.decimals, '$')
   const cost = money(r.spreadCost < 0n ? -r.spreadCost : r.spreadCost, r.targetAsset.decimals, c.targetSymbol, dp)
   const bps = r.spreadBps > 0 ? `+${r.spreadBps}` : String(r.spreadBps)
@@ -84,7 +84,7 @@ export default async function Image({ params }: { params: Promise<{ intentId: st
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ display: 'flex', fontSize: 40, letterSpacing: '-0.03em', lineHeight: 1 }}>Henad</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 16, letterSpacing: '0.12em', textTransform: 'uppercase', color: LILAC }}>
-              <span>{`${kind} · ${c.source} → ${c.target} · Monad`}</span>
+              <span>{`${kind} · ${r.sourceAsset.symbol} → ${r.targetAsset.symbol} · Monad`}</span>
               {r.sample && (
                 <span style={{ display: 'flex', padding: '4px 10px', borderRadius: 4, backgroundColor: '#FFAE45', color: INK, fontSize: 13 }}>Sample</span>
               )}
@@ -122,7 +122,7 @@ export default async function Image({ params }: { params: Promise<{ intentId: st
             <span style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: PURPLE }}>{kind}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: MUTED, fontSize: 13 }}>
-            <span>{`${c.source} → ${c.target} · Monad`}</span>
+            <span>{`${r.sourceAsset.symbol} → ${r.targetAsset.symbol} · Monad`}</span>
             <span>{utcStamp(r.settledAt)}</span>
           </div>
           {dashed}

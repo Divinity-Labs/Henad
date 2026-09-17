@@ -8,6 +8,18 @@ export function money(amount: bigint, decimals: number, symbol: string, dp = 2):
   return symbol + n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp })
 }
 
+/**
+ * A token amount named by its token: "745.13 GBPm".
+ *
+ * Used wherever the figure is what actually arrives. The recipient holds a pound-pegged token
+ * on Monad, not pounds in a bank, and "£745.13" alone read as the second. Rates and spreads
+ * keep the currency sign, because those are prices, not holdings.
+ */
+export function tokens(amount: bigint, decimals: number, tokenSymbol: string, dp = 2): string {
+  const n = Number(formatUnits(amount, decimals))
+  return `${n.toLocaleString('en-GB', { minimumFractionDigits: dp, maximumFractionDigits: dp })} ${tokenSymbol}`
+}
+
 /** Rate in 1e18 fixed point (target per 1 source) -> "1 USD = £0.78247". */
 export function rateLine(rate1e18: bigint, targetSymbol: string, dp = 5, source = 'USD'): string {
   return `1 ${source} = ${rateValue(rate1e18, targetSymbol, dp)}`

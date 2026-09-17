@@ -164,14 +164,14 @@ export async function settledReceipts(limit = 50): Promise<Receipt[]> {
 export interface LedgerTotals {
   settlements: number
   /** per target currency: delivered and spread cost, base units (18 dec for Mento stables) */
-  byCurrency: Record<string, { delivered: bigint; spreadCost: bigint; symbol: string; decimals: number; count: number; spreadBpsSum: number }>
+  byCurrency: Record<string, { delivered: bigint; spreadCost: bigint; symbol: string; token: string; decimals: number; count: number; spreadBpsSum: number }>
 }
 
 export function totals(receipts: Receipt[]): LedgerTotals {
   const byCurrency: LedgerTotals['byCurrency'] = {}
   for (const r of receipts) {
     const k = r.corridor.target
-    byCurrency[k] ??= { delivered: 0n, spreadCost: 0n, symbol: r.corridor.targetSymbol, decimals: r.targetAsset.decimals, count: 0, spreadBpsSum: 0 }
+    byCurrency[k] ??= { delivered: 0n, spreadCost: 0n, symbol: r.corridor.targetSymbol, token: r.targetAsset.symbol, decimals: r.targetAsset.decimals, count: 0, spreadBpsSum: 0 }
     byCurrency[k].delivered += r.deliveredAmount
     byCurrency[k].spreadCost += r.spreadCost
     byCurrency[k].count += 1

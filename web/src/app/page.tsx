@@ -17,7 +17,7 @@ import { UnpricedCard, UnpricedModule } from '@/components/landing/UnpricedModul
 import { landingLedger } from '@/components/landing/ledger'
 import { appChainId } from '@/lib/chain'
 import { SAMPLE_RECEIPT } from '@/lib/fixtures'
-import { money } from '@/lib/format'
+import { tokens } from '@/lib/format'
 import { liveRates } from '@/lib/rates'
 import { deploymentAddresses, settledReceipts } from '@/lib/receipts'
 
@@ -39,8 +39,8 @@ export default async function Home() {
   const slip = ledger.latest ?? SAMPLE_RECEIPT
   const p = ledger.primary
   const delivered = p
-    ? money(p.delivered, p.decimals, p.symbol, p.dp)
-    : money(SAMPLE_RECEIPT.deliveredAmount, SAMPLE_RECEIPT.targetAsset.decimals, SAMPLE_RECEIPT.corridor.targetSymbol, SAMPLE_RECEIPT.corridor.currencyDp)
+    ? tokens(p.delivered, p.decimals, p.token, p.dp)
+    : tokens(SAMPLE_RECEIPT.deliveredAmount, SAMPLE_RECEIPT.targetAsset.decimals, SAMPLE_RECEIPT.targetAsset.symbol, SAMPLE_RECEIPT.corridor.currencyDp)
   const ghostBps = ledger.latest ? String(ledger.latest.spreadBps) : '—'
   const deployment = deploymentAddresses()
   const explorer = deployment ? `${EXPLORERS[appChainId()].url}/address/${deployment.rateAttestation}` : null

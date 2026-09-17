@@ -3,7 +3,7 @@ import { Animated, Easing, Linking, ScrollView, Share, StyleSheet, Text, View } 
 import type { Hex } from 'viem'
 import type { Corridor } from '@henad/core'
 import { receiptUrl } from '@/lib/api'
-import { dateTimeStamp, explorerTx, moneyText, rateLineText } from '@/lib/display'
+import { dateTimeStamp, explorerTx, moneyText, rateLineText, tokenText } from '@/lib/display'
 import { Button, Dashed, HenadMark, TextLink } from '@/ui'
 import { color, font, track } from '@/theme'
 import { shortId, units } from './format'
@@ -82,7 +82,7 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
                 <Text style={s.receiptNo}>{`SETTLEMENT RECEIPT${r.index !== null ? ` · #${r.index}` : ''}`}</Text>
               </View>
               <View style={s.rowBetween}>
-                <Text style={s.small}>{`${corridor.source} → ${corridor.target} · Monad`}</Text>
+                <Text style={s.small}>{`${r.sourceSymbol} → ${corridor.targetAsset?.symbol ?? corridor.target} · Monad`}</Text>
                 <Text style={s.small}>{r.settledAt ? dateTimeStamp(r.settledAt) : ''}</Text>
               </View>
               <Dashed />
@@ -93,7 +93,7 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
               <Dashed />
               <View style={s.deliveredBlock}>
                 <Text style={s.label}>DELIVERED</Text>
-                <Text style={s.deliveredAmount}>{moneyText(r.delivered, td, corridor)}</Text>
+                <Text style={s.deliveredAmount}>{tokenText(r.delivered, td, corridor.targetAsset?.symbol ?? corridor.target, corridor.currencyDp)}</Text>
                 <Text style={s.small}>{`to ${r.recipient.slice(0, 6)}…${r.recipient.slice(-4)}`}</Text>
                 <Animated.View
                   style={[

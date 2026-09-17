@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { money, shortHash, spreadLine } from '@/lib/format'
+import { money, shortHash, spreadLine, tokens } from '@/lib/format'
 import type { Receipt } from '@/lib/receipts'
 import { ledgerStamp, pad2, settled } from './ledger'
 
@@ -9,7 +9,7 @@ const cols = 'grid grid-cols-[40px_150px_90px_minmax(140px,1fr)_150px_120px] gap
 const LEDGER_MIN_W = 'min-w-[882px]'
 
 function amount(r: Receipt) {
-  return `${money(r.sourceAmount, r.sourceAsset.decimals, '$')} → ${money(r.deliveredAmount, r.targetAsset.decimals, r.corridor.targetSymbol, r.corridor.currencyDp)}`
+  return `${money(r.sourceAmount, r.sourceAsset.decimals, '$')} → ${tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, r.corridor.currencyDp)}`
 }
 function spread(r: Receipt) {
   return spreadLine(r.spreadCost, r.targetAsset.decimals, r.corridor.targetSymbol, r.spreadBps, { dp: r.corridor.currencyDp })

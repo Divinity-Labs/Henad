@@ -1,7 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { CORRIDORS, type Corridor } from '@henad/core'
 import type { RatesPayload } from '@/lib/api'
-import { hms, moneyText, rateText } from '@/lib/display'
+import { hms, rateText, tokenText } from '@/lib/display'
 import { ErrorText, Eyebrow, TierBadge } from '@/ui'
 import { color, font, track } from '@/theme'
 
@@ -47,7 +47,7 @@ export function RatesScreen({
         <Stat label="Spread" value={last ? `${last.spreadBps} bps` : '—'} />
         <Stat
           label="Delivered"
-          value={last && lastCorridor ? moneyText(BigInt(last.deliveredAmount), last.targetAsset.decimals, lastCorridor) : '—'}
+          value={last && lastCorridor ? tokenText(BigInt(last.deliveredAmount), last.targetAsset.decimals, last.targetAsset.symbol, lastCorridor.currencyDp) : '—'}
           last
         />
       </View>

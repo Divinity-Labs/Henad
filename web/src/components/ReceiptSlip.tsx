@@ -1,6 +1,6 @@
 import type { Receipt } from '@/lib/receipts'
 import { HenadMark } from './ui/HenadMark'
-import { blockNumber, money, rateLine, shortAddress, shortHash, spreadLine, utcStamp, utcTime } from '@/lib/format'
+import { blockNumber, money, rateLine, shortAddress, shortHash, spreadLine, tokens, utcStamp, utcTime } from '@/lib/format'
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -64,7 +64,7 @@ export function ReceiptSlip({
         </div>
         <div className="flex justify-between text-muted">
           <span>
-            {c.source} → {c.target} · Monad
+            {r.sourceAsset.symbol} → {r.targetAsset.symbol} · Monad
           </span>
           <span>{compact ? utcTime(r.settledAt) : utcStamp(r.settledAt)}</span>
         </div>
@@ -77,7 +77,7 @@ export function ReceiptSlip({
         <div className="relative flex flex-col gap-1 py-[2px]">
           <div className="label text-muted">Delivered</div>
           <div className={`font-display font-medium tracking-[-.035em] leading-none ${s.big}`}>
-            {money(r.deliveredAmount, r.targetAsset.decimals, c.targetSymbol, dp)}
+            {tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, dp)}
           </div>
           {!compact && <div className="text-muted">to {shortAddress(r.recipient)}</div>}
           <SettledStamp animate={animate} size={size} />

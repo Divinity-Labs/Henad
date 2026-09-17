@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
@@ -25,12 +25,11 @@ type View_ = 'send' | 'rates'
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
  *
- * The signing session lives in a ref and dies with the screen, because the key is never
- * written down. The address outlives it in secure storage, so a relaunch shows you signed in
- * and reads your balance; the passkey is asked for when something must be signed.
+ * No signing key is kept between actions: every payout asks for the passkey, and the key
+ * derived for it is ended as soon as the payout is signed. The address lives in secure
+ * storage, so a relaunch shows you signed in and reads your balance.
  */
 export default function App() {
-  const session = useRef<MeraAccount | null>(null)
   const chainId = appChainId()
   const dep = deployment()
   const source = sourceToken()
@@ -56,8 +55,6 @@ export default function App() {
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
-
-  useEffect(() => () => session.current?.end(), [])
 
   useEffect(() => {
     void loadStoredAccount().then((stored) => {
@@ -104,8 +101,8 @@ export default function App() {
     setError(null)
     try {
       const account = await fn()
-      session.current?.end()
-      session.current = account
+      // Signing in only needs the address. Each payout asks for the passkey again.
+      account.end()
       setAddress(account.address)
       setStep('amount')
     } catch (e) {
@@ -134,9 +131,13 @@ export default function App() {
     setError(null)
     const started = Date.now()
     try {
-      const account = session.current ?? (await unlockStoredAccount())
-      session.current = account
-      const result = await settleFromPhone({ account, corridor, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
+      const account = await unlockStoredAccount()
+      let result: Awaited<ReturnType<typeof settleFromPhone>>
+      try {
+        result = await settleFromPhone({ account, corridor, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
+      } finally {
+        account.end()
+      }
 
       // Finality measured here, tap to receipt, rather than copied from a design.
       let finalMs: number | null = null

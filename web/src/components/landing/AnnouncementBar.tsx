@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { LivePill } from '@/components/ui/TierPill'
 import { LIVE_CORRIDOR } from '@henad/core'
-import { money } from '@/lib/format'
+import { money, tokens } from '@/lib/format'
 import type { Receipt } from '@/lib/receipts'
 import { capitalise, type Network } from './ledger'
 
@@ -18,7 +18,7 @@ export function AnnouncementBar({ latest, network }: { latest: Receipt | null; n
   if (latest) {
     const first = latest.index === 1
     const sent = money(latest.sourceAmount, latest.sourceAsset.decimals, '$')
-    const delivered = money(latest.deliveredAmount, latest.targetAsset.decimals, c.targetSymbol, c.currencyDp)
+    const delivered = tokens(latest.deliveredAmount, latest.targetAsset.decimals, latest.targetAsset.symbol, c.currencyDp)
     const which = first ? `First ${network} settlement` : `${capitalise(network)} settlement${latest.index ? ` #${latest.index}` : ''}`
     href = `/receipt/${latest.intentId}`
     long = `${which} · ${pair} · ${sent} → ${delivered} · view the receipt →`

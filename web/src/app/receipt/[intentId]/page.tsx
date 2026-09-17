@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { CopyPermalink } from '@/components/receipt/CopyPermalink'
 import { ReceiptPanel } from '@/components/receipt/ReceiptPanel'
 import { VerificationList } from '@/components/receipt/VerificationList'
-import { money, rateLine, shortAddress, spreadLine } from '@/lib/format'
+import { money, rateLine, shortAddress, spreadLine, tokens } from '@/lib/format'
 import { headline, isIntentId, loadReceipt, monadscanAddress, monadscanTx, requestOrigin } from '@/lib/receipt-page'
 import { deploymentAddresses, type Receipt } from '@/lib/receipts'
 
@@ -26,8 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // The page throws notFound(); throwing it from here as well leaves the 404 to client-side rendering.
   if (!r) return { title: 'No receipt with that id' }
   const c = r.corridor
-  const delivered = money(r.deliveredAmount, r.targetAsset.decimals, c.targetSymbol, c.currencyDp)
-  const title = `${r.sample ? 'Sample receipt' : 'Receipt'} · ${delivered} · ${c.source} → ${c.target}`
+  const delivered = tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, c.currencyDp)
+  const title = `${r.sample ? 'Sample receipt' : 'Receipt'} · ${delivered} · ${r.sourceAsset.symbol} → ${r.targetAsset.symbol}`
   const paid = money(r.sourceAmount, r.sourceAsset.decimals, '$')
   const spread = spreadLine(r.spreadCost, r.targetAsset.decimals, c.targetSymbol, r.spreadBps, { dp: c.currencyDp })
   const description =
