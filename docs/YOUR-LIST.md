@@ -147,10 +147,12 @@ things people get wrong are in `docs/TESTING-MOBILE.md`.
 Neither part is confirmed on a device yet.
 
 1. Retry with the installed APK after about 13:45 UTC (14:45 in Lagos), once Google's hour-long cache has expired. If it works, no rebuild is needed.
-2. If it still fails, a new APK is needed, but **EAS's free Android builds are used up until 1 Oct**. Pick one of these:
-   - Upgrade the Expo plan (https://expo.dev/accounts/miracle_codes/settings/billing).
-   - Let me build locally in WSL Ubuntu. That needs JDK 17 and the Android SDK, a few GB. A local debug key also means adding its fingerprint to `assetlinks.json`.
-   - Wait for 1 Oct.
+2. If it still fails, a new APK is needed. EAS's free cloud builds are used up until 1 Oct, so
+   APKs are now built on GitHub instead (`.github/workflows/android-dev-build.yml`). It uses the
+   same EAS keystore and checks the certificate is still `75:D9…` before uploading. One-time setup:
+   - Create an access token at expo.dev → Account settings → Access tokens, on `miracle_codes`.
+   - Add it on GitHub under the repo's Settings → Secrets and variables → Actions → New repository secret, named `EXPO_TOKEN`.
+   - Then: Actions tab → **Android dev build** → Run workflow. When it finishes (about 20–30 min), download `henad-dev-apk` from the run page and install it.
 
 ⚠ The keystore EAS generates on that first build becomes part of the app's identity. The
 fingerprint comes from it, and replacing it later invalidates the association file and

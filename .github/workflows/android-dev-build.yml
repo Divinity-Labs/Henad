@@ -1,0 +1,75 @@
+# Builds the Android development APK on GitHub's runners instead of Expo's.
+#
+# `eas build --local` runs the same build EAS would, on this machine, and local builds do not
+# count against the Expo plan's cloud build allowance. The keystore still comes from the
+# miracle_codes EAS project, so the APK carries the same signing certificate that
+# web/public/.well-known/assetlinks.json vouches for, and installs over the previous build.
+#
+# Needs one repository secret, EXPO_TOKEN: an access token from expo.dev for the account that
+# owns the project. Run it from the Actions tab.
+
+name: Android dev build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-dev-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # The certificate assetlinks.json names. A build signed by anything else cannot use
+      # usehenad.xyz passkeys, so it fails here rather than on someone's phone.
+      EXPECTED_CERT_SHA256: 75d9ea6d7f065abe8fea5d3717663f9164d9870aa5b258dd7701c2fa7cd71222
+    steps:
+      - name: Require the Expo token
+        if: env.EXPO_TOKEN == ''
+        run: |
+          echo "::error::Add an EXPO_TOKEN repository secret (expo.dev → Account settings → Access tokens), then run again."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the APK
+        working-directory: mobile
+        run: pnpm exec eas build --platform android --profile development --local --non-interactive --output "$RUNNER_TEMP/henad-dev.apk"
+
+      - name: Check the signing certificate
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          actual=$("$apksigner" verify --print-certs "$RUNNER_TEMP/henad-dev.apk" | awk '/SHA-256 digest/ {print $NF; exit}')
+          echo "Signed with $actual"
+          if [ "$actual" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::The APK is signed with $actual, not the certificate in assetlinks.json. Passkeys would fail with 'RP ID cannot be validated'."
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: henad-dev-apk
+          path: ${{ runner.temp }}/henad-dev.apk
+          retention-days: 14
+          if-no-files-found: error
