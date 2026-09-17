@@ -3,7 +3,7 @@ import { SvgXml } from 'react-native-svg'
 import { color, font } from '@/theme'
 import { TOKEN_SVG } from './svg'
 
-/** A token's icon, or a lettered disc for tokens without artwork (USDC, USDm). */
+/** A token's icon, or a lettered disc for tokens without artwork (USDm). */
 export function TokenIcon({ symbol, size = 24 }: { symbol: string; size?: number }) {
   const xml = TOKEN_SVG[symbol]
   if (xml) return <SvgXml xml={xml} width={size} height={size} />
