@@ -5,11 +5,13 @@ import * as Clipboard from 'expo-clipboard'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
 import { CORRIDORS, LIVE_CORRIDOR, MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, isFxMarketOpen, quoteMaths, type Corridor, type QuoteDto } from '@henad/core'
 import { fetchQuote, fetchRates, fetchReceipt, receiptUrl, type RatesPayload } from '@/lib/api'
-import { readBalance, sourceToken } from '@/lib/balance'
-import { appChain, appChainId, deployment } from '@/lib/config'
+import { readBalance, readHoldings, sourceToken, type Holding } from '@/lib/balance'
+import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
 import { chainLabel } from '@/lib/display'
-import { continueWithPasskey, describeAccountError, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
+import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
+import { ProfileScreen } from '@/profile/ProfileScreen'
+import { ScanScreen } from '@/profile/ScanScreen'
 import { RatesScreen } from '@/rates/RatesScreen'
 import { AmountStep } from '@/send/AmountStep'
 import { ClosedStep } from '@/send/ClosedStep'
@@ -20,7 +22,7 @@ import { BuiltOnMonad, Chip, Header, TextLink } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
-type View_ = 'send' | 'rates'
+type View_ = 'send' | 'rates' | 'profile'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -50,6 +52,41 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [scanning, setScanning] = useState(false)
+  const [holdings, setHoldings] = useState<Holding[] | null>(null)
+  const [holdingsLoading, setHoldingsLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const network = isLocalFork() ? 'Local fork' : chainLabel(chainId)
+
+  const loadHoldings = useCallback(async () => {
+    if (!address) return
+    setHoldingsLoading(true)
+    setHoldings(await readHoldings(address))
+    setHoldingsLoading(false)
+  }, [address])
+
+  useEffect(() => {
+    if (view === 'profile') void loadHoldings()
+  }, [view, loadHoldings])
+
+  const copyAddress = useCallback(() => {
+    if (!address) return
+    void Clipboard.setStringAsync(address)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [address])
+
+  const signOut = useCallback(async () => {
+    await forgetStoredAccount()
+    setAddress(null)
+    setBalance(null)
+    setHoldings(null)
+    setQuote(null)
+    setSent(null)
+    setRecipient('')
+    setStep('signin')
+    setView('send')
+  }, [])
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000)
@@ -192,23 +229,47 @@ export default function App() {
   const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
 
   const header =
-    view === 'rates' ? (
+    view === 'rates' || (view === 'profile' && address) ? (
       <Header
         right={
           <View style={s.tabs}>
             <TextLink label="Send" onPress={() => setView('send')} />
-            <TextLink label="Rates" style={s.tabOn} />
+            {view === 'rates' ? <TextLink label="Rates" style={s.tabOn} /> : <TextLink label="Account" style={s.tabOn} />}
           </View>
         }
       />
     ) : step === 'signin' ? (
       <Header right={<BuiltOnMonad />} />
     ) : (
-      <Header right={address ? <Chip onPress={() => void Clipboard.setStringAsync(address)}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip> : undefined} />
+      // The chip opens the account: the full address, its QR code and what it holds.
+      <Header right={address ? <Chip onPress={() => setView('profile')}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip> : undefined} />
     )
 
   let body
-  if (view === 'rates') {
+  if (scanning) {
+    body = (
+      <ScanScreen
+        onScanned={(scanned) => {
+          setRecipient(scanned)
+          setScanning(false)
+        }}
+        onCancel={() => setScanning(false)}
+      />
+    )
+  } else if (view === 'profile' && address) {
+    body = (
+      <ProfileScreen
+        address={address}
+        network={network}
+        holdings={holdings}
+        loading={holdingsLoading}
+        copied={copied}
+        onCopy={copyAddress}
+        onRefresh={() => void loadHoldings()}
+        onSignOut={() => void signOut()}
+      />
+    )
+  } else if (view === 'rates') {
     body = (
       <RatesScreen
         data={rates}
@@ -222,7 +283,7 @@ export default function App() {
       />
     )
   } else if (step === 'signin') {
-    body = <SignInStep busy={busy} error={error} chain={chainLabel(chainId)} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
+    body = <SignInStep busy={busy} error={error} chain={network} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
   } else if (step === 'sent' && sent) {
     body = <SentStep corridor={corridor} r={sent} onDone={reset} />
   } else if (closed) {
@@ -267,6 +328,7 @@ export default function App() {
         recipient={recipient}
         onRecipient={setRecipient}
         onPaste={() => void Clipboard.getStringAsync().then((t) => setRecipient(t.trim()))}
+        onScan={() => setScanning(true)}
         balance={balance}
         source={source}
         busy={busy}

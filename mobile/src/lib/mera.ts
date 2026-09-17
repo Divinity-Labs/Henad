@@ -69,6 +69,15 @@ export async function loadStoredAccount(): Promise<StoredAccount | null> {
   }
 }
 
+/** Forget the account on this device. The passkey itself is untouched and still opens it. */
+export async function forgetStoredAccount(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(STORAGE_KEY)
+  } catch {
+    // Nothing stored, or storage refused; either way nothing is left to forget.
+  }
+}
+
 async function store(credentialId: string, address: Address): Promise<void> {
   try {
     await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify({ credentialId, address, rpId: rpId() } satisfies StoredAccount))

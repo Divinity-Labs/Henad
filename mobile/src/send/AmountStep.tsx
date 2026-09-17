@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useMemo, useRef, useState } from 'react'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { isAddress } from 'viem'
 import type { Corridor } from '@henad/core'
 import type { RateDto } from '@/lib/api'
@@ -30,6 +30,7 @@ export function AmountStep({
   recipient,
   onRecipient,
   onPaste,
+  onScan,
   balance,
   source,
   busy,
@@ -47,6 +48,7 @@ export function AmountStep({
   recipient: string
   onRecipient: (v: string) => void
   onPaste: () => void
+  onScan: () => void
   balance: bigint | null
   source: { symbol: string; decimals: number }
   busy: boolean
@@ -55,6 +57,9 @@ export function AmountStep({
   onWhy: () => void
 }) {
   const [picking, setPicking] = useState(false)
+  // The recipient field sits at the bottom of the screen, under the keyboard once it opens.
+  // The avoiding view shrinks the scroll area and this brings the field back into view.
+  const scroll = useRef<ScrollView>(null)
   const parsed = useMemo(() => parseAmount(amount, source.decimals), [amount, source.decimals])
   const reference = rate?.rate ? BigInt(rate.rate) : null
   const targetDecimals = corridor.targetAsset?.decimals ?? 18
@@ -82,7 +87,8 @@ export function AmountStep({
     corridor.tier !== 'live' ? corridor.shortNote : rate?.stale ? 'stale' : rate?.updatedAt ? `Mento · Chainlink · ${age(now / 1000 - rate.updatedAt)}` : 'reading…'
 
   return (
-    <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+    <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <ScrollView ref={scroll} contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
       <View style={s.body}>
         <View style={s.rowBetween}>
           <Eyebrow tone="purple">Send</Eyebrow>
@@ -171,7 +177,9 @@ export function AmountStep({
                 autoCapitalize="none"
                 autoCorrect={false}
                 accessibilityLabel="Recipient address"
+                onFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 300)}
               />
+              <TextLink label="Scan" tone="purple" onPress={onScan} />
               <TextLink label="Paste" tone="purple" onPress={onPaste} />
             </>
           )}
@@ -183,10 +191,12 @@ export function AmountStep({
         <Text style={s.foot}>{blocker ?? 'Nothing moves until you approve the rate.'}</Text>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   )
 }
 
 const s = StyleSheet.create({
+  flex: { flex: 1 },
   scroll: { flexGrow: 1 },
   body: { flex: 1, gap: 10, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

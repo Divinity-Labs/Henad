@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { ExpoConfig } from 'expo/config'
 import { AndroidConfig, withAndroidManifest, withStringsXml, type ConfigPlugin } from 'expo/config-plugins'
 
@@ -33,6 +35,38 @@ const BUNDLE_ID = 'xyz.usehenad.app'
  * The quotes are backslash-escaped because Android's resource compiler strips bare double
  * quotes from string resources, which would leave the value as invalid JSON.
  */
+/**
+ * Point the app at the local mainnet fork instead of a public chain.
+ *
+ * Set HENAD_LOCAL_FORK_HOST to this computer's LAN address when starting Metro, with
+ * scripts/local-fork.sh run with LAN=1 and the web dev server up. The phone then reads the
+ * fork's node and settles through the laptop's /api/relay, with the contract addresses the
+ * script wrote into web/.env.local. `extra` is served by Metro, so no APK rebuild is needed.
+ * Debug builds allow the plain-http traffic this uses; a release build would refuse it.
+ */
+function localForkExtra(): Record<string, unknown> | null {
+  const host = process.env.HENAD_LOCAL_FORK_HOST?.trim()
+  if (!host) return null
+  const envFile = join(__dirname, '..', 'web', '.env.local')
+  if (!existsSync(envFile)) throw new Error(`HENAD_LOCAL_FORK_HOST is set but ${envFile} does not exist. Run scripts/local-fork.sh first.`)
+  const env = Object.fromEntries(
+    readFileSync(envFile, 'utf8')
+      .split(/\r?\n/)
+      .map((line) => line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/))
+      .filter((m): m is RegExpMatchArray => m !== null)
+      .map((m) => [m[1], m[2]]),
+  )
+  return {
+    localFork: true,
+    chainId: 143,
+    rpcUrl: `http://${host}:8545`,
+    apiBaseUrl: `http://${host}:3000`,
+    corridorRouter: env.NEXT_PUBLIC_CORRIDOR_ROUTER_ADDRESS ?? '',
+    rateAttestation: env.NEXT_PUBLIC_RATE_ATTESTATION_ADDRESS ?? '',
+    deployedAtBlock: Number(env.NEXT_PUBLIC_DEPLOYED_AT_BLOCK ?? 0),
+  }
+}
+
 const withAssetStatements: ConfigPlugin<string> = (cfg, domain) => {
   const value = `[{\\"include\\": \\"https://${domain}/.well-known/assetlinks.json\\"}]`
   cfg = withStringsXml(cfg, (c) => {
@@ -133,6 +167,7 @@ const config: ExpoConfig = {
     corridorRouter: '',
     rateAttestation: '',
     deployedAtBlock: 0,
+    ...localForkExtra(),
   },
 }
 

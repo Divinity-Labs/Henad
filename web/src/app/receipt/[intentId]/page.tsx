@@ -81,6 +81,9 @@ export default async function ReceiptPage({ params }: Props) {
                 </Button>
               )}
               <CopyPermalink url={permalink} />
+              <Button href="/send" variant="secondary" size="lg">
+                Send a payout
+              </Button>
               {/* The trailing slot from the canvas; says why the explorer button is off. A disabled button cannot show a title. */}
               {!explorer && <span className="label text-muted sm:ml-auto">{r.sample ? 'Sample settlement · nothing on chain' : 'No transaction recorded'}</span>}
             </div>

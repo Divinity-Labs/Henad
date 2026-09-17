@@ -13,7 +13,9 @@
 # - The new contract addresses are written straight into web/.env.local, which is how the
 #   addresses there used to end up pointing at yesterday's node.
 #
-#   scripts/local-fork.sh <payerAddress>
+#   scripts/local-fork.sh <payerAddress> [morePayers...]
+#   LAN=1 scripts/local-fork.sh ...   also serve the node on this machine's LAN address, so a
+#                                     phone on the same Wi-Fi can use it (see mobile/app.config.ts)
 #
 # Leaves anvil and the keeper running in the background. Stop both: scripts/local-fork.sh --stop
 set -euo pipefail
@@ -51,11 +53,15 @@ if [ "${1:-}" = "--stop" ]; then
   exit 0
 fi
 
-PAYER="${1:-}"
-if [ -z "$PAYER" ]; then
-  echo "usage: scripts/local-fork.sh <payerAddress>   (the address your passkey derives)" >&2
+PAYERS=("$@")
+if [ ${#PAYERS[@]} -eq 0 ]; then
+  echo "usage: scripts/local-fork.sh <payerAddress> [morePayers...]   (the addresses your passkeys derive)" >&2
   exit 2
 fi
+# anvil binds to loopback unless asked. LAN=1 exposes an unlocked, auto-impersonating node to
+# the local network, which is fine for a fork of fake balances on a home network and nowhere else.
+HOST_ARGS=()
+[ "${LAN:-}" = "1" ] && HOST_ARGS=(--host 0.0.0.0)
 
 # shellcheck disable=SC1091
 set -a; . "$ROOT/.env"; set +a
@@ -68,7 +74,7 @@ sleep 1
 echo "==> forking Monad mainnet at head"
 nohup anvil -n monad --hardfork monad:MonadTen \
   --fork-url "$MONAD_MAINNET_RPC_URL" --chain-id 143 --port "$PORT" \
-  --auto-impersonate >"$LOG" 2>&1 &
+  --auto-impersonate "${HOST_ARGS[@]}" >"$LOG" 2>&1 &
 
 for _ in $(seq 1 40); do
   cast chain-id --rpc-url "$RPC" >/dev/null 2>&1 && break
@@ -112,11 +118,13 @@ echo "==> funding"
 # slot, so forge-std deal() corrupts it.
 # The reserve holds AUSD but no MON, so the impersonated sender needs gas money first.
 cast rpc anvil_setBalance "$AUSD_WHALE" 0xde0b6b3a7640000 --rpc-url "$RPC" >/dev/null
-cast send "$AUSD" "transfer(address,uint256)(bool)" "$PAYER" 5000000000 \
-  --rpc-url "$RPC" --from "$AUSD_WHALE" --unlocked >/dev/null
-cast send "$PAYER" --value 1ether --rpc-url "$RPC" --private-key "$DEPLOYER_KEY" >/dev/null
-BAL=$(cast call "$AUSD" "balanceOf(address)(uint256)" "$PAYER" --rpc-url "$RPC" | awk '{print $1}')
-echo "    payer   $PAYER  $((BAL / 1000000)) AUSD"
+for PAYER in "${PAYERS[@]}"; do
+  cast send "$AUSD" "transfer(address,uint256)(bool)" "$PAYER" 5000000000 \
+    --rpc-url "$RPC" --from "$AUSD_WHALE" --unlocked >/dev/null
+  cast send "$PAYER" --value 1ether --rpc-url "$RPC" --private-key "$DEPLOYER_KEY" >/dev/null
+  BAL=$(cast call "$AUSD" "balanceOf(address)(uint256)" "$PAYER" --rpc-url "$RPC" | awk '{print $1}')
+  echo "    payer   $PAYER  $((BAL / 1000000)) AUSD"
+done
 echo "    relayer $RELAYER  $(cast balance $RELAYER --rpc-url $RPC --ether | cut -c1-8) MON"
 
 ENV_LOCAL="$ROOT/web/.env.local"

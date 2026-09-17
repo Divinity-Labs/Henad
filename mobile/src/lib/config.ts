@@ -24,6 +24,11 @@ export function rpName(): string {
   return extra<string>('rpName') ?? 'Henad'
 }
 
+/** True when Metro was started against scripts/local-fork.sh (see app.config.ts). */
+export function isLocalFork(): boolean {
+  return extra<boolean>('localFork') === true
+}
+
 export function appChainId(): MonadChainId {
   const raw = Number(extra<number>('chainId') ?? MONAD_TESTNET_ID)
   if (!isMonadChainId(raw)) throw new Error(`extra.chainId must be ${MONAD_MAINNET_ID} or ${MONAD_TESTNET_ID}`)
@@ -36,7 +41,9 @@ let client: PublicClient | undefined
 export function appChain(): PublicClient {
   if (!client) {
     const id = appChainId()
-    const urls = id === MONAD_MAINNET_ID ? MAINNET_RPCS : TESTNET_RPCS
+    // A local fork names its own node; the public RPCs would read real mainnet instead.
+    const local = extra<string>('rpcUrl')
+    const urls = local ? [local] : id === MONAD_MAINNET_ID ? MAINNET_RPCS : TESTNET_RPCS
     client = createPublicClient({
       chain: chainFor(id),
       transport: fallback(urls.map((u) => http(u, { batch: true }))),
