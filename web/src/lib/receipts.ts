@@ -144,6 +144,23 @@ export async function listReceipts(limit = 50): Promise<Receipt[]> {
   return out
 }
 
+/**
+ * The ledger for a page render: empty, not a thrown error, when the chain cannot be reached.
+ *
+ * An unreachable RPC used to take the landing, /rates and /receipts down with a 500. A page
+ * that shows no settlements is honest about what it could read; a page that fails to render
+ * says nothing at all. The reason is still logged so a dead node is not silent.
+ */
+export async function settledReceipts(limit = 50): Promise<Receipt[]> {
+  try {
+    return await listReceipts(limit)
+  } catch (e) {
+    const reason = e instanceof Error ? ((e as { shortMessage?: string }).shortMessage ?? e.message) : String(e)
+    console.error(`[receipts] ledger unavailable, rendering without it: ${reason}`)
+    return []
+  }
+}
+
 export interface LedgerTotals {
   settlements: number
   /** per target currency: delivered and spread cost, base units (18 dec for Mento stables) */

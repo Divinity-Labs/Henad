@@ -13,7 +13,7 @@ import { SettlementsBlock } from '@/components/rates/SettlementsLedger'
 import { chainLabel, explorerHref, headline, settled } from '@/components/rates/ledger'
 import { CORRIDORS } from '@henad/core'
 import { liveRates } from '@/lib/rates'
-import { listReceipts, totals } from '@/lib/receipts'
+import { settledReceipts, totals } from '@/lib/receipts'
 
 export const metadata: Metadata = { title: 'Rates' }
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -26,7 +26,7 @@ const LEDGER_ROWS = 50
 
 /** /rates — artboards W2 (md and up) and S4 (below md) as one page. */
 export default async function RatesPage() {
-  const [rates, receipts] = await Promise.all([liveRates(), listReceipts(Infinity)])
+  const [rates, receipts] = await Promise.all([liveRates(), settledReceipts(Infinity)])
   const t = totals(receipts)
   const sample = receipts.some((r) => r.sample)
   const live = rates.find((r) => r.corridor.tier === 'live')

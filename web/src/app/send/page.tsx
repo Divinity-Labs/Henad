@@ -4,7 +4,7 @@ import type { SendInitial } from '@/components/send/send-reducer'
 import { CORRIDORS, LIVE_CORRIDOR } from '@henad/core'
 import { SAMPLE_RECEIPT } from '@/lib/fixtures'
 import { liveRates } from '@/lib/rates'
-import { listReceipts, type Receipt } from '@/lib/receipts'
+import { settledReceipts } from '@/lib/receipts'
 import { rateToDto, receiptToDto } from '@/lib/send-serial'
 
 export const metadata: Metadata = { title: 'Send' }
@@ -13,14 +13,6 @@ type Search = Record<string, string | string[] | undefined>
 
 function one(v: string | string[] | undefined): string | undefined {
   return Array.isArray(v) ? v[0] : v
-}
-
-async function settledReceipts(): Promise<Receipt[]> {
-  try {
-    return await listReceipts()
-  } catch {
-    return []
-  }
 }
 
 /** Live rates, the corridor's newest settlement and the server clock, read once per request. */

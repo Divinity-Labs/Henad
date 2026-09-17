@@ -19,7 +19,7 @@ import { appChainId } from '@/lib/chain'
 import { SAMPLE_RECEIPT } from '@/lib/fixtures'
 import { money } from '@/lib/format'
 import { liveRates } from '@/lib/rates'
-import { deploymentAddresses, listReceipts } from '@/lib/receipts'
+import { deploymentAddresses, settledReceipts } from '@/lib/receipts'
 
 /** Rate reads and the ledger are cached 30 s; the page follows them. */
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -33,7 +33,7 @@ export const dynamic = 'force-dynamic'
  * settlement the fixture stands in for the slip only, labelled "Sample".
  */
 export default async function Home() {
-  const [receipts, rates] = await Promise.all([listReceipts(), liveRates()])
+  const [receipts, rates] = await Promise.all([settledReceipts(), liveRates()])
   const ledger = landingLedger(receipts)
   const sample = ledger.latest === null
   const slip = ledger.latest ?? SAMPLE_RECEIPT

@@ -5,7 +5,7 @@ import { FooterStrip } from '@/components/rates/FooterStrip'
 import { RatesFrame } from '@/components/rates/RatesFrame'
 import { SettlementsBlock } from '@/components/rates/SettlementsLedger'
 import { explorerHref } from '@/components/rates/ledger'
-import { listReceipts } from '@/lib/receipts'
+import { settledReceipts } from '@/lib/receipts'
 
 export const metadata: Metadata = { title: 'Receipts' }
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 /** /receipts — the whole ledger as the W2 Settlements block, newest first. */
 export default async function ReceiptsPage() {
-  const receipts = await listReceipts(200)
+  const receipts = await settledReceipts(200)
   return (
     <RatesFrame>
       <Nav
