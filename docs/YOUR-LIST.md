@@ -144,10 +144,12 @@ things people get wrong are in `docs/TESTING-MOBILE.md`.
 - `assetlinks.json` now grants `handle_all_urls` too. This is live.
 - The app now links back to the site. That half needs a new APK.
 
-Neither part is confirmed on a device yet.
+**Fixed, confirmed 17 Sep** on the phone with GitHub build run 35216856538. Continue with passkey
+created the account `0x2Ea1A81aa3931C2abF6F23421d7C1493a252EaA6`, and the web shows the same
+address. Still open: "I already have a passkey" failed before that passkey existed. Re-test it
+after an uninstall and reinstall (TESTING-MOBILE test 2).
 
-1. Retry with the installed APK after about 13:45 UTC (14:45 in Lagos), once Google's hour-long cache has expired. If it works, no rebuild is needed.
-2. If it still fails, a new APK is needed. EAS's free cloud builds are used up until 1 Oct, so
+APKs are built like this from now on. EAS's free cloud builds are used up until 1 Oct, so
    APKs are now built on GitHub instead (`.github/workflows/android-dev-build.yml`). It uses the
    same EAS keystore and checks the certificate is still `75:D9…` before uploading. One-time setup:
    - Create an access token at expo.dev → Account settings → Access tokens, on `miracle_codes`.
