@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
 import { CORRIDORS, LIVE_CORRIDOR, MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, isFxMarketOpen, quoteMaths, type Corridor, type QuoteDto } from '@henad/core'
-import { fetchQuote, fetchRates, fetchReceipt, receiptUrl, type RatesPayload } from '@/lib/api'
+import { fetchQuote, fetchRates, fetchReceipt, fetchReceipts, receiptUrl, type RatesPayload, type ReceiptDto } from '@/lib/api'
 import { readBalance, readHoldings, sourceToken, type Holding } from '@/lib/balance'
 import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
 import { chainLabel } from '@/lib/display'
@@ -12,17 +12,19 @@ import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadSto
 import { settleFromPhone } from '@/lib/settle'
 import { ProfileScreen } from '@/profile/ProfileScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
+import { TabBar, type Tab } from '@/nav/TabBar'
+import { ReceiptsScreen } from '@/receipts/ReceiptsScreen'
 import { RatesScreen } from '@/rates/RatesScreen'
 import { AmountStep } from '@/send/AmountStep'
 import { ClosedStep } from '@/send/ClosedStep'
 import { QuoteStep } from '@/send/QuoteStep'
 import { SentStep, type SentReceipt } from '@/send/SentStep'
 import { SignInStep } from '@/send/SignInStep'
-import { BuiltOnMonad, Chip, Header, TextLink } from '@/ui'
+import { BuiltOnMonad, Chip, Header } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
-type View_ = 'send' | 'rates' | 'profile'
+type View_ = 'send' | 'rates' | 'receipts' | 'profile'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -56,6 +58,25 @@ export default function App() {
   const [holdings, setHoldings] = useState<Holding[] | null>(null)
   const [holdingsLoading, setHoldingsLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null)
+  const [receiptsLoading, setReceiptsLoading] = useState(false)
+  const [receiptsError, setReceiptsError] = useState<string | null>(null)
+
+  const loadReceipts = useCallback(async () => {
+    setReceiptsLoading(true)
+    try {
+      setReceipts(await fetchReceipts())
+      setReceiptsError(null)
+    } catch (e) {
+      setReceiptsError(e instanceof Error ? e.message : 'Receipts are unavailable.')
+    } finally {
+      setReceiptsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (view === 'receipts') void loadReceipts()
+  }, [view, loadReceipts])
   const network = isLocalFork() ? 'Local fork' : chainLabel(chainId)
 
   const loadHoldings = useCallback(async () => {
@@ -228,22 +249,21 @@ export default function App() {
 
   const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
 
-  const header =
-    view === 'rates' || (view === 'profile' && address) ? (
-      <Header
-        right={
-          <View style={s.tabs}>
-            <TextLink label="Send" onPress={() => setView('send')} />
-            {view === 'rates' ? <TextLink label="Rates" style={s.tabOn} /> : <TextLink label="Account" style={s.tabOn} />}
-          </View>
-        }
-      />
-    ) : step === 'signin' ? (
-      <Header right={<BuiltOnMonad />} />
-    ) : (
-      // The chip opens the account: the full address, its QR code and what it holds.
-      <Header right={address ? <Chip onPress={() => setView('profile')}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip> : undefined} />
-    )
+  // Routing lives in the tab bar now. The header carries the brand and, once signed in, the
+  // address chip, which is a second way into the account.
+  const header = address ? (
+    <Header right={<Chip onPress={() => setView('profile')}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip>} />
+  ) : (
+    <Header right={<BuiltOnMonad />} />
+  )
+
+  const activeTab: Tab | null = view === 'profile' ? 'account' : view
+  const selectTab = (tab: Tab) => {
+    setError(null)
+    // Account without an account is the sign-in screen, which lives under Send.
+    if (tab === 'account') setView(address ? 'profile' : 'send')
+    else setView(tab)
+  }
 
   let body
   if (scanning) {
@@ -267,6 +287,17 @@ export default function App() {
         onCopy={copyAddress}
         onRefresh={() => void loadHoldings()}
         onSignOut={() => void signOut()}
+      />
+    )
+  } else if (view === 'receipts') {
+    body = (
+      <ReceiptsScreen
+        receipts={receipts}
+        loading={receiptsLoading}
+        error={receiptsError}
+        me={address}
+        onRefresh={() => void loadReceipts()}
+        onOpen={(r) => void Linking.openURL(receiptUrl(r.intentId))}
       />
     )
   } else if (view === 'rates') {
@@ -341,15 +372,15 @@ export default function App() {
 
   return (
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
-      {header}
-      {body}
+      {scanning ? null : header}
+      <View style={s.body}>{body}</View>
+      {scanning ? null : <TabBar active={activeTab} onSelect={selectTab} />}
     </SafeAreaView>
   )
 }
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.canvas },
-  tabs: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  tabOn: { borderBottomWidth: 1, borderBottomColor: color.purple, paddingBottom: 1 },
+  body: { flex: 1 },
 })
 

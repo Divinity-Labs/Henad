@@ -202,6 +202,32 @@ export function sourceToken(symbol: SourceAssetSymbol): TokenInfo {
   return token
 }
 
+/** Forget the account in this browser. The passkey is untouched and still opens it. */
+export function forgetStoredAccount(): void {
+  try {
+    window.localStorage.removeItem(PASSKEY_STORAGE_KEY)
+  } catch {
+    // Blocked storage holds nothing to forget.
+  }
+}
+
+export interface Holding {
+  symbol: string
+  decimals: number
+  value: bigint
+}
+
+/** Every registry stablecoin this address holds on the configured chain, or null when the chain cannot be read. */
+export async function readHoldings(address: Address): Promise<Holding[] | null> {
+  const tokens = Object.values(TOKENS[appChainId()] ?? {}).filter((t) => t.symbol !== 'WMON')
+  try {
+    const values = await Promise.all(tokens.map((t) => appChain().readContract({ address: t.address, abi: erc20Abi, functionName: 'balanceOf', args: [address] })))
+    return tokens.map((t, i) => ({ symbol: t.symbol, decimals: t.decimals, value: values[i] ?? 0n }))
+  } catch {
+    return null
+  }
+}
+
 export async function readBalance(address: Address, symbol: SourceAssetSymbol): Promise<bigint> {
   const token = sourceToken(symbol)
   return appChain().readContract({ address: token.address, abi: erc20Abi, functionName: 'balanceOf', args: [address] })

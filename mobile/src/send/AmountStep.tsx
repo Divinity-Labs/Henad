@@ -186,7 +186,6 @@ export function AmountStep({
         </Card>
 
         {error ? <ErrorText>{error}</ErrorText> : null}
-        <View style={s.spacer} />
         <Button label="Get quote" variant={blocker ? 'disabled' : 'primary'} onPress={onQuote} busy={busy} />
         <Text style={s.foot}>{blocker ?? 'Nothing moves until you approve the rate.'}</Text>
       </View>

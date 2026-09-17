@@ -77,6 +77,13 @@ export async function fetchRates(): Promise<RatesPayload> {
   return (await res.json()) as RatesPayload
 }
 
+/** The ledger, newest first. */
+export async function fetchReceipts(): Promise<ReceiptDto[]> {
+  const res = await fetch(`${baseUrl()}/api/receipts`, { headers: { accept: 'application/json' } })
+  if (!res.ok) throw new Error(`Receipts are unavailable (${res.status}).`)
+  return ((await res.json()) as { receipts: ReceiptDto[] }).receipts
+}
+
 export interface RelayResult {
   intentId: Hex
   txHash: Hex
