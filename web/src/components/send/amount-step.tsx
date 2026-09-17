@@ -7,7 +7,10 @@ import { CORRIDORS, SOURCE_ASSETS, type Corridor, type SourceAssetSymbol } from 
 import { money, rateLine, shortAddress, tokens } from '@/lib/format'
 import type { RateDto } from '@/lib/send-serial'
 import { Button } from '@/components/ui/Button'
-import { Card, ChipSelect, Notice, StepHeader, linkLabel } from './send-ui'
+import { TierPill } from '@/components/ui/TierPill'
+import { TokenIcon } from '@/components/ui/TokenIcon'
+import { AssetSelect } from './asset-select'
+import { Card, Notice, StepHeader, linkLabel } from './send-ui'
 
 const SOURCE_DECIMALS = 6
 
@@ -112,11 +115,16 @@ export function AmountStep(p: AmountStepProps) {
               style={{ font: 'inherit' }}
             />
           </label>
-          <ChipSelect
+          <AssetSelect
             label="Source asset"
             value={p.sourceAsset}
             onChange={(v) => p.onAsset(v as SourceAssetSymbol)}
-            options={SOURCE_ASSETS.map((a) => ({ value: a.symbol, label: `${a.label} · Monad` }))}
+            options={SOURCE_ASSETS.map((a) => ({
+              value: a.symbol,
+              label: a.label,
+              icon: <TokenIcon symbol={a.symbol} size={22} />,
+              detail: a.symbol === 'AUSD' ? 'Agora dollar · Monad' : 'Circle USD Coin · Monad',
+            }))}
           />
         </div>
         <Link href="/docs/fund" className={`${linkLabel} flex items-center justify-between border-t border-hairline-2 pt-[10px] text-purple`}>
@@ -142,13 +150,17 @@ export function AmountStep(p: AmountStepProps) {
         <div className="label text-muted">{firstName(p.recipientName)} receives</div>
         <div className="flex items-center justify-between gap-3">
           <div className="font-display text-[38px] font-medium leading-none tracking-[-.035em] tabular">{receives}</div>
-          <ChipSelect
+          <AssetSelect
             label="Currency the recipient receives"
             value={c.key}
             onChange={p.onCorridor}
             options={CORRIDORS.map((x) => ({
               value: x.key,
-              label: x.tier === 'live' ? x.target : `${x.target} · ${x.tier === 'quote' ? 'priced only' : 'unpriced'}`,
+              label: x.target,
+              icon: <TokenIcon symbol={x.targetAsset?.symbol ?? x.target} size={22} />,
+              // Name the token that arrives, or say plainly why nothing can.
+              detail: x.targetAsset ? `${x.targetName} · ${x.targetAsset.symbol}` : x.tier === 'quote' ? `${x.targetName} · priced, no token` : `${x.targetName} · no rate on Monad`,
+              badge: <TierPill tier={x.tier} size="sm" />,
             }))}
           />
         </div>

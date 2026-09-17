@@ -4,6 +4,7 @@ import type { RatesPayload } from '@/lib/api'
 import { hms, rateText, tokenText } from '@/lib/display'
 import { ErrorText, Eyebrow, TierBadge } from '@/ui'
 import { color, font, track } from '@/theme'
+import { TokenIcon } from '@/tokens/TokenIcon'
 
 /**
  * S4. What the spread actually was.
@@ -23,7 +24,9 @@ export function RatesScreen({
   error,
   onRefresh,
   onSend,
+  network,
 }: {
+  network: string
   data: RatesPayload | null
   loading: boolean
   error: string | null
@@ -38,7 +41,7 @@ export function RatesScreen({
     <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={color.purple} />}>
       <View style={s.hero}>
         <Text style={s.watermark}>{String(count).padStart(2, '0')}</Text>
-        <Eyebrow tone="purple">Rates · Monad mainnet</Eyebrow>
+        <Eyebrow tone="purple">{`Rates · ${network}`}</Eyebrow>
         <Text style={s.title}>What the spread actually was.</Text>
       </View>
 
@@ -61,8 +64,11 @@ export function RatesScreen({
       <View>
         {CORRIDORS.map((c, i) => {
           const r = data?.rates.find((x) => x.key === c.key)
-          const value = c.tier === 'unpriced' ? '—' : r?.stale ? 'stale' : r?.rate ? rateText(BigInt(r.rate), c) : '…'
-          const sub = c.tier === 'live' && r?.updatedAt ? `${c.shortNote} · ${hms(r.updatedAt)}` : c.shortNote
+          // The reference rate is always shown when there is one, as on the web. A stale feed is
+          // flagged beside its time rather than replacing the number.
+          const value = c.tier === 'unpriced' ? '—' : r?.rate ? rateText(BigInt(r.rate), c) : r ? 'unavailable' : '…'
+          const age = c.tier !== 'unpriced' && r?.updatedAt ? ` · ${hms(r.updatedAt)}` : ''
+          const sub = `${c.shortNote}${age}${r?.stale && r.rate ? ' · stale' : ''}`
           const row = (
             <View
               style={[
@@ -75,6 +81,7 @@ export function RatesScreen({
               <View style={s.badgeCol}>
                 <TierBadge tier={c.tier} />
               </View>
+              <TokenIcon symbol={c.targetAsset?.symbol ?? c.target} size={26} />
               <View style={s.mid}>
                 <Text style={[s.pair, c.tier === 'live' && s.strong]}>{`${c.source} → ${c.target}`}</Text>
                 <Text style={s.sub}>{sub}</Text>

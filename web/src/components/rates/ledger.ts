@@ -1,5 +1,5 @@
 import { MONAD_MAINNET_ID, MONAD_TESTNET_ID } from '@henad/core'
-import { appChainId } from '@/lib/chain'
+import { appChainId, isLocalFork } from '@/lib/chain'
 import { CORRIDORS } from '@henad/core'
 import { utcTime } from '@/lib/format'
 import { deploymentAddresses, type LedgerTotals, type Receipt } from '@/lib/receipts'
@@ -70,7 +70,9 @@ export function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-export function chainLabel(): 'mainnet' | 'testnet' {
+/** Which chain the page reads: a local fork is a copy of mainnet on this machine, and says so. */
+export function chainLabel(): 'mainnet' | 'testnet' | 'local fork' {
+  if (isLocalFork()) return 'local fork'
   return appChainId() === MONAD_TESTNET_ID ? 'testnet' : 'mainnet'
 }
 

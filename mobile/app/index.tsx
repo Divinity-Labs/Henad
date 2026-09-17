@@ -310,6 +310,7 @@ export default function App() {
   } else if (view === 'rates') {
     body = (
       <RatesScreen
+        network={network}
         data={rates}
         loading={ratesLoading}
         error={ratesError}

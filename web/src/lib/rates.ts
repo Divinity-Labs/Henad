@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
 import { aggregatorV3Abi, mentoRouterAbi, oracleAdapterAbi, fpmmAbi, MENTO_MAINNET, MONAD_MAINNET_ID, TOKENS } from '@henad/core'
-import { mainnet } from './chain'
+import { isLocalFork, mainnet } from './chain'
 import { CORRIDORS, type Corridor, type FeedRef } from '@henad/core'
 import { isFxMarketOpen } from '@henad/core'
 
@@ -77,9 +77,24 @@ export async function liveRates(): Promise<LiveRate[]> {
   return value
 }
 
+/**
+ * The time a feed's age is measured against: the chain's own clock on a local fork, the wall
+ * clock anywhere else. A fork freezes each feed at the fork block while the wall clock runs on,
+ * so measuring against it called every rate stale within an hour and hid numbers the fork
+ * would still settle against. On a live chain the two clocks agree to within a block.
+ */
+async function feedClock(): Promise<number> {
+  if (!isLocalFork()) return Math.floor(Date.now() / 1000)
+  try {
+    return Number((await mainnet().getBlock({ blockTag: 'latest' })).timestamp)
+  } catch {
+    return Math.floor(Date.now() / 1000)
+  }
+}
+
 async function readAllRates(): Promise<LiveRate[]> {
-  const now = Math.floor(Date.now() / 1000)
-  const closed = !isFxMarketOpen(now)
+  const now = await feedClock()
+  const closed = !isFxMarketOpen(Math.floor(Date.now() / 1000))
   return Promise.all(
     CORRIDORS.map(async (corridor): Promise<LiveRate> => {
       const base = { corridor, source: corridor.feed?.label ?? 'none', marketClosed: closed && corridor.tier === 'live' }

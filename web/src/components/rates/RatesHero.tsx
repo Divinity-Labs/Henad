@@ -7,7 +7,7 @@ import { pad2, type Headline } from './ledger'
  * three stats: a white rounded card at md and up (W2), a hairline grid below
  * (S4). Every figure comes from the ledger totals; "—" when nothing has settled.
  */
-export function RatesHero({ count, head, sample, chain }: { count: number; head: Headline | null; sample: boolean; chain: 'mainnet' | 'testnet' }) {
+export function RatesHero({ count, head, sample, chain }: { count: number; head: Headline | null; sample: boolean; chain: 'mainnet' | 'testnet' | 'local fork' }) {
   const more = head && head.more > 0 ? `+ ${head.more} more` : null
   const sub = (extra: string | null) => [extra, sample ? 'sample' : null].filter(Boolean).join(' · ') || undefined
   const spread = head ? spreadLine(head.spreadCost, head.decimals, head.symbol, head.meanBps, { dp: head.dp }) : '—'

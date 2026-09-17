@@ -38,39 +38,6 @@ export function Rows({ rows, pad = 'py-2' }: { rows: Row[]; pad?: string }) {
   )
 }
 
-/** A native select styled as the canvas chip ("AUSD · Monad ▾"). */
-export function ChipSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <span className="relative inline-flex flex-none">
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="press appearance-none whitespace-nowrap rounded-[4px] border border-border bg-surface-2 py-[7px] pl-[10px] pr-[26px] font-mono text-[11px] text-ink"
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <span aria-hidden className="pointer-events-none absolute right-[10px] top-1/2 -translate-y-1/2 font-mono text-[11px]">
-        ▾
-      </span>
-    </span>
-  )
-}
-
 /** Inline problem or confirmation line. Says what happened and what to do next. */
 export function Notice({ children, tone = 'error' }: { children: ReactNode; tone?: 'error' | 'info' }) {
   return (
