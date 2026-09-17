@@ -44,8 +44,8 @@ reads 111 **trillion** tokens, which cannot be a backed float, its own site clai
 million circulating, and its issuing entity is UK-registered with no Nigerian licence
 stated. Not on Monad either.
 
-Mento's own naira asset, `NGNm`, exists on Celo. Mento's Monad deployment has exactly two
-stable assets: USDm and GBPm.
+Mento's own naira asset, `NGNm`, exists on Celo only. Mento's Monad deployment carries USDm, GBPm,
+EURm, JPYm and CHFm (checked 17 Sep 2026), and no naira.
 
 > **Integration trap.** Several explorers display Mento's `NGNm` under the ticker `cNGN`.
 > Two unrelated tokens share that display name on the same chain. Key off the address.
@@ -80,21 +80,32 @@ The rate source is genuinely there. Chainlink NGN/USD on Celo, proxy
 minutes before this was written, on a 240-second heartbeat. Celo also carries KES, GHS and
 ZAR, which Monad does not.
 
-**But Mento's naira market on Celo is dead**, and this corrects an assumption this project
-had been carrying. Read directly from Mento's SortedOracles on Celo:
+> **Corrected 17 Sep 2026.** This section first said Mento's naira market on Celo was dead.
+> That was wrong. The check passed the NGNm **token address** to SortedOracles, which is not
+> how Mento keys the rate: it keys it by rate-feed ID. Read with the right ID, the market is
+> live. What stays true is that none of it is on Monad.
 
-- `getOracles(NGNm)` returns an empty array
-- `numRates(NGNm)` is zero
-- `medianTimestamp(NGNm)` is zero
+**Mento's naira market is live on Celo, and only on Celo.** Verified on chain 42220 on 17 Sep:
 
-Controls behave correctly on the same contract, so this is not a bad read. No relayer is
-pushing Chainlink's NGN price into Mento. Mento lists no NGN pool on any deployment, and
-NGNm has recorded no transfers in the last 5,000 Celo blocks.
+- NGNm is `0xE2702Bd97ee33c88c8f6f92DA3B733608aa76F71` (18 decimals, supply about ₦64.5M).
+- A Mento **V2** BiPool swaps USDm ↔ NGNm (exchange ID `0x67a5122d…06cc`, 1% spread).
+  `Broker.getAmountOut` for 10 USDm returned 13,176.98 NGNm, and the breaker reports
+  trading not suspended.
+- Its oracle is rate feed `0xC13D42556f1baeab4a8600C735afcd5344048d3C` ("NGN/USD"). It was
+  reported 28 seconds before the read, at ₦1,331.0 per USD, by the Chainlink relayer.
+  Chainlink NGN/USD on Celo read ₦1,331 as well, 68 seconds old.
+- **Caveat:** Mento proposal MGP-18 is winding V2 down. It keeps this pool for redemptions
+  and caps its lifetime net flow, so new NGNm minting through it is limited.
 
-So Mento's naira is dormant rather than merely missing from Monad, which means the
-`ngn: address(0)` in their Monad config is a symptom, not the disease.
+**On Monad there is still nothing.** Mento's deployment address book and SDK list NGNm only
+for Celo and Celo Sepolia. Their Monad config has `ngn: address(0)`. Monad's FPMM factory
+holds the same seven pools as on 10 Sep, none of them naira. Mento's Monad SortedOracles has
+no NGN/USD rate under either ID. Chainlink's 102 Monad feeds, Pyth and RedStone have no NGN.
 
-What does work on Celo is: read Chainlink, swap through the one Uniswap pool, redeem cNGN
+Mento's app switches networks, and its NGNm swap is the Celo market. Key off the address, not
+the ticker: Mento's own repos still map the old `cNGN` name to NGNm.
+
+What also works on Celo is: read Chainlink, swap through the one Uniswap pool, redeem cNGN
 to a bank account through the issuer's API. That is a thin retail corridor whose last leg
 is off-chain and KYC'd.
 
