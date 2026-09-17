@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Nav } from '@/components/Nav'
-import { Button } from '@/components/ui/Button'
+import { NavAccount } from '@/components/NavAccount'
 import { FooterStrip } from '@/components/rates/FooterStrip'
 import { RatesFrame } from '@/components/rates/RatesFrame'
 import { SettlementsBlock } from '@/components/rates/SettlementsLedger'
@@ -20,11 +20,7 @@ export default async function ReceiptsPage() {
     <RatesFrame>
       <Nav
         showBuiltOn={false}
-        right={
-          <Button href="/send" variant="secondary" size="md">
-            Sign in
-          </Button>
-        }
+        right={<NavAccount />}
       />
       <main className="flex flex-1 flex-col">
         <SettlementsBlock receipts={receipts} title="Receipts" heading="h1" />

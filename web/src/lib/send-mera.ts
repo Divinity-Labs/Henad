@@ -209,6 +209,8 @@ export function forgetStoredAccount(): void {
   } catch {
     // Blocked storage holds nothing to forget.
   }
+  // `storage` events only reach other tabs; this tells readers in this one (use-stored-address.ts).
+  window.dispatchEvent(new Event('henad:account'))
 }
 
 export interface Holding {

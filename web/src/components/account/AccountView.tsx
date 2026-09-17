@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Address } from 'viem'
 import { Button } from '@/components/ui/Button'
 import { Card, StepHeader } from '@/components/send/send-ui'
 import { TokenIcon } from '@/components/ui/TokenIcon'
 import { isLocalFork } from '@/lib/chain'
 import { tokens } from '@/lib/format'
-import { forgetStoredAccount, loadStoredAccount, readHoldings, type Holding } from '@/lib/send-mera'
+import { forgetStoredAccount, readHoldings, type Holding } from '@/lib/send-mera'
+import { useStoredAddress } from '@/lib/use-stored-address'
 
 /**
  * The account in this browser: address as text and QR, what it holds, sign out.
@@ -18,33 +18,36 @@ import { forgetStoredAccount, loadStoredAccount, readHoldings, type Holding } fr
  * what the Henad app's scanner and every wallet scanner read.
  */
 export function AccountView({ network }: { network: string }) {
-  const [address, setAddress] = useState<Address | null | undefined>(undefined)
+  const address = useStoredAddress()
   const [qr, setQr] = useState<string | null>(null)
   const [holdings, setHoldings] = useState<Holding[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    setAddress(loadStoredAccount()?.address ?? null)
-  }, [])
-
-  const refresh = useCallback(async () => {
+  // A failed background read keeps the last good balances rather than blanking them.
+  const read = useCallback(async () => {
     if (!address) return
-    setLoading(true)
     const next = await readHoldings(address)
-    // A failed background read keeps the last good balances rather than blanking them.
     setHoldings((prev) => next ?? prev)
-    setLoading(false)
+    setFailed(next === null)
   }, [address])
 
+  /** The Refresh button: the same read, with the button showing it is working. */
+  async function refresh() {
+    setLoading(true)
+    await read()
+    setLoading(false)
+  }
+
   useEffect(() => {
     if (!address) return
-    void refresh()
+    void read()
     // Balances change when a payout lands, including one sent from the phone, so keep reading
     // while the page is open and read again the moment the tab comes back into view.
-    const id = window.setInterval(() => void refresh(), 15_000)
+    const id = window.setInterval(() => void read(), 15_000)
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh()
+      if (document.visibilityState === 'visible') void read()
     }
     document.addEventListener('visibilitychange', onVisible)
     QRCode.toString(address, { type: 'svg', margin: 1, width: 224, color: { dark: '#0E091C', light: '#FFFFFF' } }).then(setQr, () => setQr(null))
@@ -52,7 +55,7 @@ export function AccountView({ network }: { network: string }) {
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [address, refresh])
+  }, [address, read])
 
   async function copy() {
     if (!address) return
@@ -66,8 +69,8 @@ export function AccountView({ network }: { network: string }) {
   }
 
   function signOut() {
+    // useStoredAddress hears the sign-out and re-renders this page as signed out.
     forgetStoredAccount()
-    setAddress(null)
     setHoldings(null)
   }
 
@@ -116,7 +119,7 @@ export function AccountView({ network }: { network: string }) {
         </div>
         <div className="border-t border-dashed border-border" />
         {holdings === null ? (
-          <p className="m-0 text-[13px] text-grey">{loading ? 'Reading balances from the chain…' : 'Balances could not be read. Try again.'}</p>
+          <p className="m-0 text-[13px] text-grey">{failed && !loading ? 'Balances could not be read. Try again.' : 'Reading balances from the chain…'}</p>
         ) : held.length === 0 ? (
           <p className="m-0 text-[13px] text-grey">Nothing on this account yet.</p>
         ) : (

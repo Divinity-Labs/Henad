@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { Nav } from '@/components/Nav'
-import { Button } from '@/components/ui/Button'
+import { NavAccount } from '@/components/NavAccount'
 import { ClosedBanner } from '@/components/rates/ClosedBanner'
 import { CorridorsBlock } from '@/components/rates/CorridorsBlock'
 import { DemoClosed } from '@/components/rates/DemoClosed'
@@ -46,11 +46,7 @@ export default async function RatesPage() {
     >
       <Nav
         showBuiltOn={false}
-        right={
-          <Button href="/send" variant="secondary" size="md">
-            Sign in
-          </Button>
-        }
+        right={<NavAccount />}
       />
       <main className="flex flex-1 flex-col">
         <RatesHero count={t.settlements} head={headline(t)} sample={sample} chain={chainLabel()} />
