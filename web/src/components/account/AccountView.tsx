@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { Button } from '@/components/ui/Button'
 import { Card, StepHeader } from '@/components/send/send-ui'
@@ -25,23 +25,29 @@ export function AccountView({ network }: { network: string }) {
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // A failed background read keeps the last good balances rather than blanking them.
-  const read = useCallback(async () => {
-    if (!address) return
-    const next = await readHoldings(address)
+  /** A failed read keeps the last good balances rather than blanking them. */
+  function apply(next: Holding[] | null) {
     setHoldings((prev) => next ?? prev)
     setFailed(next === null)
-  }, [address])
+  }
 
   /** The Refresh button: the same read, with the button showing it is working. */
   async function refresh() {
+    if (!address) return
     setLoading(true)
-    await read()
+    apply(await readHoldings(address))
     setLoading(false)
   }
 
   useEffect(() => {
     if (!address) return
+    let live = true
+    const read = () =>
+      readHoldings(address).then((next) => {
+        if (!live) return
+        setHoldings((prev) => next ?? prev)
+        setFailed(next === null)
+      })
     void read()
     // Balances change when a payout lands, including one sent from the phone, so keep reading
     // while the page is open and read again the moment the tab comes back into view.
@@ -50,12 +56,16 @@ export function AccountView({ network }: { network: string }) {
       if (document.visibilityState === 'visible') void read()
     }
     document.addEventListener('visibilitychange', onVisible)
-    QRCode.toString(address, { type: 'svg', margin: 1, width: 224, color: { dark: '#0E091C', light: '#FFFFFF' } }).then(setQr, () => setQr(null))
+    QRCode.toString(address, { type: 'svg', margin: 1, width: 224, color: { dark: '#0E091C', light: '#FFFFFF' } }).then(
+      (svg) => live && setQr(svg),
+      () => live && setQr(null),
+    )
     return () => {
+      live = false
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [address, read])
+  }, [address])
 
   async function copy() {
     if (!address) return
