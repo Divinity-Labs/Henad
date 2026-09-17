@@ -12,7 +12,12 @@ actually calling the service with it.
 
 ## Blocking, soonest first
 
-### 1. usehenad.xyz — bought; two settings left, then it is done
+### 1. usehenad.xyz — live since 15 Sep; one setting to confirm
+
+**Update 17 Sep:** the domain serves the app on the bare domain and passkeys work on it from
+web and Android. What is unconfirmed is the Production env var below
+(`NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz`). Check it in Vercel; it is what stops a passkey
+binding to the vercel.app URL.
 **Bought 14 Sep**, through Truehost, sponsored by NameSilo, expiring 14 Sep 2027.
 `henad.xyz` could not be had: it has belonged to a third party since 11 June 2026 and is
 parked on the Afternic aftermarket at $699. The ₦3,652 Truehost order for it was charged
