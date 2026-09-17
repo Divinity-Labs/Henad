@@ -96,6 +96,16 @@ const config: ExpoConfig = {
     'expo-secure-store',
     // The launch screen is the first thing the app shows; left unset it shows Expo's mark.
     ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 180, resizeMode: 'contain', backgroundColor: '#fbfbfc' }],
+    // Scanning a recipient's address QR. Photos and audio are never used, so the
+    // microphone permission is not requested at all.
+    [
+      'expo-camera',
+      {
+        cameraPermission: "Henad uses the camera to scan a recipient's wallet address QR code.",
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
   ],
   // No `updates` or `runtimeVersion`: expo-updates is not installed and over-the-air
   // updates are not wanted here. A dev build loads JS from the Metro server on your
