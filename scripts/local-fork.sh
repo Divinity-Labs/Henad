@@ -4,13 +4,18 @@
 # Why this exists as a script rather than a runbook: anvil stamps each new block with
 # wall-clock time while the forked Mento price report stays frozen at the fork block, so
 # a fork more than a few minutes old answers OracleStale and nothing can settle
-# (docs/INTEGRATION-FACTS.md 14.7). Every session therefore starts with a fresh fork, and
-# a fresh fork means fresh contract addresses. Doing that by hand is how the addresses in
-# .env.local end up pointing at yesterday's node.
+# (docs/INTEGRATION-FACTS.md 14.7). Mento's pool reverts NoRecentRate() in gas estimation.
+#
+# Two things keep a session usable:
+# - A clock keeper pins anvil's time to its latest block every 30 s, so a pending block is
+#   never more than about 30 s past the fork's own time and the price reports stay recent.
+#   Receipts written on the fork therefore carry fork time, a few minutes behind the clock.
+# - The new contract addresses are written straight into web/.env.local, which is how the
+#   addresses there used to end up pointing at yesterday's node.
 #
 #   scripts/local-fork.sh <payerAddress>
 #
-# Leaves anvil running in the background on :8545. Stop it with: scripts/local-fork.sh --stop
+# Leaves anvil and the keeper running in the background. Stop both: scripts/local-fork.sh --stop
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,7 +34,13 @@ RELAYER=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 AUSD=0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a
 AUSD_WHALE=0x4255Cf38e51516766180b33122029A88Cb853806 # ReserveV2, ~686k AUSD
 
+KEEPER_PID="${TMPDIR:-/tmp}/henad-clock-keeper.pid"
+
 stop() {
+  if [ -f "$KEEPER_PID" ]; then
+    kill "$(cat "$KEEPER_PID")" >/dev/null 2>&1 || true
+    rm -f "$KEEPER_PID"
+  fi
   # taskkill on Windows, pkill elsewhere; either may legitimately find nothing.
   taskkill //IM anvil.exe //F >/dev/null 2>&1 || pkill -f "anvil.*--port $PORT" >/dev/null 2>&1 || true
 }
@@ -67,6 +78,17 @@ cast chain-id --rpc-url "$RPC" >/dev/null 2>&1 || { echo "anvil did not come up;
 BLOCK=$(cast block-number --rpc-url "$RPC")
 echo "    chain 143 at block $BLOCK"
 
+echo "==> pinning the fork clock"
+# Exits on its own once anvil is gone.
+RPC="$RPC" nohup bash -c '
+  while cast chain-id --rpc-url "$RPC" >/dev/null 2>&1; do
+    ts=$(cast block latest -f timestamp --rpc-url "$RPC") &&
+      cast rpc evm_setTime $((ts + 1)) --rpc-url "$RPC" >/dev/null 2>&1
+    sleep 30
+  done
+' >/dev/null 2>&1 &
+echo $! >"$KEEPER_PID"
+
 echo "==> deploying Henad onto the fork"
 (
   cd "$ROOT/contracts"
@@ -97,6 +119,17 @@ BAL=$(cast call "$AUSD" "balanceOf(address)(uint256)" "$PAYER" --rpc-url "$RPC" 
 echo "    payer   $PAYER  $((BAL / 1000000)) AUSD"
 echo "    relayer $RELAYER  $(cast balance $RELAYER --rpc-url $RPC --ether | cut -c1-8) MON"
 
+ENV_LOCAL="$ROOT/web/.env.local"
+if [ -f "$ENV_LOCAL" ] && grep -q '^NEXT_PUBLIC_LOCAL_FORK=1' "$ENV_LOCAL"; then
+  sed -i \
+    -e "s/^NEXT_PUBLIC_CORRIDOR_ROUTER_ADDRESS=.*/NEXT_PUBLIC_CORRIDOR_ROUTER_ADDRESS=$ROUTER/" \
+    -e "s/^NEXT_PUBLIC_RATE_ATTESTATION_ADDRESS=.*/NEXT_PUBLIC_RATE_ATTESTATION_ADDRESS=$ATTEST/" \
+    -e "s/^NEXT_PUBLIC_DEPLOYED_AT_BLOCK=.*/NEXT_PUBLIC_DEPLOYED_AT_BLOCK=$AT_BLOCK/" \
+    "$ENV_LOCAL"
+  echo "==> web/.env.local updated with the new addresses. Restart \`pnpm dev:web\` (env is read at boot)."
+  exit 0
+fi
+
 cat <<ENV
 
 ==> put this in web/.env.local, then restart \`pnpm dev\` (env is read at boot)
@@ -116,5 +149,5 @@ Gas path is 3009 on purpose: Pimlico's bundler cannot reach a node on your lapto
 so the ERC-3009 relayer is the only rail that works here. The sponsored 7702 path is
 covered by the contract fork tests instead.
 
-The fork goes OracleStale within minutes. Re-run this script before each session.
+The clock keeper holds the fork near its own time, so it stays usable while it runs.
 ENV

@@ -77,6 +77,14 @@ export async function POST(request: Request): Promise<Response> {
   try {
     gas = gasLimitFor(await client.estimateGas({ account: relayer.address, to: router, data }))
   } catch (error) {
+    // The pre-flight runs against the latest block and estimation against the pending one,
+    // so a revert can appear here first: a fork whose clock has passed Mento's report
+    // expiry answers NoRecentRate only at the pending block. Name it the same way.
+    const raw = revertDataOf(error)
+    if (raw) {
+      const decoded = decodeSettleError(raw)
+      return fail(422, 'intent', decoded.message, { name: decoded.name, source: decoded.source })
+    }
     console.error('[relay] estimate failed', intentId, shortError(error))
     return fail(502, 'relayer', 'Gas estimation failed; try again.')
   }
