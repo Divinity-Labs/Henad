@@ -61,19 +61,31 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
   }, [])
 
   const address = s.account?.address
+  // Money arrives from outside this tab: a swap, a payout from a phone, someone paying you.
+  // Reading once per step meant a full page reload to see it, so this keeps reading while
+  // the page is open and again the moment the tab is looked at.
   useEffect(() => {
     if (!address) return
     let live = true
-    readBalance(address, s.sourceAsset).then(
-      (b) => {
-        if (live) dispatch({ type: 'balance', value: b })
-      },
-      () => {
-        if (live) dispatch({ type: 'balance', value: null })
-      },
-    )
+    const read = () =>
+      readBalance(address, s.sourceAsset).then(
+        (b) => {
+          if (live) dispatch({ type: 'balance', value: b })
+        },
+        () => {
+          if (live) dispatch({ type: 'balance', value: null })
+        },
+      )
+    void read()
+    const id = window.setInterval(() => void read(), 15_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void read()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       live = false
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [address, s.sourceAsset, s.step])
 

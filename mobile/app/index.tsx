@@ -130,14 +130,20 @@ export default function App() {
     })
   }, [])
 
+  // Money arrives from outside the app too, so this keeps reading rather than only on a step
+  // change: a swap or a payout from the web shows up without reopening anything.
   useEffect(() => {
     if (!address) return
     let live = true
-    void readBalance(address).then((b) => {
-      if (live) setBalance(b)
-    })
+    const read = () =>
+      readBalance(address).then((b) => {
+        if (live) setBalance(b)
+      })
+    void read()
+    const id = setInterval(() => void read(), 15_000)
     return () => {
       live = false
+      clearInterval(id)
     }
   }, [address, step])
 
