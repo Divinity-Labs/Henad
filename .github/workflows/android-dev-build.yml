@@ -1,4 +1,4 @@
-# Builds the Android development APK on GitHub's runners instead of Expo's.
+# Builds an Android APK on GitHub's runners instead of Expo's.
 #
 # `eas build --local` runs the same build EAS would, on this machine, and local builds do not
 # count against the Expo plan's cloud build allowance. The keystore still comes from the
@@ -8,16 +8,22 @@
 # Needs one repository secret, EXPO_TOKEN: an access token from expo.dev for the account that
 # owns the project. Run it from the Actions tab.
 
-name: Android dev build
+name: Android build
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: "development needs Metro running on your machine; preview runs standalone, which is what a demo or a judge needs."
+        type: choice
+        default: development
+        options: [development, preview]
 
 permissions:
   contents: read
 
 concurrency:
-  group: android-dev-build
+  group: android-build-${{ inputs.profile }}
   cancel-in-progress: false
 
 jobs:
@@ -55,12 +61,12 @@ jobs:
 
       - name: Build the APK
         working-directory: mobile
-        run: pnpm exec eas build --platform android --profile development --local --non-interactive --output "$RUNNER_TEMP/henad-dev.apk"
+        run: pnpm exec eas build --platform android --profile "${{ inputs.profile }}" --local --non-interactive --output "$RUNNER_TEMP/henad.apk"
 
       - name: Check the signing certificate
         run: |
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          actual=$("$apksigner" verify --print-certs "$RUNNER_TEMP/henad-dev.apk" | awk '/SHA-256 digest/ {print $NF; exit}')
+          actual=$("$apksigner" verify --print-certs "$RUNNER_TEMP/henad.apk" | awk '/SHA-256 digest/ {print $NF; exit}')
           echo "Signed with $actual"
           if [ "$actual" != "$EXPECTED_CERT_SHA256" ]; then
             echo "::error::The APK is signed with $actual, not the certificate in assetlinks.json. Passkeys would fail with 'RP ID cannot be validated'."
@@ -69,7 +75,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: henad-dev-apk
-          path: ${{ runner.temp }}/henad-dev.apk
+          name: henad-${{ inputs.profile }}-apk
+          path: ${{ runner.temp }}/henad.apk
           retention-days: 14
           if-no-files-found: error
