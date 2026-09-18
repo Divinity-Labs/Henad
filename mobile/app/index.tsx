@@ -388,7 +388,9 @@ export default function App() {
     <SafeAreaView style={s.screen} edges={['top', 'bottom']}>
       {scanning ? null : header}
       <View style={s.body}>{body}</View>
-      {scanning ? null : <TabBar active={activeTab} onSelect={selectTab} />}
+      {/* Signed out there is one thing to do, so the sign-in screen carries no navigation:
+          rates and receipts are behind an account you do not have yet. */}
+      {scanning || !address ? null : <TabBar active={activeTab} onSelect={selectTab} />}
     </SafeAreaView>
   )
 }
