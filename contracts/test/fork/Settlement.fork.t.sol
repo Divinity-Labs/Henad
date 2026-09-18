@@ -531,11 +531,15 @@ contract SettlementForkTest is ForkTest {
         assertTrue(router.hashIntent(i) != signedId, "tampering must change the id");
 
         uint256 payerBefore = IERC20(M.AUSD).balanceOf(payer);
+        // When ecrecover does not return the payer, AUSD falls back to an ERC-1271
+        // staticcall on it. Foundry cannot represent that against a codeless account in a
+        // fork: it substitutes "Contract 0x… does not exist" for the token's own revert.
+        // Empty runtime code at the payer reproduces an EOA exactly as AUSD reads one — the
+        // call returns nothing, which is not the magic value — and lets the real revert through.
+        vm.etch(payer, hex"00");
         vm.prank(relayer);
-        (bool ok, bytes memory err) =
-            address(router).call(abi.encodeCall(CorridorRouter.settleWithAuthorization, (i, sig)));
-        assertFalse(ok, "tampered intent must revert");
-        assertEq(bytes4(err), INVALID_SIGNATURE, "AUSD must reject with InvalidSignature() 0x8baa579f");
+        vm.expectRevert(INVALID_SIGNATURE);
+        router.settleWithAuthorization(i, sig);
         assertEq(IERC20(M.AUSD).balanceOf(payer), payerBefore, "nothing moved");
         assertEq(IERC20(M.GBPM).balanceOf(attacker), 0, "attacker received nothing");
         assertFalse(IERC3009(M.AUSD).authorizationState(payer, signedId), "the signed nonce is still unspent");
