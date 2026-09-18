@@ -176,6 +176,25 @@ plugin, so it crashes on import. That is not a setting.
 
 ## Decisions I need from you
 
+### 0. Upgradeability and the fee, before the mainnet deploy
+Both are asked and answered in `docs/UPGRADEABILITY.md`, researched against Monad mainnet
+on 18 Sep. Short version: proxies work here but cost 18,400 gas on every payout, and after
+about 9.5 days Monad's public RPC can no longer tell a reader which implementation wrote an
+old receipt, which is the claim the product rests on. These contracts hold no balances, so a
+proxy preserves nothing a redeploy would lose.
+
+Decide:
+1. **Re-pointable corridors** (recommended): let the owner update a pair's feed or venue, so a
+   Mento or Chainlink move does not strand a corridor. About a day with tests.
+2. **A fee**: capped, shown before signing, written on the receipt, defaulting to zero — or none
+   at all. It cannot be added after the deploy.
+3. **A proxy anyway**: two to three days, a permanent gas cost, and a public statement about who
+   holds the upgrade key.
+
+The deployer `0x2601a8ad1E242EE3763183Cfe0321cC5f49D8C18` is funded with 19.9 MON and has never
+transacted. Nothing ships to mainnet until this is settled.
+
+
 ### 9. Which optional bounties to chase in week 5
 Only if the mainnet payout is done. My read on each:
 
