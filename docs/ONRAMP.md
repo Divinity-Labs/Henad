@@ -88,8 +88,46 @@ No exchange reachable from Nigeria lists Agora's AUSD. Kraken has the only MON/A
 found anywhere and has no Nigerian fiat rail, is ISP-blocked, and had its Monad funding
 gateway down twice in the fortnight before this was written.
 
-So whichever route you take, the last hop is the same: swap MON for AUSD on Monad itself,
-at Monorail. That is fine. It costs fractions of a cent and it is one transaction.
+So whichever route you take, the last hop is the same: swap MON for AUSD on Monad itself.
+That is fine. It costs fractions of a cent and it is one transaction.
+
+### The swap, read from the chain on 18 Sep 2026
+
+**MON → AUSD: PancakeSwap V3's 0.05% AUSD/WMON pool is the only real venue.**
+
+| | |
+| --- | --- |
+| Router | `0x1b81D678ffb9C0263b24A97847620C99d213eB14` |
+| Pool | `0xD5b70d70CBE6C42bCD1aaa662A21673A83f4615b` (fee 500) |
+| Depth | 12,555 AUSD + 8,725,399 WMON, about $222,000 |
+| Quoter | `0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997` |
+
+No approval and no wrapping: the router is payable and wraps MON itself. It is the
+**original** Uniswap V3 SwapRouter ABI, so `exactInputSingle` takes eight fields
+**including `deadline`** (selector `0x414bf389`); the seven-field SwapRouter02 shape is not
+in the deployed bytecode and a copied example using it reverts. Gas measured at 215,571.
+
+Price impact is nil below about 1,000 MON, −0.65% at 10,000, −3.4% at 50,000 and −6.7% at
+100,000. Uniswap V3's AUSD pools on Monad are dust (1.25 AUSD) and quote 5.7× worse.
+
+**GBPm → MON is three hops, and only through Mento.** No AMM anywhere holds a GBPm pair;
+GBPm had zero transfers in a 3,000-block scan. The route is GBPm → USDm → AUSD on Mento's
+router `0x4861840C2EfB2b98312B0aE34d86fD73E8f9B6f6`, then AUSD → MON on PancakeSwap.
+Mento's legs are oracle-priced, so they show **zero slippage** from 1 to 10,000 GBPm; a
+round trip costs about 0.39%. Its router is Solidly-shaped: route tuples are
+`(from, to, factory)` with no `stable` flag, and the Mento legs do need an ERC-20 approval.
+
+> ⚠ **Never price GBPm through an aggregator.** KyberSwap and Monorail do not integrate
+> Mento's broker: they route through near-empty AMM pools and lose about 93% of the value
+> while reporting a small price impact. LI.FI prices GBPm at $18.59 internally and will only
+> accept a Mento quote if you disable its price-impact guard. Call Mento's router directly.
+
+### What MON is worth, and what that means for the first payout
+
+MON was **$0.0243** on 18 Sep, so 1 MON buys about 0.0243 AUSD. A payout of $1 needs about
+**41 MON**; the 19.9 MON in the deployer is about **$0.48** in total. The first mainnet
+payout can still be real at that size, which is what matters: the receipt does not care
+about the amount.
 
 ---
 
