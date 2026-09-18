@@ -279,6 +279,95 @@ contract CorridorRouterTest is Test {
         router.registerCorridor(address(ausd), address(gbpm), keccak256("other"), rateSource, other);
     }
 
+    // =========================================================================
+    // repointCorridor
+    // =========================================================================
+
+    /// The pair, its id and its decimals survive; only the two dependencies move.
+    function test_repointCorridor_swapsDependenciesAndEmits() public {
+        MockRateSource newSource = new MockRateSource();
+        newSource.setSupported(address(ausd), address(gbpm), true);
+        MockVenue newVenue = new MockVenue();
+
+        vm.expectEmit(true, true, true, true, address(router));
+        emit CorridorRouter.CorridorRepointed(
+            address(ausd),
+            address(gbpm),
+            CORRIDOR,
+            address(rateSource),
+            address(newSource),
+            address(venue),
+            address(newVenue)
+        );
+        vm.prank(owner);
+        router.repointCorridor(address(ausd), address(gbpm), newSource, newVenue);
+
+        (bytes32 corridor, IRateSource rs, IVenueAdapter v, uint8 srcDec, uint8 dstDec) =
+            router.corridors(address(ausd), address(gbpm));
+        assertEq(corridor, CORRIDOR, "corridor id is the pair's identity and never moves");
+        assertEq(address(rs), address(newSource));
+        assertEq(address(v), address(newVenue));
+        assertEq(srcDec, 6, "decimals still those read at registration");
+        assertEq(dstDec, 18);
+    }
+
+    /// The point of the whole change: a payout settles through the replacement, and the
+    /// receipt names it, so a reader can tell which venue priced which payout.
+    function test_repointCorridor_nextSettlementUsesTheNewVenue() public {
+        MockVenue newVenue = new MockVenue();
+        newVenue.setQuote(QUOTE);
+        newVenue.setDelivered(QUOTE);
+        vm.prank(owner);
+        router.repointCorridor(address(ausd), address(gbpm), rateSource, newVenue);
+
+        PayoutIntent.Intent memory i = _intent();
+        _settleVia(false, i);
+
+        IRateAttestation.Attestation memory a = attestation.get(router.hashIntent(i));
+        assertEq(a.venue, address(newVenue), "receipt records the venue that filled it");
+        assertEq(gbpm.balanceOf(recipient), QUOTE);
+    }
+
+    function test_repointCorridor_onlyOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, address(this)));
+        router.repointCorridor(address(ausd), address(gbpm), rateSource, venue);
+    }
+
+    function test_repointCorridor_unregisteredReverts() public {
+        vm.prank(owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(CorridorRouter.CorridorNotRegistered.selector, address(ausd), address(eurm))
+        );
+        router.repointCorridor(address(ausd), address(eurm), rateSource, venue);
+    }
+
+    function test_repointCorridor_rejectsZeroAddresses() public {
+        vm.prank(owner);
+        vm.expectRevert(CorridorRouter.ZeroAddress.selector);
+        router.repointCorridor(address(ausd), address(gbpm), IRateSource(address(0)), venue);
+
+        vm.prank(owner);
+        vm.expectRevert(CorridorRouter.ZeroAddress.selector);
+        router.repointCorridor(address(ausd), address(gbpm), rateSource, IVenueAdapter(address(0)));
+    }
+
+    /// The same two guards registration applies: a replacement must be able to price and route
+    /// this pair, or the corridor would be repointed into something that cannot settle.
+    function test_repointCorridor_rejectsUnsupportedRateSource() public {
+        MockRateSource blind = new MockRateSource(); // never marked supported
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(IRateSource.UnsupportedPair.selector, address(ausd), address(gbpm)));
+        router.repointCorridor(address(ausd), address(gbpm), blind, venue);
+    }
+
+    function test_repointCorridor_rejectsVenueNoRoute() public {
+        MockVenue noRoute = new MockVenue();
+        noRoute.setStatus(IVenueAdapter.Status.NoRoute);
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(IVenueAdapter.NoRoute.selector, address(ausd), address(gbpm)));
+        router.repointCorridor(address(ausd), address(gbpm), rateSource, noRoute);
+    }
+
     function test_registerCorridor_rejectsUnsupportedRateSource() public {
         // (ausd, eurm) never marked supported on the mock
         vm.prank(owner);
@@ -933,13 +1022,28 @@ contract CorridorRouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(PayoutIntent.NotPayer.selector, owner, payer));
         router.cancel(i);
 
-        // and cannot re-point an existing corridor (write-once)
+        // and cannot re-register a corridor: repointing is its own function, and it
+        // cannot change the pair, the corridor id or the stored decimals
         MockVenue evil = new MockVenue();
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(CorridorRouter.CorridorAlreadyRegistered.selector, address(ausd), address(gbpm))
         );
         router.registerCorridor(address(ausd), address(gbpm), CORRIDOR, rateSource, evil);
+
+        // repointing to a venue that keeps the payer's funds does not let the owner take
+        // them: the router measures the recipient's balance delta and reverts
+        vm.prank(owner);
+        router.repointCorridor(address(ausd), address(gbpm), rateSource, evil);
+        evil.setQuote(QUOTE);
+        evil.setDelivered(0);
+        PayoutIntent.Intent memory stolen = _intent();
+        // read the floor before pranking: a call to the router would consume the prank
+        uint256 floor = router.minAmountOut(stolen);
+        vm.prank(payer);
+        vm.expectRevert(abi.encodeWithSelector(CorridorRouter.InsufficientDelivery.selector, 0, floor));
+        router.settle(stolen);
+        assertEq(ausd.balanceOf(payer), 1_000e6, "payer keeps every unit when the fill fails");
     }
 
     // =========================================================================

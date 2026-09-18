@@ -123,13 +123,19 @@ touching anything else, and each receipt still records the feed and venue it use
 
 ---
 
-## Open decision
+## Decided, 18 September 2026
 
-1. **Re-pointable corridors** — recommended, about a day with tests.
-2. **A capped, disclosed fee defaulting to zero** — must be decided before the deploy,
-   because it cannot be added afterwards.
-3. **UUPS on the router, implementation address on every receipt** — two to three days,
-   +18,400 gas per payout, and a public statement about who holds the upgrade key.
+1. **Re-pointable corridors: done.** `CorridorRouter.repointCorridor` may change a registered
+   pair's rate source and venue, and nothing else. The pair, its corridor id and its stored
+   decimals are fixed at registration, so receipts written before and after remain the same
+   corridor, and `CorridorRepointed` names the outgoing and incoming addresses so the history
+   reads from logs alone. Seven tests cover it, including a repointed venue that keeps the
+   payer's funds: settlement reverts and the payer keeps every unit.
+2. **No fee.** No fee mechanism ships. Charging later means new contracts, which is the right
+   trade while nobody has asked to pay. The receipt, not FX margin, is the business.
+3. **No proxy.** These contracts hold no balances or accounts, so a proxy would preserve
+   nothing that a redeploy loses, in exchange for 18,400 gas on every payout and a receipt a
+   reader could no longer interpret after nine days.
 
-Nothing is deployed to mainnet while this is open. The deployer
-`0x2601a8ad1E242EE3763183Cfe0321cC5f49D8C18` holds 19.9 MON and has never transacted.
+The deployer `0x2601a8ad1E242EE3763183Cfe0321cC5f49D8C18` holds 19.9 MON and has never
+transacted. The deploy is unblocked.

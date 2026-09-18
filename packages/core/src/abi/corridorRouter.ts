@@ -469,6 +469,34 @@ export const corridorRouterAbi = [
   },
   {
     "type": "function",
+    "name": "repointCorridor",
+    "inputs": [
+      {
+        "name": "sourceAsset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "targetAsset",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "rateSource",
+        "type": "address",
+        "internalType": "contract IRateSource"
+      },
+      {
+        "name": "venue",
+        "type": "address",
+        "internalType": "contract IVenueAdapter"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "settle",
     "inputs": [
       {
@@ -666,6 +694,55 @@ export const corridorRouterAbi = [
   },
   {
     "type": "event",
+    "name": "CorridorRepointed",
+    "inputs": [
+      {
+        "name": "sourceAsset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "targetAsset",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "corridor",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "previousRateSource",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "rateSource",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "previousVenue",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "venue",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EIP712DomainChanged",
     "inputs": [],
     "anonymous": false
@@ -726,6 +803,11 @@ export const corridorRouterAbi = [
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AttestationMisbound",
+    "inputs": []
   },
   {
     "type": "error",
@@ -831,6 +913,17 @@ export const corridorRouterAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidRecipient",
+    "inputs": [
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InvalidShortString",
     "inputs": []
   },
@@ -906,6 +999,11 @@ export const corridorRouterAbi = [
   },
   {
     "type": "error",
+    "name": "SameAsset",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "SpreadTooWide",
     "inputs": [
       {
@@ -955,6 +1053,11 @@ export const corridorRouterAbi = [
   {
     "type": "error",
     "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroCorridor",
     "inputs": []
   }
 ] as const

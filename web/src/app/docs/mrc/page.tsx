@@ -19,8 +19,8 @@ export default function MrcPage() {
         Henad&apos;s corridor registry has three tiers, and the MRC draft proposes them as the convention for onchain FX receipts on Monad. A corridor is{' '}
         <span className="text-ink">live</span> when Monad holds both a reference feed and a venue for the pair, so a payout can settle and its receipt can be
         attested: USD to GBP, EUR, CHF and JPY today. It is <span className="text-ink">quote</span> when a feed exists on Monad but there is no asset to
-        deliver into, so Henad shows a reference rate and nothing else: CAD and ZAR. It is <span className="text-ink">unpriced</span> when Monad has no feed at
-        all, so no rate is shown and none is invented: naira. The draft is discussed{' '}
+        deliver into, so Henad shows a reference rate and nothing else: CAD. It is <span className="text-ink">unpriced</span> when Monad has no usable feed at
+        all, so no rate is shown and none is invented: naira, and the rand, whose only price on Monad was last published in 2025. The draft is discussed{' '}
         <a href={FORUM_THREAD} target="_blank" rel="noreferrer" className="text-purple">
           on the Monad forum ↗
         </a>{' '}

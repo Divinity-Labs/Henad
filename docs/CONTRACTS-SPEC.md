@@ -108,9 +108,16 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
 
     constructor(address owner_, IRateAttestation attestation_);
 
-    /// Write-once per pair. Owner may add corridors, never change or remove one.
+    /// Registered once per pair. Owner may add corridors, never remove one.
     /// Reverts unless rateSource.isSupported(src, dst) and venue.status(src, dst) != NoRoute.
     function registerCorridor(address sourceAsset, address targetAsset, bytes32 corridor, IRateSource rateSource, IVenueAdapter venue) external onlyOwner;
+
+    /// Replace a registered pair's rate source and venue, and nothing else: the pair, its
+    /// corridor id and its stored decimals are fixed at registration. Same two guards as
+    /// registration. Emits CorridorRepointed(src, dst, corridor, oldSource, newSource, oldVenue, newVenue).
+    /// Exists so a Mento pool redeploy or a retired Chainlink feed cannot strand a corridor
+    /// forever (docs/UPGRADEABILITY.md).
+    function repointCorridor(address sourceAsset, address targetAsset, IRateSource rateSource, IVenueAdapter venue) external onlyOwner;
 
     /// Path B. msg.sender must equal intent.payer. Pulls via safeTransferFrom.
     function settle(Intent calldata intent) external nonReentrant returns (uint256 delivered);
@@ -129,8 +136,9 @@ Errors: `CorridorNotRegistered(src,dst)`, `CorridorAlreadyRegistered(src,dst)`,
 `AuthorizationUsed(intentId)`, `ValueOverflow()`, `ZeroAddress()`,
 `AttestationMisbound()`, `SameAsset()`, `ZeroCorridor()`, `InvalidRecipient(address)`.
 
-The owner key can only register new corridors. It cannot pause, upgrade, sweep,
-or touch a receipt. Say so in NatSpec.
+The owner key can register a corridor and repoint an existing one's rate source and
+venue. It cannot pause, upgrade, sweep, remove a corridor, change a corridor's assets
+or id, or touch a receipt. Say so in NatSpec.
 
 Hardening added after the merge review:
 

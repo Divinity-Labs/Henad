@@ -29,10 +29,11 @@ import {Corridor} from "./libraries/Corridor.sol";
 ///      feed fails fast, and it is never used to derive a minimum output
 ///      (docs/INTEGRATION-FACTS.md §14.3).
 ///
-///      Owner powers, exhaustively: `registerCorridor` (write-once per pair) and the
-///      Ownable2Step ownership hand-over. The owner cannot pause, upgrade, sweep
-///      funds, edit or remove a corridor, or touch a receipt. There is no receive or
-///      fallback function, so the contract cannot hold native tokens.
+///      Owner powers, exhaustively: `registerCorridor` (once per pair), `repointCorridor`
+///      (that pair's rate source and venue, and nothing else) and the Ownable2Step
+///      ownership hand-over. The owner cannot pause, upgrade, sweep funds, remove a
+///      corridor, change a corridor's assets or id, or touch a receipt. There is no
+///      receive or fallback function, so the contract cannot hold native tokens.
 ///
 ///      Because there is no sweep, `_settle` refuses an intent whose recipient is this
 ///      router or the corridor's venue adapter (`InvalidRecipient`): tokens delivered
@@ -60,7 +61,8 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
     ///         the attestation was itself constructed with this router's predicted address.
     IRateAttestation public immutable attestation;
 
-    /// @notice Registered corridors, keyed by (sourceAsset, targetAsset). Write-once.
+    /// @notice Registered corridors, keyed by (sourceAsset, targetAsset). Registered once;
+    ///         thereafter only the rate source and venue may be repointed.
     mapping(address sourceAsset => mapping(address targetAsset => CorridorConfig)) public corridors;
 
     /// @notice Emitted once per corridor, at registration.
@@ -69,6 +71,19 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
         address indexed targetAsset,
         bytes32 indexed corridor,
         address rateSource,
+        address venue
+    );
+
+    /// @notice Emitted when a corridor's rate source or venue changes. Names both the
+    ///         outgoing and incoming addresses, so the history is readable from logs
+    ///         alone without archive state.
+    event CorridorRepointed(
+        address indexed sourceAsset,
+        address indexed targetAsset,
+        bytes32 indexed corridor,
+        address previousRateSource,
+        address rateSource,
+        address previousVenue,
         address venue
     );
 
@@ -149,6 +164,55 @@ contract CorridorRouter is PayoutIntent, Ownable2Step, ReentrancyGuardTransient 
         });
 
         emit CorridorRegistered(sourceAsset, targetAsset, corridor, address(rateSource), address(venue));
+    }
+
+    /// @notice Point a registered corridor at a different rate source or venue.
+    /// @dev This is the one thing an immutable deployment could not otherwise survive:
+    ///      Mento redeploying a pool, or Chainlink retiring a feed, would strand the pair
+    ///      forever because registration is write-once and there is no upgrade path
+    ///      (docs/UPGRADEABILITY.md). The pair, its corridor id and its stored decimals
+    ///      never change, so receipts written before and after remain the same corridor.
+    ///
+    ///      What this does not hand the owner: a venue cannot take a payer anywhere the
+    ///      payer's own signed intent does not allow, because `_settle` measures the
+    ///      recipient's balance delta and reverts `InsufficientDelivery` below the
+    ///      intent's minimum or `SpreadTooWide` past its cap. A rate source can misreport,
+    ///      which is why every receipt records the address that priced it and this event
+    ///      names the outgoing one.
+    /// @param sourceAsset  Token the payer sends; must already be registered with `targetAsset`.
+    /// @param targetAsset  Token the recipient receives.
+    /// @param rateSource   Replacement reference-rate source. May equal the current one.
+    /// @param venue        Replacement venue adapter. May equal the current one.
+    function repointCorridor(address sourceAsset, address targetAsset, IRateSource rateSource, IVenueAdapter venue)
+        external
+        onlyOwner
+    {
+        if (address(rateSource) == address(0) || address(venue) == address(0)) revert ZeroAddress();
+
+        CorridorConfig storage config = corridors[sourceAsset][targetAsset];
+        if (address(config.venue) == address(0)) revert CorridorNotRegistered(sourceAsset, targetAsset);
+
+        if (!rateSource.isSupported(sourceAsset, targetAsset)) {
+            revert IRateSource.UnsupportedPair(sourceAsset, targetAsset);
+        }
+        if (venue.status(sourceAsset, targetAsset) == IVenueAdapter.Status.NoRoute) {
+            revert IVenueAdapter.NoRoute(sourceAsset, targetAsset);
+        }
+
+        address previousRateSource = address(config.rateSource);
+        address previousVenue = address(config.venue);
+        config.rateSource = rateSource;
+        config.venue = venue;
+
+        emit CorridorRepointed(
+            sourceAsset,
+            targetAsset,
+            config.corridor,
+            previousRateSource,
+            address(rateSource),
+            previousVenue,
+            address(venue)
+        );
     }
 
     // ---------------------------------------------------------------------

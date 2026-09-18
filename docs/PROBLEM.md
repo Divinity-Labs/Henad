@@ -161,8 +161,18 @@ Adding a fee means deploying new contracts, because there is no upgrade path. Se
 ## The contracts cannot be upgraded, on purpose
 
 No proxy, no delegatecall, no initializer, no pause, no sweep, no selfdestruct, no
-fallback. The owner has exactly one power, `registerCorridor`, and that is write-once per
-token pair. The owner cannot move a user's funds, alter a receipt, or stop the contract.
+fallback. The owner has two powers, both about which market a corridor reads:
+`registerCorridor`, once per token pair, and `repointCorridor`, which may change only that
+pair's rate source and venue. It cannot change the pair, its corridor id, or its decimals.
+The owner cannot move a user's funds, alter a receipt, or stop the contract.
+
+Repointing exists for one failure that immutability could not survive: if Mento redeploys a
+pool or Chainlink retires a feed, a write-once corridor would be stranded forever. It hands
+over less than it appears to. A venue cannot take funds anywhere the payer's own signed
+intent does not allow, because settlement measures what actually reached the recipient and
+reverts below the payer's minimum or past their spread cap. A rate source can misreport,
+which is why every receipt records the address that priced it, and every repoint is an event
+naming both the outgoing and incoming addresses.
 
 This is load-bearing. The claim is that the spread was not chosen privately. An owner who
 could upgrade the router could change how the spread is computed after receipts were
