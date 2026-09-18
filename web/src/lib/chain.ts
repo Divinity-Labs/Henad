@@ -32,9 +32,15 @@ function localOnly(custom: string | undefined): string[] | null {
   return [custom]
 }
 
-/** Chain the app is configured for. Mainnet only when explicitly set. */
+/**
+ * Chain the app is configured for.
+ *
+ * Mainnet by default since 18 Sep 2026, when the contracts were deployed there: that is where
+ * a payout actually settles, and testnet has no Mento pool or Chainlink feed to settle against.
+ * `web/.env.development` still pins 10143 for local work with fixtures.
+ */
 export function appChainId(): MonadChainId {
-  const raw = Number(process.env.NEXT_PUBLIC_MONAD_CHAIN_ID ?? MONAD_TESTNET_ID)
+  const raw = Number(process.env.NEXT_PUBLIC_MONAD_CHAIN_ID ?? MONAD_MAINNET_ID)
   if (!isMonadChainId(raw)) throw new Error(`NEXT_PUBLIC_MONAD_CHAIN_ID must be ${MONAD_MAINNET_ID} or ${MONAD_TESTNET_ID}`)
   return raw
 }

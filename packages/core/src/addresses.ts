@@ -91,4 +91,16 @@ export interface HenadDeployment {
   deployedAtBlock: bigint
 }
 
-export const HENAD: Partial<Record<MonadChainId, HenadDeployment>> = {}
+/**
+ * Deployed to Monad mainnet on 18 Sep 2026, block 105,928,848, and verified on Monadscan.
+ * These addresses are permanent: the contracts have no upgrade path, so this is the registry
+ * rather than an environment variable. A redeploy would be a new address and a new ledger.
+ * Source of truth: contracts/deployments/143.json.
+ */
+export const HENAD: Partial<Record<MonadChainId, HenadDeployment>> = {
+  [MONAD_MAINNET_ID]: {
+    corridorRouter: '0x994e95FDb1713b1b12d3ccE47e2BC2145F43a0c9',
+    rateAttestation: '0xCA9536F48Ac5C1673c7D7B20D4E76056Fc4fE3B1',
+    deployedAtBlock: 105_928_848n,
+  },
+}

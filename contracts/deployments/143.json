@@ -1,0 +1,42 @@
+{
+  "corridorRouter": "0x994e95FDb1713b1b12d3ccE47e2BC2145F43a0c9",
+  "corridors": [
+    {
+      "id": "0x881ce35a123c3875df4e6b83b3efbdd694b3ae9c7523fe5d96ca517d56485a82",
+      "pair": "USD/GBP",
+      "sourceAsset": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+      "targetAsset": "0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1"
+    },
+    {
+      "id": "0x881ce35a123c3875df4e6b83b3efbdd694b3ae9c7523fe5d96ca517d56485a82",
+      "pair": "USD/GBP",
+      "sourceAsset": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
+      "targetAsset": "0x39bb4E0a204412bB98e821d25e7d955e69d40Fd1"
+    },
+    {
+      "id": "0x2a0b14fa3b4c377f4ee26c46ba073224db2652a4c1b90ffc01b649db461c2c38",
+      "pair": "USD/EUR",
+      "sourceAsset": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+      "targetAsset": "0x4D502d735B4C574B487Ed641ae87cEaE884731C7"
+    },
+    {
+      "id": "0x7d0be2bc20e4a7a7732b6da47387db5bed436ba00057071eccfd35834419e5ec",
+      "pair": "USD/CHF",
+      "sourceAsset": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+      "targetAsset": "0xF64e91fFEf7ef43aA314F0Bc2AC39f770797990C"
+    },
+    {
+      "id": "0x35b8bafff3570683af968b8d36b91b1a19465141d9712425e9f76c68ff8cb152",
+      "pair": "USD/JPY",
+      "sourceAsset": "0x00000000eFE302BEAA2b3e6e1b18d08D69a9012a",
+      "targetAsset": "0x22f6A6752800eAB67b84748FeFc3cC658384aF72"
+    }
+  ],
+  "corridorsRegistered": true,
+  "deployedAtBlock": 105928848,
+  "localFork": false,
+  "owner": "0x2601a8ad1E242EE3763183Cfe0321cC5f49D8C18",
+  "rateAttestation": "0xCA9536F48Ac5C1673c7D7B20D4E76056Fc4fE3B1",
+  "rateSource": "0x0b7CB973f3ceBbdd8983973727dcB381dD184228",
+  "venueAdapter": "0xdf80efdAb089F33157845B653A44388640838360"
+}

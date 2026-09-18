@@ -155,8 +155,8 @@ const config: ExpoConfig = {
     eas: { projectId: 'b127e143-4325-421b-9d12-a9da111d8304' },
     rpId: RP_ID,
     rpName: 'Henad',
-    /** Monad testnet until the mainnet contracts are deployed; see docs/DEPLOY.md. */
-    chainId: 10143,
+    /** Monad mainnet: the contracts are live there since 18 Sep 2026 (packages/core HENAD). */
+    chainId: 143,
     /**
      * The phone signs; the server quotes and broadcasts. The reference rate must come
      * from the same place for both clients or their receipts disagree, and the relayer
