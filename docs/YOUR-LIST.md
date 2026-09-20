@@ -4,46 +4,47 @@ Things only you can do, and decisions only you can make. Claude Code keeps this 
 current: items get ticked, added and re-ordered as work lands. Everything here is
 blocked on a human — an account, a card, a domain, a device, or a judgement call.
 
-**Submissions close 14 Oct 2026, 03:59 UTC.** The week-4 gate (one real mainnet payout)
-is 25 Sep – 1 Oct. Last updated 11 Sep 2026, after verifying every key you added by
-actually calling the service with it.
+**Submissions close 14 Oct 2026, 03:59 UTC.** Last updated 20 Sep 2026.
+
+> **The gate is passed, five days early.** Henad is live on Monad mainnet and receipt #1 is
+> real: 0.40 AUSD → £0.298070 GBPm at 19 bps, block 105,952,304, from the phone.
+> https://usehenad.xyz/receipt/0x9c1479f156dd1d943e417dea5dbee28cf77548df4c69774042264f146a77503c
+>
+> Contracts verified on Monadscan; the site and the app both read mainnet. What is left is
+> money in the right places, the things only you can sign up for, and the submission itself.
+
+### Money, as of 20 Sep
+| | | |
+| --- | --- | --- |
+| Deployer `0x2601a8ad…8C18` | 0.4679 MON | owns the contracts; keystore, password known only to you |
+| Relayer `0x5159261D…1F5c` | **0.1368 MON** | **about one payout left — top this up** |
+| Your passkey account `0x2Ea1A81a…EaA6` | 0.034356 AUSD | what a demo payout spends |
+
+Topping up the relayer is one command in Git Bash:
+`~/.foundry/bin/cast send 0x5159261D57900ECADf8F380C7c43dcf0B7a11F5c --value 0.3ether --rpc-url https://rpc.monad.xyz --account henad-mainnet`
 
 ---
 
 ## Blocking, soonest first
 
-### 1. usehenad.xyz — live since 15 Sep; one setting to confirm
+### 1. usehenad.xyz — live; one setting still unconfirmed
+Bought 14 Sep through Truehost (NameSilo), expiring 14 Sep 2027. It serves the app on the
+bare domain, and passkeys work on it from both the browser and Android.
 
-**Update 17 Sep:** the domain serves the app on the bare domain and passkeys work on it from
-web and Android. What is unconfirmed is the Production env var below
-(`NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz`). Check it in Vercel; it is what stops a passkey
-binding to the vercel.app URL.
-**Bought 14 Sep**, through Truehost, sponsored by NameSilo, expiring 14 Sep 2027.
-`henad.xyz` could not be had: it has belonged to a third party since 11 June 2026 and is
-parked on the Afternic aftermarket at $699. The ₦3,652 Truehost order for it was charged
-and could never complete; that refund is still outstanding on invoice 553722.
+**The one thing left:** confirm Vercel → Settings → Environment Variables has
+`NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz` for Production. Without it a passkey made on the
+vercel.app URL would bind to that host forever.
 
-The web app is deployed and public at https://henad-delta.vercel.app, reading live rates
-from Monad mainnet. What is left is two things in two dashboards, both in `docs/DEPLOY.md`:
+Two things that outlive everything else here:
 
-- **Vercel → henad → Settings → Domains → add `usehenad.xyz`**, then put the records it
-  shows into Truehost's DNS Management. Truehost holds the nameservers, so DNS is edited
-  there, not at Vercel.
-- **Vercel → Settings → Environment Variables**, Production: set
-  `NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz` and `NEXT_PUBLIC_MERA_RP_NAME=Henad`. This is a
-  safety setting rather than a convenience: without it a passkey created on the
-  vercel.app URL would bind to that host forever. With it, the browser refuses to make a
-  passkey anywhere but usehenad.xyz.
-
-Two things that outlive all of this:
-
-- **It can never be allowed to expire.** Every passkey binds to this domain permanently.
-  If it lapses, every account created under it becomes unreachable, and whoever registers
-  it next can mint passkeys in your name. Turn auto-renew on and keep a live card on it.
-  Renewal is $11 to $14 a year and is now a permanent cost of the product existing.
-- **It cannot move registrar until about 13 November.** ICANN locks a new registration for
-  60 days and the record already says `server transfer prohibited`. If you want Cloudflare's
-  cheaper renewal, that is the earliest date.
+- **It can never be allowed to expire.** Every passkey binds to this domain permanently. If
+  it lapses, every account created under it becomes unreachable, and whoever registers it
+  next can mint passkeys in your name. Keep auto-renew on and a live card on it. That $11 to
+  $14 a year is now a permanent cost of the product existing.
+- **It cannot move registrar until about 13 November.** ICANN locks a new registration for 60
+  days. If you want Cloudflare's cheaper renewal, that is the earliest date.
+- The ₦3,652 Truehost charge for `henad.xyz`, which could never complete, is still
+  outstanding on invoice 553722.
 
 ### 2. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
@@ -88,34 +89,22 @@ mainnet, because a policy is the only limit on what that key can be made to spon
 Put the id in `.env` as `PIMLICO_SPONSORSHIP_POLICY_ID`, which is our variable name; the
 wire field is `sponsorshipPolicyId`.
 
-### 4. Mainnet MON, and a little real AUSD
-The week-4 gate is one real settlement. The deployer `0x6639edb9…4776` holds **0 MON on
-mainnet**. It needs enough for the deploy — I measured the dry run at 6,190,540 gas,
-about **1.25 MON** at today's 102 gwei — plus a throwaway probe deploy first at 0.031
-MON, plus gas to register the corridors. Call it 2 MON to be comfortable.
+### 4. ~~Mainnet MON and real AUSD~~ — done 18–20 Sep
+The deploy cost 1.11 MON of the 19.9 you sent. 18 MON became 0.4347 AUSD through
+PancakeSwap, 0.3 MON funded the relayer, and 0.40 AUSD became receipt #1. Both swap routes
+and their traps are written down in `docs/ONRAMP.md`.
 
-Then a small amount of real AUSD to actually send. The payout itself can be a dollar.
+**What is left here:** MON is $0.0243, so a $1 payout needs about 41 MON. If you want the
+demo to send a more presentable figure than 40 cents, that is the only reason to add more.
 
-### 5. A mainnet deployer key that does not live in a file
-`DEPLOYER_PRIVATE_KEY` in `.env` is a throwaway. It is fine for testnet, where it is
-already funded and working. Do not fund it on mainnet. Before the real deploy, import a
-fresh key into Foundry's keystore:
+### 5. ~~A mainnet deployer key that does not live in a file~~ — done 18 Sep
+`henad-mainnet` in Foundry's keystore, address `0x2601a8ad1E242EE3763183Cfe0321cC5f49D8C18`,
+owns the contracts. The throwaway `DEPLOYER_PRIVATE_KEY` in `.env` was never funded on
+mainnet and must not be.
 
-```
-cast wallet import henad-mainnet --interactive
-```
-
-Then deploy with `--account henad-mainnet --sender <address>`. One caveat came out of
-the contracts review: `script/Deploy.s.sol` reads `PRIVATE_KEY` from the environment and
-otherwise falls back to a placeholder address, so `--account` on its own would broadcast
-from the wrong sender. Tell me when the keystore exists and I will fix the script to
-match it.
-
----
-
----
-
-## Not blocking yet, but dated
+⚠ **Two secrets now matter and neither can be recovered:** the keystore password, and the
+relayer's private key that you put in Vercel. Losing the first means nobody can ever register
+a new corridor; losing the second only costs its 0.3 MON.
 
 ### 6. Register the project on hackathon.monad.xyz
 Pick the main track — **02 Consumer Products & Payments** — since you must choose one to
