@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { LiveRate } from '@/lib/rates'
 import { rateLine, rateValue, utcTime } from '@/lib/format'
 import { TierPill } from './ui/TierPill'
+import { TokenIcon } from './ui/TokenIcon'
 
 function rateText(r: LiveRate, withPrefix: boolean) {
   if (r.rate === null) return null
@@ -32,9 +33,9 @@ export function CorridorTable({ rates }: { rates: LiveRate[] }) {
   // The fixed columns total 940px and the padding adds 72px, so this table needs a
   // 1012px container. It scrolls inside .scroll-x rather than pushing the page sideways;
   // below lg the caller shows CorridorList instead.
-  const cols = 'grid grid-cols-[100px_120px_minmax(200px,1fr)_310px_120px_190px] gap-4 items-center px-9'
+  const cols = 'grid grid-cols-[100px_150px_minmax(200px,1fr)_310px_120px_190px] gap-4 items-center px-9'
   return (
-    <div className="flex min-w-[1012px] flex-col font-mono text-[12px] tabular">
+    <div className="flex min-w-[1042px] flex-col font-mono text-[12px] tabular">
       <div className={`${cols} py-[10px] border-t border-b border-hairline label text-muted`}>
         <span>Status</span>
         <span>Corridor</span>
@@ -50,7 +51,8 @@ export function CorridorTable({ rates }: { rates: LiveRate[] }) {
         return (
           <div key={c.key} className={`${cols} py-4 ${last ? '' : 'border-b border-hairline-2'} ${live && i === 0 ? 'bg-tint' : ''}`}>
             <TierPill tier={c.tier} />
-            <span className={live ? 'font-medium' : ''}>
+            <span className={`flex items-center gap-2 ${live ? 'font-medium' : ''}`}>
+              <TokenIcon symbol={c.targetAsset?.symbol ?? c.target} size={22} />
               {c.source} → {c.target}
             </span>
             <span className={live ? 'font-medium' : r.rate === null ? 'text-muted' : ''}>
@@ -95,6 +97,7 @@ export function CorridorList({ rates, hrefLive = '/send' }: { rates: LiveRate[];
         const inner = (
           <>
             <TierPill tier={c.tier} size="sm" />
+            <TokenIcon symbol={c.targetAsset?.symbol ?? c.target} size={20} />
             <span className="flex flex-col gap-[3px]">
               <span className={live ? 'font-medium' : ''}>
                 {c.source} → {c.target}
@@ -113,7 +116,7 @@ export function CorridorList({ rates, hrefLive = '/send' }: { rates: LiveRate[];
             <span className={live ? 'font-medium' : r.rate === null ? 'text-muted' : ''}>{r.rate === null ? '—' : rateText(r, false)}</span>
           </>
         )
-        const cls = `grid grid-cols-[58px_1fr_auto] gap-[10px] items-center px-4 py-3 ${i === 0 ? 'border-t border-hairline' : 'border-t border-hairline-2'} ${i === rates.length - 1 ? 'border-b border-hairline' : ''} ${live && i === 0 ? 'bg-tint' : ''} text-ink`
+        const cls = `grid grid-cols-[58px_auto_1fr_auto] gap-[10px] items-center px-4 py-3 ${i === 0 ? 'border-t border-hairline' : 'border-t border-hairline-2'} ${i === rates.length - 1 ? 'border-b border-hairline' : ''} ${live && i === 0 ? 'bg-tint' : ''} text-ink`
         if (live && !r.marketClosed)
           return (
             <Link key={c.key} href={`${hrefLive}?to=${c.target}`} className={cls}>
