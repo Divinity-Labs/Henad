@@ -12,6 +12,7 @@ import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadSto
 import { settleFromPhone } from '@/lib/settle'
 import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts } from '@/lib/market-alerts'
 import { ProfileScreen } from '@/profile/ProfileScreen'
+import { AboutScreen } from '@/settings/AboutScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
 import { ReceiptsScreen } from '@/receipts/ReceiptsScreen'
@@ -26,7 +27,7 @@ import { BuiltOnMonad, Chip, Header } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
-type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile'
+type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'about'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -305,7 +306,7 @@ export default function App() {
     <Header right={<BuiltOnMonad />} />
   )
 
-  const activeTab: Tab | null = view === 'profile' ? 'account' : view
+  const activeTab: Tab | null = view === 'profile' || view === 'about' ? 'account' : view
   const selectTab = (tab: Tab) => {
     setError(null)
     // Account without an account is the sign-in screen, which lives under Send.
@@ -337,8 +338,11 @@ export default function App() {
         onSignOut={() => void signOut()}
         alerts={alerts}
         onToggleAlerts={() => void toggleAlerts()}
+        onAbout={() => setView('about')}
       />
     )
+  } else if (view === 'about') {
+    body = <AboutScreen network={network} onBack={() => setView('profile')} />
   } else if (view === 'fund' && address) {
     body = <FundScreen address={address} chainId={chainId} network={network} onDone={() => setView('send')} />
   } else if (view === 'receipts') {

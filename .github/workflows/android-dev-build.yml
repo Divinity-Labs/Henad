@@ -18,9 +18,14 @@ on:
         type: choice
         default: community
         options: [community, preview, development]
+      release_tag:
+        description: "Attach the APK to a public GitHub Release under this tag, e.g. v0.1.1. Leave empty to publish nothing. Uploading happens on the runner, so the file never travels via anyone's laptop."
+        type: string
+        default: ""
 
 permissions:
-  contents: read
+  # write, because a tagged run publishes the APK as a release asset
+  contents: write
 
 concurrency:
   group: android-build-${{ inputs.profile }}
@@ -73,9 +78,48 @@ jobs:
             exit 1
           fi
 
+      - name: Name the file after the release, when there is one
+        id: name
+        run: |
+          version=$(node -p "require('./mobile/package.json').version || '0.0.0'" 2>/dev/null || echo 0.0.0)
+          file="henad-${{ inputs.release_tag || format('{0}-{1}', inputs.profile, github.run_number) }}-android.apk"
+          mv "$RUNNER_TEMP/henad.apk" "$RUNNER_TEMP/$file"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$RUNNER_TEMP/$file" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
         with:
           name: henad-${{ inputs.profile }}-apk
-          path: ${{ runner.temp }}/henad.apk
+          path: ${{ runner.temp }}/${{ steps.name.outputs.file }}
           retention-days: 14
           if-no-files-found: error
+
+      # A release is what someone without a GitHub account can download. The artifact above
+      # needs a login and expires; this does neither.
+      - name: Publish the release
+        if: inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='${{ inputs.release_tag }}'
+          notes="$RUNNER_TEMP/notes.md"
+          {
+            echo "Android build of Henad, signed with the certificate usehenad.xyz vouches for."
+            echo
+            echo "Install on Android 9 or later with Google Password Manager. There is no Play Store listing, so allow installing from this source when asked."
+            echo
+            echo "**This is real money on Monad mainnet.** Your passkey is your account: nobody can reset it or move your funds, including us. A payout cannot be undone."
+            echo
+            echo '```'
+            echo "sha256  ${{ steps.name.outputs.sha256 }}"
+            echo '```'
+            echo
+            echo "Built from ${{ github.sha }} on the ${{ inputs.profile }} profile."
+          } > "$notes"
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" "$RUNNER_TEMP/${{ steps.name.outputs.file }}" -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$tag" "$RUNNER_TEMP/${{ steps.name.outputs.file }}" -R "$GITHUB_REPOSITORY"               --title "Henad $tag for Android" --notes-file "$notes"
+          fi
+          echo "::notice::Published $tag: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$tag"

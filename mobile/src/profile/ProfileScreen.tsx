@@ -25,6 +25,7 @@ export function ProfileScreen({
   onSignOut,
   alerts,
   onToggleAlerts,
+  onAbout,
 }: {
   address: Address
   network: string
@@ -37,6 +38,7 @@ export function ProfileScreen({
   /** Whether market open/close alerts are scheduled, and what the next one says. */
   alerts: { on: boolean; note: string }
   onToggleAlerts: () => void
+  onAbout: () => void
 }) {
   const held = holdings?.filter((h) => h.value > 0n) ?? []
   return (
@@ -91,6 +93,7 @@ export function ProfileScreen({
         </Card>
 
         <View style={s.spacer} />
+        <Button label="About and updates" variant="secondary" onPress={onAbout} />
         <Button label="Sign out of this phone" variant="secondary" onPress={onSignOut} />
         <Text style={s.foot}>Signing out forgets the account on this phone. Your passkey still opens it, here or on the web.</Text>
       </View>
