@@ -14,10 +14,10 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: "development needs Metro running on your machine; preview runs standalone, which is what a demo or a judge needs."
+        description: "development needs Metro on your machine. preview runs standalone, for your own demo. community is the one to hand to other people: standalone, and its version number climbs so installs upgrade cleanly."
         type: choice
-        default: development
-        options: [development, preview]
+        default: community
+        options: [community, preview, development]
 
 permissions:
   contents: read

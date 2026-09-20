@@ -21,6 +21,13 @@
         "buildType": "apk"
       }
     },
+    "community": {
+      "extends": "preview",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "autoIncrement": true
     }
