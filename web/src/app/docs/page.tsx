@@ -17,6 +17,10 @@ export default function DocsPage() {
         <Link href="/docs/mrc" className="text-purple">
           the three corridor tiers and the MRC draft
         </Link>{' '}
+,{' '}
+        <Link href="/docs/contracts" className="text-purple">
+          the contracts themselves
+        </Link>{' '}
         and{' '}
         <Link href="/docs/fund" className="text-purple">
           funding a payout from another chain

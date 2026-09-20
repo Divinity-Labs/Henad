@@ -1,21 +1,25 @@
 import Link from 'next/link'
 import { Wordmark, BuiltOnMonad } from './ui/Brand'
 
+const REPO = 'https://github.com/Miracle656/Henad'
+/** The receipt store: the one address worth handing a stranger who wants to check the ledger. */
+const LEDGER = 'https://monadscan.com/address/0xCA9536F48Ac5C1673c7D7B20D4E76056Fc4fE3B1'
+
 const cols = [
-  { items: [['/send', 'Send'], ['/rates', 'Rates'], ['/receipts', 'Receipts'], ['/docs', 'Docs']] },
+  { items: [['/send', 'Send'], ['/top-up', 'Top up'], ['/rates', 'Rates'], ['/receipts', 'Receipts']] },
   {
     items: [
       ['/docs/mrc', 'MRC draft'],
-      ['/docs/integration-facts', 'Integration facts'],
       ['/docs/contracts', 'Contracts'],
-      ['https://github.com/', 'GitHub'],
+      [`${REPO}/blob/main/docs/INTEGRATION-FACTS.md`, 'Integration facts ↗'],
+      [REPO, 'GitHub ↗'],
     ],
   },
   {
     items: [
-      ['https://monadscan.com', 'Monadscan ↗'],
+      [LEDGER, 'The ledger on Monadscan ↗'],
       ['https://www.monad.xyz/developers/hackathons/metropolis', 'Metropolis 2026 ↗'],
-      ['https://x.com', 'X ↗'],
+      ['/docs', 'Docs'],
     ],
   },
 ] as const
