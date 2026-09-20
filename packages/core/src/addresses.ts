@@ -61,6 +61,32 @@ export const MENTO_MAINNET = {
   oracleAdapterUsd: '0xEB23E1339b2119c0f4a0097Cb294E990C1fA6423',
 } as const satisfies Record<string, Address | Record<string, Address>>
 
+/**
+ * PancakeSwap V3 on Monad mainnet: the only venue with real MON liquidity against the
+ * stablecoins Henad settles from, verified by reading reserves on 18 Sep 2026. Uniswap's
+ * Monad AUSD pools held about a dollar and quoted 5.7× worse (docs/ONRAMP.md).
+ *
+ * This is a market swap, not a Henad payout: no reference rate, no spread cap, no receipt.
+ * It exists so somebody holding only MON can fund an account, and the interface must say so.
+ *
+ * `swapRouter` is the original Uniswap V3 SwapRouter, whose `exactInputSingle` takes eight
+ * fields including `deadline`. The seven-field SwapRouter02 shape is not in the deployed
+ * bytecode and reverts. The router is payable and wraps MON itself, so no approval is needed
+ * when spending native MON.
+ */
+export const PANCAKE_MAINNET = {
+  swapRouter: '0x1b81D678ffb9C0263b24A97847620C99d213eB14',
+  quoterV2: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',
+  factory: '0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865',
+  pools: {
+    /** 12,555 AUSD + 8,725,399 WMON, about $222,000 */
+    'AUSD/WMON': '0xD5b70d70CBE6C42bCD1aaa662A21673A83f4615b',
+    'USDC/WMON': '0x63e48B725540A3Db24ACF6682a29f877808C53F2',
+  },
+  /** Both stable pools are the 0.05% tier. */
+  feeTier: 500,
+} as const
+
 /** §4, §12.2 — Chainlink Data Feed proxies on Monad mainnet (AggregatorV3). */
 export const CHAINLINK_MAINNET = {
   'GBP/USD': { address: '0x1ffC8B75a16FFfbd7879F042B580F7607Dcf5C30', decimals: 18, heartbeatSec: 240 },

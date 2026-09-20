@@ -8,6 +8,7 @@ import { Button } from './ui/Button'
 
 const LINKS = [
   { href: '/send', label: 'Send' },
+  { href: '/fund', label: 'Top up' },
   { href: '/rates', label: 'Rates' },
   { href: '/receipts', label: 'Receipts' },
   { href: '/account', label: 'Account' },
