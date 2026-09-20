@@ -23,6 +23,8 @@ export function ProfileScreen({
   onCopy,
   onRefresh,
   onSignOut,
+  alerts,
+  onToggleAlerts,
 }: {
   address: Address
   network: string
@@ -32,6 +34,9 @@ export function ProfileScreen({
   onCopy: () => void
   onRefresh: () => void
   onSignOut: () => void
+  /** Whether market open/close alerts are scheduled, and what the next one says. */
+  alerts: { on: boolean; note: string }
+  onToggleAlerts: () => void
 }) {
   const held = holdings?.filter((h) => h.value > 0n) ?? []
   return (
@@ -74,6 +79,15 @@ export function ProfileScreen({
               </View>
             ))
           )}
+        </Card>
+
+        <Card style={s.card}>
+          <View style={s.rowBetween}>
+            <Eyebrow>Market alerts</Eyebrow>
+            <TextLink label={alerts.on ? 'Turn off' : 'Turn on'} tone="purple" onPress={onToggleAlerts} />
+          </View>
+          <Dashed />
+          <Text style={s.help}>{alerts.note}</Text>
         </Card>
 
         <View style={s.spacer} />

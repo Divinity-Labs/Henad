@@ -10,6 +10,7 @@ import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
 import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
+import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts } from '@/lib/market-alerts'
 import { ProfileScreen } from '@/profile/ProfileScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
@@ -62,6 +63,39 @@ export default function App() {
   const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null)
   const [receiptsLoading, setReceiptsLoading] = useState(false)
   const [receiptsError, setReceiptsError] = useState<string | null>(null)
+  const [alerts, setAlerts] = useState({ on: false, note: 'Get told when the FX market opens and closes.' })
+
+  /** Read the schedule and say, in words, what the next alert will be. */
+  const readAlerts = useCallback(async () => {
+    const state = await alertsState()
+    const at = new Date(state.nextAt * 1000)
+    const when = `${String(at.getUTCHours()).padStart(2, '0')}:${String(at.getUTCMinutes()).padStart(2, '0')} UTC`
+    const what = state.opens ? `opens ${when}` : `closes ${when}`
+    setAlerts({
+      on: state.count > 0,
+      note:
+        state.count > 0
+          ? `On. The market is ${state.open ? 'open' : 'closed'} now, and ${what}. That is when your phone will tell you.`
+          : `Off. The market is ${state.open ? 'open' : 'closed'} now, and ${what}.`,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (view === 'profile') void readAlerts()
+  }, [view, readAlerts])
+
+  const toggleAlerts = useCallback(async () => {
+    if (alerts.on) {
+      await cancelMarketAlerts()
+    } else {
+      if (!(await requestAlertPermission())) {
+        setAlerts((a) => ({ ...a, note: 'Notifications are blocked for Henad. Turn them on in your phone settings, then try again.' }))
+        return
+      }
+      await scheduleMarketAlerts()
+    }
+    await readAlerts()
+  }, [alerts.on, readAlerts])
 
   const loadReceipts = useCallback(async () => {
     setReceiptsLoading(true)
@@ -301,6 +335,8 @@ export default function App() {
         onCopy={copyAddress}
         onRefresh={() => void loadHoldings()}
         onSignOut={() => void signOut()}
+        alerts={alerts}
+        onToggleAlerts={() => void toggleAlerts()}
       />
     )
   } else if (view === 'fund' && address) {
