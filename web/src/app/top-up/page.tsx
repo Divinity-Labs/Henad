@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Swap MON for the stablecoin a payout spends. A market swap on PancakeSwap, not a Henad payout.',
 }
 
-/** /fund — MON into AUSD or USDC, in the same column as /send and /account. */
+/** /top-up — MON into AUSD or USDC, in the same column as /send and /account. */
 export default function FundPage() {
   const network = isLocalFork() ? 'Local fork' : appChainId() === MONAD_MAINNET_ID ? 'Monad mainnet' : 'Monad testnet'
   return (

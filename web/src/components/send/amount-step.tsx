@@ -128,7 +128,7 @@ export function AmountStep(p: AmountStepProps) {
           />
         </div>
         {/* Where you notice the balance is short, so the way out of that belongs here. */}
-        <Link href="/fund" className={`${linkLabel} flex items-center justify-between border-t border-hairline-2 pt-[10px] text-purple`}>
+        <Link href="/top-up" className={`${linkLabel} flex items-center justify-between border-t border-hairline-2 pt-[10px] text-purple`}>
           <span>Top up with MON</span>
           <span className="text-muted">Swap on PancakeSwap →</span>
         </Link>

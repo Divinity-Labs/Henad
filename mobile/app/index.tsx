@@ -14,6 +14,7 @@ import { ProfileScreen } from '@/profile/ProfileScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
 import { ReceiptsScreen } from '@/receipts/ReceiptsScreen'
+import { FundScreen } from '@/fund/FundScreen'
 import { RatesScreen } from '@/rates/RatesScreen'
 import { AmountStep } from '@/send/AmountStep'
 import { ClosedStep } from '@/send/ClosedStep'
@@ -24,7 +25,7 @@ import { BuiltOnMonad, Chip, Header } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
-type View_ = 'send' | 'rates' | 'receipts' | 'profile'
+type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -302,6 +303,8 @@ export default function App() {
         onSignOut={() => void signOut()}
       />
     )
+  } else if (view === 'fund' && address) {
+    body = <FundScreen address={address} chainId={chainId} network={network} onDone={() => setView('send')} />
   } else if (view === 'receipts') {
     body = (
       <ReceiptsScreen

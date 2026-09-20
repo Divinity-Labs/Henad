@@ -1,8 +1,8 @@
 /**
  * A token's icon from /public/tokens, or a lettered disc for tokens without artwork.
- * AUSD is the Agora bug in Agora gold, USDC is Circle's token logo; GBPm, EURm, CHFm, JPYm and NGNm are Mento's own icons.
+ * MON is Monad's token mark, AUSD the Agora bug in Agora gold, USDC Circle's token logo; GBPm, EURm, CHFm, JPYm and NGNm are Mento's own icons.
  */
-const ARTWORK = new Set(['AUSD', 'USDC', 'GBPm', 'EURm', 'CHFm', 'JPYm', 'NGNm'])
+const ARTWORK = new Set(['MON', 'AUSD', 'USDC', 'GBPm', 'EURm', 'CHFm', 'JPYm', 'NGNm'])
 
 export function TokenIcon({ symbol, size = 24, className = '' }: { symbol: string; size?: number; className?: string }) {
   if (ARTWORK.has(symbol)) {
