@@ -169,7 +169,11 @@ export async function listReceipts(limit = 50): Promise<Receipt[]> {
   if (!dep) return fixturesEnabled() ? [SAMPLE_RECEIPT] : []
 
   if (hypersyncEnabled()) {
+    const started = Date.now()
     const logs = await settlementLogs(appChainId(), dep.rateAttestation, dep.deployedAtBlock)
+    // Both roads return the same figures, so the only way to see which one was taken is to
+    // say so. It lands in the runtime log, where the timing is the proof.
+    console.info(`[ledger] ${logs ? 'hypersync' : 'hypersync unavailable, falling back to rpc'} · ${logs?.length ?? 0} settlements · ${Date.now() - started} ms`)
     if (logs) {
       // Index is the settlement's place in the whole ledger, so it is numbered before the
       // tail is taken: receipt 7 stays receipt 7 on a page that shows the last three.
@@ -178,6 +182,7 @@ export async function listReceipts(limit = 50): Promise<Receipt[]> {
     }
   }
 
+  const rpcStarted = Date.now()
   const client = appChain()
   const count = Number(await client.readContract({ address: dep.rateAttestation, abi: rateAttestationAbi, functionName: 'count' }))
   const from = Math.max(0, count - limit)
@@ -191,6 +196,7 @@ export async function listReceipts(limit = 50): Promise<Receipt[]> {
   receipts.forEach((r, i) => {
     if (r) out.push({ ...r, index: from + i + 1 })
   })
+  console.info(`[ledger] rpc · ${out.length} settlements · ${1 + ids.length * 3} calls · ${Date.now() - rpcStarted} ms`)
   return out
 }
 
