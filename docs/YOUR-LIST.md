@@ -27,26 +27,6 @@ Topping up the relayer is one command in Git Bash:
 
 ## Blocking, soonest first
 
-### Now. Vercel no longer deploys the site — reconnect it to the org
-The repo moved to **https://github.com/Divinity-Labs/Henad** on 21 Sep. GitHub carried the
-releases, the Actions secret and the redirects across, but Vercel's git connection still
-names `Miracle656/Henad`, so the push after the move produced no deployment. The site is
-still up, serving the last build from before the move; it simply will not pick up new
-commits until this is fixed.
-
-Two clicks, both of which need you signed in:
-
-1. Install the Vercel GitHub App on the Divinity-Labs org, granting it the Henad repo:
-   https://github.com/apps/vercel — Configure → Divinity-Labs.
-2. Vercel → project `henad` → Settings → Git → disconnect, then connect
-   `Divinity-Labs/Henad`, production branch `main`, root directory `web`.
-
-Then push anything, or hit Redeploy, and check that a deployment appears. I can verify it
-from here once it does.
-
-One thing to check while you are in that Settings page, since it has been open on the list
-for a week: Environment Variables → Production has `NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz`.
-
 ### 1. usehenad.xyz — live; one setting still unconfirmed
 Bought 14 Sep through Truehost (NameSilo), expiring 14 Sep 2027. It serves the app on the
 bare domain, and passkeys work on it from both the browser and Android.
@@ -54,6 +34,10 @@ bare domain, and passkeys work on it from both the browser and Android.
 **The one thing left:** confirm Vercel → Settings → Environment Variables has
 `NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz` for Production. Without it a passkey made on the
 vercel.app URL would bind to that host forever.
+
+The repo moved to **Divinity-Labs/Henad** on 21 Sep and Vercel followed the transfer on
+its own: the project's Git settings now name the org and deployments resumed. Nothing to
+do there.
 
 Two things that outlive everything else here:
 
