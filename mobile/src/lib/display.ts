@@ -1,4 +1,4 @@
-import { MONAD_MAINNET_ID, type Corridor } from '@henad/core'
+import { MONAD_MAINNET_ID, smallestShown, underDisplayed, type Corridor } from '@henad/core'
 import { units } from '@/send/format'
 
 /** "£", "€", "¥" butt against the figure; letter codes like "CHF" take a space. */
@@ -26,7 +26,11 @@ export function tokenText(value: bigint, decimals: number, tokenSymbol: string, 
 }
 
 export function moneyText(value: bigint, decimals: number, corridor: Corridor): string {
-  return `${symbolPrefix(corridor.targetSymbol)}${units(value, decimals, corridor.currencyDp)}`
+  // A cost smaller than the screen's smallest figure is still a cost; "£0.00" next to
+  // "19 bps" reads as a contradiction.
+  if (underDisplayed(value, decimals, corridor.currencyDp))
+    return `under ${symbolPrefix(corridor.targetSymbol)}${units(smallestShown(decimals, corridor.currencyDp), decimals, corridor.currencyDp)}`
+  return `${symbolPrefix(corridor.targetSymbol)}${units(value < 0n ? -value : value, decimals, corridor.currencyDp)}`
 }
 
 /** What `sourceAmount` of a 6-decimal stablecoin comes to at a 1e18 rate, in target units. */

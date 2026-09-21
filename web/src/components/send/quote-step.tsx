@@ -13,6 +13,8 @@ import {
   deliveredAtSpreadCap,
   quoteFreshness,
   quoteMaths,
+  smallestShown,
+  underDisplayed,
   type QuoteDto,
 } from '@henad/core'
 import { Button } from '@/components/ui/Button'
@@ -31,6 +33,14 @@ export interface LiveVenue {
 }
 
 function Headline({ cost, spread, decimals, symbol, dp }: { cost: bigint; spread: number; decimals: number; symbol: string; dp: number }) {
+  // Small payouts cost less than a penny in spread. "£0.00" beside "19 bps" reads as a
+  // contradiction, so the headline says under a penny rather than none.
+  if (underDisplayed(cost, decimals, dp))
+    return (
+      <>
+        You are paying <span className="text-purple">under {money(smallestShown(decimals, dp), decimals, symbol, dp)}</span> in spread. That is {spread} bps.
+      </>
+    )
   if (cost > 0n)
     return (
       <>

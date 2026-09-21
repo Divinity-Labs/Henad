@@ -1,4 +1,5 @@
 import { formatUnits } from 'viem'
+import { smallestShown, underDisplayed } from '@henad/core'
 
 const ONE = 10n ** 18n
 
@@ -39,8 +40,13 @@ export function bps(n: number | bigint, signed = false): string {
 
 /** "£0.61 · 31 bps" — amount first, bps second, always. */
 export function spreadLine(cost: bigint, targetDecimals: number, targetSymbol: string, spreadBps: number, opts?: { signed?: boolean; dp?: number }) {
-  const amount = money(cost < 0n ? -cost : cost, targetDecimals, targetSymbol, opts?.dp ?? 2)
-  return `${cost < 0n ? '−' : ''}${amount} · ${bps(spreadBps, opts?.signed)}`
+  const dp = opts?.dp ?? 2
+  // A real cost that rounds to zero is not zero, and saying so keeps the figure honest
+  // against the bps beside it.
+  const amount = underDisplayed(cost, targetDecimals, dp)
+    ? `under ${money(smallestShown(targetDecimals, dp), targetDecimals, targetSymbol, dp)}`
+    : money(cost < 0n ? -cost : cost, targetDecimals, targetSymbol, dp)
+  return `${cost < 0n && !underDisplayed(cost, targetDecimals, dp) ? '−' : ''}${amount} · ${bps(spreadBps, opts?.signed)}`
 }
 
 export function shortAddress(a: string, head = 6, tail = 4): string {

@@ -83,3 +83,20 @@ export function countdown(expiresAt: number, now: number): string {
   const s = Math.max(0, Math.ceil((expiresAt - now) / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
+
+/**
+ * True when a non-zero amount is smaller than the smallest figure the screen prints.
+ *
+ * A 40-cent payout at 19 bps costs £0.00057 in spread, which rounds to £0.00 at two
+ * decimal places and reads as "you paid nothing" next to a receipt that says 19 bps. The
+ * clients say "under £0.01" instead: the cost is real, it is just smaller than a penny.
+ */
+export function underDisplayed(value: bigint, decimals: number, dp: number): boolean {
+  const abs = value < 0n ? -value : value
+  return abs > 0n && abs < 10n ** BigInt(Math.max(0, decimals - dp))
+}
+
+/** The smallest amount a display at `dp` places can show: one penny, one cent, one yen. */
+export function smallestShown(decimals: number, dp: number): bigint {
+  return 10n ** BigInt(Math.max(0, decimals - dp))
+}
