@@ -87,7 +87,7 @@ const config: ExpoConfig = {
   name: 'Henad',
   slug: 'henad',
   scheme: 'henad',
-  version: '0.1.1',
+  version: '0.1.2',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
   // Rendered by mobile/scripts/render-icons.ps1 from the geometry of web/src/app/icon.svg,

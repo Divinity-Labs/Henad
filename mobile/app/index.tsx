@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Linking, StyleSheet, View } from 'react-native'
+import { BackHandler, Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
@@ -390,6 +390,42 @@ export default function App() {
     setRecipient('')
     setStep('amount')
   }, [])
+
+  /**
+   * Android's back button, which the app is otherwise deaf to.
+   *
+   * Everything here is one route, so the system back gesture left the app entirely: tap
+   * Top up, press back, and you are on the home screen. This walks the stack the person
+   * actually sees — scanner, then settings, then any tab back to Send, then a step back
+   * inside the send flow — and only leaves the app when Send is already the whole state.
+   */
+  useEffect(() => {
+    const onBack = () => {
+      if (scanning) {
+        setScanning(false)
+        return true
+      }
+      if (view === 'settings') {
+        setView('profile')
+        return true
+      }
+      if (view !== 'send') {
+        setView('send')
+        return true
+      }
+      if (step === 'sent') {
+        reset()
+        return true
+      }
+      if (step === 'quote') {
+        setStep('amount')
+        return true
+      }
+      return false
+    }
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack)
+    return () => sub.remove()
+  }, [scanning, view, step, reset])
 
   const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
 
