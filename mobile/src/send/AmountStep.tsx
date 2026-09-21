@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { isAddress } from 'viem'
-import type { Corridor } from '@henad/core'
+import { SOURCE_ASSETS, settleableFrom, type Corridor, type SourceAssetSymbol } from '@henad/core'
 import type { RateDto } from '@/lib/api'
 import { age, atRate, rateLineText, tokenText } from '@/lib/display'
 import { Button, Card, Chip, ErrorText, Eyebrow, TextLink, TierBadge } from '@/ui'
@@ -34,6 +34,7 @@ export function AmountStep({
   onScan,
   balance,
   source,
+  onSource,
   busy,
   error,
   onQuote,
@@ -51,13 +52,15 @@ export function AmountStep({
   onPaste: () => void
   onScan: () => void
   balance: bigint | null
-  source: { symbol: string; decimals: number }
+  source: { symbol: SourceAssetSymbol; decimals: number }
+  onSource: (symbol: SourceAssetSymbol) => void
   busy: boolean
   error: string | null
   onQuote: () => void
   onWhy: () => void
 }) {
   const [picking, setPicking] = useState(false)
+  const [pickingSource, setPickingSource] = useState(false)
   // The recipient field sits at the bottom of the screen, under the keyboard once it opens.
   // The avoiding view shrinks the scroll area and this brings the field back into view.
   const scroll = useRef<ScrollView>(null)
@@ -76,6 +79,8 @@ export function AmountStep({
 
   const blocker = useMemo(() => {
     if (corridor.tier !== 'live') return corridor.note
+    // The router has no corridor for this pair, so it would revert. Say it here, not at signing.
+    if (!settleableFrom(corridor, source.symbol)) return `${source.symbol} cannot fund USD → ${corridor.target}. ${corridor.sources.join(' or ')} can.`
     if (!parsed) return 'Enter an amount.'
     if (balance !== null && parsed > balance) return `That is more than your ${source.symbol} balance.`
     if (!recipient) return 'Add a recipient address.'
@@ -116,9 +121,29 @@ export function AmountStep({
             </View>
             <View style={s.chipRow}>
               <TokenIcon symbol={source.symbol} size={22} />
-              <Chip filled>{`${source.symbol} · Monad`}</Chip>
+              <Chip filled onPress={() => setPickingSource((v) => !v)}>{`${source.symbol} ▾`}</Chip>
             </View>
           </View>
+          {pickingSource ? (
+            <View style={s.picker}>
+              {SOURCE_ASSETS.map((a) => (
+                <Pressable
+                  key={a.symbol}
+                  onPress={() => {
+                    onSource(a.symbol)
+                    setPickingSource(false)
+                  }}
+                  style={[s.pickRow, a.symbol === source.symbol && s.pickRowOn]}
+                >
+                  <View style={s.chipRow}>
+                    <TokenIcon symbol={a.symbol} size={20} />
+                    <Text style={s.pickText}>{a.symbol}</Text>
+                  </View>
+                  <Text style={s.pickMeta}>{a.symbol === 'AUSD' ? 'Agora dollar' : 'Circle USD Coin'}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </Card>
 
         <View style={s.rateLine}>
@@ -139,22 +164,26 @@ export function AmountStep({
           </View>
           {picking ? (
             <View style={s.picker}>
-              {corridors.map((c) => (
-                <Pressable
-                  key={c.key}
-                  onPress={() => {
-                    onCorridor(c)
-                    setPicking(false)
-                  }}
-                  style={[s.pickRow, c.key === corridor.key && s.pickRowOn]}
-                >
-                  <View style={s.chipRow}>
-                    {c.targetAsset ? <TokenIcon symbol={c.targetAsset.symbol} size={20} /> : null}
-                    <Text style={s.pickText}>{`USD → ${c.target}`}</Text>
-                  </View>
-                  <TierBadge tier={c.tier} />
-                </Pressable>
-              ))}
+              {corridors.map((c) => {
+                const fundable = settleableFrom(c, source.symbol)
+                return (
+                  <Pressable
+                    key={c.key}
+                    onPress={() => {
+                      onCorridor(c)
+                      setPicking(false)
+                    }}
+                    style={[s.pickRow, c.key === corridor.key && s.pickRowOn]}
+                  >
+                    <View style={s.chipRow}>
+                      {c.targetAsset ? <TokenIcon symbol={c.targetAsset.symbol} size={20} /> : null}
+                      <Text style={[s.pickText, !fundable && { color: color.muted }]}>{`USD → ${c.target}`}</Text>
+                    </View>
+                    {/* A pair the router has no corridor for reverts; say so here rather than at signing. */}
+                    {c.tier === 'live' && !fundable ? <Text style={s.pickMeta}>{`${c.sources.join(' ') || 'not'} only`}</Text> : <TierBadge tier={c.tier} />}
+                  </Pressable>
+                )
+              })}
             </View>
           ) : null}
           <Text style={s.help}>At the reference rate. The exact amount after spread comes before you sign.</Text>
@@ -222,6 +251,7 @@ const s = StyleSheet.create({
   pickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
   pickRowOn: { backgroundColor: color.rowTint },
   pickText: { fontFamily: font.mono, fontSize: 12, color: color.ink },
+  pickMeta: { fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.06), color: color.muted },
   help: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.grey },
   tierRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: color.hairline2 },
   tierText: { flex: 1, fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.08), color: color.muted },

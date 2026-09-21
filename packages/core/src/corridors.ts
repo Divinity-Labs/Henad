@@ -37,6 +37,15 @@ export interface Corridor {
   feed: FeedRef | null
   venue: { label: string; pool: Address } | null
   targetAsset: { symbol: string; address: Address; decimals: number } | null
+  /**
+   * Source assets the deployed CorridorRouter will actually settle this pair from.
+   *
+   * Registration is an owner-key transaction, so this list only changes when we change it,
+   * and it is what the clients gate the picker on. Read back from mainnet on 18 Sep 2026:
+   * AUSD into GBP, EUR, CHF and JPY, USDC into GBP. A pair not listed here reverts with
+   * `ZeroCorridor` rather than failing politely, which is no way to learn it.
+   */
+  sources: readonly SourceAssetSymbol[]
   note: string
   /** Six-word version of `note` for the hero cards, where there is no room for the full reason. */
   shortNote: string
@@ -61,6 +70,7 @@ export const CORRIDORS: Corridor[] = [
     feed: { kind: 'chainlink', label: 'Chainlink GBP/USD', ref: CL['GBP/USD'].address, decimals: 18, heartbeatSec: 240, usdPerTarget: true },
     venue: { label: 'Mento GBPm/USDm', pool: P['GBPm/USDm'] },
     targetAsset: { symbol: 'GBPm', address: T.GBPm!.address, decimals: 18 },
+    sources: ['AUSD', 'USDC'],
     note: 'Mento GBPm/USDm · Chainlink GBP/USD',
     shortNote: 'Mento · Chainlink',
     rateDp: 5,
@@ -77,6 +87,7 @@ export const CORRIDORS: Corridor[] = [
     feed: { kind: 'chainlink', label: 'Chainlink EUR/USD', ref: CL['EUR/USD'].address, decimals: 18, heartbeatSec: 240, usdPerTarget: true },
     venue: { label: 'Mento EURm/USDm', pool: P['EURm/USDm'] },
     targetAsset: { symbol: 'EURm', address: T.EURm!.address, decimals: 18 },
+    sources: ['AUSD'],
     note: 'Mento EURm/USDm · Chainlink EUR/USD',
     shortNote: 'Mento · Chainlink',
     rateDp: 5,
@@ -93,6 +104,7 @@ export const CORRIDORS: Corridor[] = [
     feed: { kind: 'chainlink', label: 'Chainlink CHF/USD', ref: CL['CHF/USD'].address, decimals: 18, heartbeatSec: 240, usdPerTarget: true },
     venue: { label: 'Mento CHFm/USDm', pool: P['CHFm/USDm'] },
     targetAsset: { symbol: 'CHFm', address: T.CHFm!.address, decimals: 18 },
+    sources: ['AUSD'],
     note: 'Mento CHFm/USDm · Chainlink CHF/USD',
     shortNote: 'Mento · Chainlink',
     rateDp: 5,
@@ -109,6 +121,7 @@ export const CORRIDORS: Corridor[] = [
     feed: { kind: 'chainlink', label: 'Chainlink JPY/USD', ref: CL['JPY/USD'].address, decimals: 18, heartbeatSec: 240, usdPerTarget: true },
     venue: { label: 'Mento JPYm/USDm', pool: P['JPYm/USDm'] },
     targetAsset: { symbol: 'JPYm', address: T.JPYm!.address, decimals: 18 },
+    sources: ['AUSD'],
     note: 'Mento JPYm/USDm · Chainlink JPY/USD',
     shortNote: 'Mento · Chainlink',
     rateDp: 2,
@@ -126,6 +139,7 @@ export const CORRIDORS: Corridor[] = [
     feed: { kind: 'chainlink', label: 'Chainlink CAD/USD', ref: '0x3293eA5650E9f8c4091642b7EB1C46CFEe5197cA', decimals: 18, heartbeatSec: 240, usdPerTarget: true },
     venue: null,
     targetAsset: null,
+    sources: [],
     note: 'Priced · no asset on Monad',
     shortNote: 'Priced · no asset',
     rateDp: 4,
@@ -149,6 +163,7 @@ export const CORRIDORS: Corridor[] = [
     feed: null,
     venue: null,
     targetAsset: null,
+    sources: [],
     note: 'Pyth publishes USD/ZAR but nobody posts it to Monad · last on-chain price 2 Sep 2025',
     shortNote: 'Pyth feed · not posted here',
     rateDp: 3,
@@ -165,6 +180,7 @@ export const CORRIDORS: Corridor[] = [
     feed: null,
     venue: null,
     targetAsset: null,
+    sources: [],
     note: 'No NGN feed on Monad · Chainlink NGN/USD exists on Celo',
     shortNote: 'No feed on Monad',
     rateDp: 2,
@@ -180,6 +196,15 @@ export function corridorByKey(key: string): Corridor | undefined {
 
 export function corridorById(id: Hex): Corridor | undefined {
   return CORRIDORS.find((c) => c.id.toLowerCase() === id.toLowerCase())
+}
+
+export function corridorsFor(symbol: SourceAssetSymbol): Corridor[] {
+  return CORRIDORS.filter((c) => c.sources.includes(symbol))
+}
+
+/** Whether a payout in this pair can be funded from this asset today. */
+export function settleableFrom(corridor: Corridor, symbol: SourceAssetSymbol): boolean {
+  return corridor.sources.includes(symbol)
 }
 
 /** Source assets a payer may send. AUSD is the primary (Agora bounty); USDC secondary. */

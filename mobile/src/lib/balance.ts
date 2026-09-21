@@ -1,19 +1,21 @@
-import { erc20Abi, TOKENS } from '@henad/core'
+import { erc20Abi, TOKENS, type SourceAssetSymbol } from '@henad/core'
 import type { Address } from 'viem'
 import { appChain, appChainId } from './config'
 
-/** The stablecoin a payout is funded from on this chain. */
-export function sourceToken() {
-  const token = TOKENS[appChainId()].AUSD
-  if (!token) throw new Error(`No AUSD address for chain ${appChainId()}`)
-  return token
+/** The stablecoin a payout is funded from on this chain. AUSD unless the payer picks otherwise. */
+export function sourceToken(symbol: SourceAssetSymbol = 'AUSD'): { address: Address; symbol: SourceAssetSymbol; decimals: number } {
+  const token = TOKENS[appChainId()][symbol]
+  if (!token) throw new Error(`No ${symbol} address for chain ${appChainId()}`)
+  // Narrowed: the registry types every symbol as a plain string, and the screens need to
+  // know which of the two source assets this is.
+  return { address: token.address, symbol, decimals: token.decimals }
 }
 
-/** Balance in the source stablecoin, or null when the read fails. */
-export async function readBalance(address: Address): Promise<bigint | null> {
+/** Balance in the chosen source stablecoin, or null when the read fails. */
+export async function readBalance(address: Address, symbol: SourceAssetSymbol = 'AUSD'): Promise<bigint | null> {
   try {
     return await appChain().readContract({
-      address: sourceToken().address,
+      address: sourceToken(symbol).address,
       abi: erc20Abi,
       functionName: 'balanceOf',
       args: [address],

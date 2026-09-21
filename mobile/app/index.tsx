@@ -3,7 +3,20 @@ import { Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { getAddress, isAddress, type Address, type Hex } from 'viem'
-import { CORRIDORS, LIVE_CORRIDOR, MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, isFxMarketOpen, quoteMaths, type Corridor, type QuoteDto } from '@henad/core'
+import {
+  CORRIDORS,
+  LIVE_CORRIDOR,
+  MAX_SPREAD_DEFAULT,
+  MAX_SPREAD_MAX,
+  MAX_SPREAD_MIN,
+  corridorsFor,
+  isFxMarketOpen,
+  quoteMaths,
+  settleableFrom,
+  type Corridor,
+  type QuoteDto,
+  type SourceAssetSymbol,
+} from '@henad/core'
 import { fetchQuote, fetchRates, fetchReceipt, fetchReceipts, receiptUrl, type RatesPayload, type ReceiptDto } from '@/lib/api'
 import { readBalance, readHoldings, sourceToken, type Holding } from '@/lib/balance'
 import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
@@ -40,13 +53,14 @@ type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'settings'
 export default function App() {
   const chainId = appChainId()
   const dep = deployment()
-  const source = sourceToken()
 
   const [view, setView] = useState<View_>('send')
   const [step, setStep] = useState<Step>('signin')
   const [address, setAddress] = useState<Address | null>(null)
   const [balance, setBalance] = useState<bigint | null>(null)
   const [corridor, setCorridor] = useState<Corridor>(LIVE_CORRIDOR)
+  const [sourceSymbol, setSourceSymbol] = useState<SourceAssetSymbol>('AUSD')
+  const source = sourceToken(sourceSymbol)
   const [amount, setAmount] = useState('')
   const [recipient, setRecipient] = useState('')
   const [quote, setQuote] = useState<QuoteDto | null>(null)
@@ -208,10 +222,23 @@ export default function App() {
     setTimeout(() => setCopied(false), 2000)
   }, [address])
 
+  // USDC funds the pound corridor and nothing else yet, so picking it cannot leave you
+  // holding a pair the router would revert on.
+  const pickSource = useCallback(
+    (symbol: SourceAssetSymbol) => {
+      setSourceSymbol(symbol)
+      setBalance(null)
+      setQuote(null)
+      setCorridor((c) => (settleableFrom(c, symbol) ? c : (corridorsFor(symbol)[0] ?? c)))
+    },
+    [],
+  )
+
   const signOut = useCallback(async () => {
     await forgetStoredAccount()
     setAddress(null)
     setBalance(null)
+    setSourceSymbol('AUSD')
     setHoldings(null)
     setQuote(null)
     setSent(null)
@@ -240,7 +267,7 @@ export default function App() {
     if (!address) return
     let live = true
     const read = () =>
-      readBalance(address).then((b) => {
+      readBalance(address, sourceSymbol).then((b) => {
         if (live) setBalance(b)
       })
     void read()
@@ -249,7 +276,7 @@ export default function App() {
       live = false
       clearInterval(id)
     }
-  }, [address, step])
+  }, [address, step, sourceSymbol])
 
   const loadRates = useCallback(async () => {
     setRatesLoading(true)
@@ -309,7 +336,7 @@ export default function App() {
       const account = await unlockStoredAccount()
       let result: Awaited<ReturnType<typeof settleFromPhone>>
       try {
-        result = await settleFromPhone({ account, corridor, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
+        result = await settleFromPhone({ account, corridor, sourceSymbol, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
       } finally {
         account.end()
       }
@@ -354,7 +381,7 @@ export default function App() {
     } finally {
       setBusy(false)
     }
-  }, [quote, dep, recipient, corridor, maxSpreadBps, source, chainId, loadRates])
+  }, [quote, dep, recipient, corridor, sourceSymbol, maxSpreadBps, source, chainId, loadRates])
 
   const reset = useCallback(() => {
     setSent(null)
@@ -497,6 +524,7 @@ export default function App() {
         onScan={() => setScanning(true)}
         balance={balance}
         source={source}
+        onSource={pickSource}
         busy={busy}
         error={error}
         onQuote={() => void getQuote()}

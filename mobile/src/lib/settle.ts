@@ -6,6 +6,7 @@ import {
   type Corridor,
   type Intent,
   type QuoteDto,
+  type SourceAssetSymbol,
 } from '@henad/core'
 import { relaySettlement, type RelayResult } from './api'
 import { appChainId } from './config'
@@ -31,17 +32,19 @@ const INTENT_TTL_S = 600
 export async function settleFromPhone(args: {
   account: MeraAccount
   corridor: Corridor
+  /** Which stablecoin funds it. Its ERC-3009 domain differs per token, so this decides what is signed. */
+  sourceSymbol: SourceAssetSymbol
   quote: QuoteDto
   recipient: Address
   maxSpreadBps: number
   router: Address
 }): Promise<RelayResult & { intent: Intent }> {
-  const { account, corridor, quote, recipient, maxSpreadBps, router } = args
+  const { account, corridor, sourceSymbol, quote, recipient, maxSpreadBps, router } = args
   const target = corridor.targetAsset
   if (!target) throw new Error(`${corridor.key} has no asset to deliver into on this chain.`)
 
   const chainId = appChainId()
-  const source = sourceToken()
+  const source = sourceToken(sourceSymbol)
   const m = quoteMaths(quote, source.decimals, target.decimals)
 
   const intent: Intent = {

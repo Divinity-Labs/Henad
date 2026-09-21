@@ -1,6 +1,6 @@
 import type { Address, Hex } from 'viem'
 import type { SourceAssetSymbol } from '@henad/core'
-import { MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, type QuoteDto } from '@henad/core'
+import { MAX_SPREAD_DEFAULT, MAX_SPREAD_MAX, MAX_SPREAD_MIN, corridorByKey, corridorsFor, settleableFrom, type QuoteDto } from '@henad/core'
 import type { RateDto, ReceiptDto } from '@/lib/send-serial'
 
 /**
@@ -116,8 +116,15 @@ export function sendReducer(s: SendState, a: SendAction): SendState {
       return a.now === s.now ? s : { ...s, now: a.now }
     case 'amount':
       return { ...s, amount: sanitizeAmount(a.value), error: null }
-    case 'asset':
-      return a.value === s.sourceAsset ? s : { ...s, sourceAsset: a.value, balance: null, error: null }
+    case 'asset': {
+      if (a.value === s.sourceAsset) return s
+      // USDC funds the pound corridor and nothing else yet. Moving to an asset that cannot
+      // fund the chosen pair moves the pair too, rather than leaving a quote that reverts.
+      const corridor = corridorByKey(s.corridorKey)
+      const keep = corridor && settleableFrom(corridor, a.value)
+      const corridorKey = keep ? s.corridorKey : (corridorsFor(a.value)[0]?.key ?? s.corridorKey)
+      return { ...s, sourceAsset: a.value, corridorKey, balance: null, error: null }
+    }
     case 'corridor':
       return a.key === s.corridorKey ? s : { ...s, corridorKey: a.key, error: null }
     case 'recipient':

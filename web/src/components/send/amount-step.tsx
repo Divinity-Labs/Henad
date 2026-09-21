@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { isAddress, parseUnits } from 'viem'
 import { deliveredAt } from '@henad/core'
-import { CORRIDORS, SOURCE_ASSETS, type Corridor, type SourceAssetSymbol } from '@henad/core'
+import { CORRIDORS, SOURCE_ASSETS, settleableFrom, type Corridor, type SourceAssetSymbol } from '@henad/core'
 import { money, rateLine, shortAddress, tokens } from '@/lib/format'
 import type { RateDto } from '@/lib/send-serial'
 import { Button } from '@/components/ui/Button'
@@ -74,9 +74,13 @@ export function AmountStep(p: AmountStepProps) {
   const validRecipient = isAddress(p.recipient)
   const overBalance = units !== null && p.balance !== null && units > p.balance
   const age = p.rate?.updatedAt ? Math.max(0, Math.floor(p.now / 1000 - p.rate.updatedAt)) : null
+  const fundable = settleableFrom(c, p.sourceAsset)
   const blocker = !live
     ? `USD → ${c.target} cannot settle on Monad.`
-    : units === null
+    : // The router has no corridor for this pair, so it would revert at settlement.
+      !fundable
+      ? `${p.sourceAsset} cannot fund USD → ${c.target}. ${c.sources.join(' or ')} can.`
+      : units === null
       ? 'Enter an amount.'
       : overBalance
         ? `That is more than your ${p.sourceAsset} balance.`
@@ -160,7 +164,13 @@ export function AmountStep(p: AmountStepProps) {
               label: x.target,
               icon: <TokenIcon symbol={x.targetAsset?.symbol ?? x.target} size={22} />,
               // Name the token that arrives, or say plainly why nothing can.
-              detail: x.targetAsset ? `${x.targetName} · ${x.targetAsset.symbol}` : x.tier === 'quote' ? `${x.targetName} · priced, no token` : `${x.targetName} · no rate on Monad`,
+              detail: !x.targetAsset
+                ? x.tier === 'quote'
+                  ? `${x.targetName} · priced, no token`
+                  : `${x.targetName} · no rate on Monad`
+                : settleableFrom(x, p.sourceAsset)
+                  ? `${x.targetName} · ${x.targetAsset.symbol}`
+                  : `${x.targetName} · ${x.sources.join(' or ')} only`,
               badge: <TierPill tier={x.tier} size="sm" />,
             }))}
           />
