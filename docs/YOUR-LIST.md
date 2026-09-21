@@ -4,7 +4,7 @@ Things only you can do, and decisions only you can make. Claude Code keeps this 
 current: items get ticked, added and re-ordered as work lands. Everything here is
 blocked on a human — an account, a card, a domain, a device, or a judgement call.
 
-**Submissions close 14 Oct 2026, 03:59 UTC.** Last updated 20 Sep 2026.
+**Submissions close 14 Oct 2026, 03:59 UTC.** Last updated 21 Sep 2026.
 
 > **The gate is passed, five days early.** Henad is live on Monad mainnet and receipt #1 is
 > real: 0.40 AUSD → £0.298070 GBPm at 19 bps, block 105,952,304, from the phone.
@@ -26,6 +26,26 @@ Topping up the relayer is one command in Git Bash:
 ---
 
 ## Blocking, soonest first
+
+### Now. Vercel no longer deploys the site — reconnect it to the org
+The repo moved to **https://github.com/Divinity-Labs/Henad** on 21 Sep. GitHub carried the
+releases, the Actions secret and the redirects across, but Vercel's git connection still
+names `Miracle656/Henad`, so the push after the move produced no deployment. The site is
+still up, serving the last build from before the move; it simply will not pick up new
+commits until this is fixed.
+
+Two clicks, both of which need you signed in:
+
+1. Install the Vercel GitHub App on the Divinity-Labs org, granting it the Henad repo:
+   https://github.com/apps/vercel — Configure → Divinity-Labs.
+2. Vercel → project `henad` → Settings → Git → disconnect, then connect
+   `Divinity-Labs/Henad`, production branch `main`, root directory `web`.
+
+Then push anything, or hit Redeploy, and check that a deployment appears. I can verify it
+from here once it does.
+
+One thing to check while you are in that Settings page, since it has been open on the list
+for a week: Environment Variables → Production has `NEXT_PUBLIC_MERA_RP_ID=usehenad.xyz`.
 
 ### 1. usehenad.xyz — live; one setting still unconfirmed
 Bought 14 Sep through Truehost (NameSilo), expiring 14 Sep 2027. It serves the app on the
