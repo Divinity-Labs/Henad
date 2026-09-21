@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Constants from 'expo-constants'
+import { CORRIDORS } from '@henad/core'
+import { WATCHABLE } from '@/lib/rate-watch'
 import { Button, Card, Dashed, Eyebrow, Line, TextLink } from '@/ui'
 import { color, font, track } from '@/theme'
 
@@ -8,6 +10,14 @@ const REPO = 'https://github.com/Miracle656/Henad'
 const RELEASES = `${REPO}/releases`
 const LATEST = 'https://api.github.com/repos/Miracle656/Henad/releases/latest'
 const SITE = 'https://usehenad.xyz'
+
+export interface WatchView {
+  on: boolean
+  available: boolean
+  /** Corridor keys being followed. */
+  keys: string[]
+  note: string
+}
 
 export interface AlertsView {
   on: boolean
@@ -29,6 +39,10 @@ export function SettingsScreen({
   alerts,
   onToggleAlerts,
   onTestAlert,
+  watch,
+  onToggleWatch,
+  onToggleCorridor,
+  onCheckNow,
   onSignOut,
   onBack,
 }: {
@@ -36,6 +50,10 @@ export function SettingsScreen({
   alerts: AlertsView
   onToggleAlerts: () => void
   onTestAlert: () => void
+  watch: WatchView
+  onToggleWatch: () => void
+  onToggleCorridor: (key: string) => void
+  onCheckNow: () => void
   onSignOut: () => void
   onBack: () => void
 }) {
@@ -92,6 +110,31 @@ export function SettingsScreen({
           <Text style={s.fine}>
             If the test does not arrive, this phone is holding the notification back rather than Henad failing to send it. Allow notifications for Henad, and
             exclude it from battery optimisation.
+          </Text>
+        </Card>
+
+        <Card style={s.card}>
+          <View style={s.rowBetween}>
+            <Eyebrow>Rate watch</Eyebrow>
+            <TextLink label={watch.on ? 'Turn off' : 'Turn on'} tone="purple" onPress={watch.available ? onToggleWatch : undefined} />
+          </View>
+          <Dashed />
+          <Text style={s.help}>{watch.note}</Text>
+          <View style={s.pills}>
+            {WATCHABLE.map((key) => {
+              const corridor = CORRIDORS.find((c) => c.key === key)
+              const on = watch.keys.includes(key)
+              return (
+                <Pressable key={key} onPress={() => onToggleCorridor(key)} accessibilityRole="button" accessibilityState={{ selected: on }} style={[s.pill, on && s.pillOn]}>
+                  <Text style={[s.pillText, !on && { color: color.muted }]}>{corridor?.target ?? key}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+          <TextLink label="Check now" tone="purple" onPress={onCheckNow} />
+          <Text style={s.fine}>
+            An hour is the soonest Android will wake the app, not a promise of when: it batches background work and skips it while the phone is dozing. The
+            figures come from the same endpoint the rates screen reads.
           </Text>
         </Card>
 
@@ -154,5 +197,9 @@ const s = StyleSheet.create({
   fine: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.muted },
   queued: { fontFamily: font.mono, fontSize: 11, color: color.muted, letterSpacing: track(11, 0.02) },
   links: { gap: 8 },
+  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pill: { borderWidth: 1, borderColor: color.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  pillOn: { borderColor: color.purple, backgroundColor: color.rowTint },
+  pillText: { fontFamily: font.mono, fontSize: 12, color: color.ink },
   spacer: { flex: 1, minHeight: 12 },
 })

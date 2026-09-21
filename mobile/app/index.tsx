@@ -11,6 +11,7 @@ import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
 import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts, sendTestAlert } from '@/lib/market-alerts'
+import { INTERVAL_MINUTES, WATCHABLE, rateWatchState, runRateWatch, setWatchedCorridors, startRateWatch, stopRateWatch } from '@/lib/rate-watch'
 import { ProfileScreen } from '@/profile/ProfileScreen'
 import { SettingsScreen } from '@/settings/SettingsScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
@@ -64,6 +65,12 @@ export default function App() {
   const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null)
   const [receiptsLoading, setReceiptsLoading] = useState(false)
   const [receiptsError, setReceiptsError] = useState<string | null>(null)
+  const [watch, setWatch] = useState<{ on: boolean; available: boolean; keys: string[]; note: string }>({
+    on: false,
+    available: true,
+    keys: WATCHABLE,
+    note: 'Off. Turn it on to be told hourly what a dollar buys, and which way it moved.',
+  })
   const [alerts, setAlerts] = useState<{ on: boolean; note: string; queued: string[] }>({
     on: false,
     note: 'Get told when the FX market opens and closes.',
@@ -91,9 +98,60 @@ export default function App() {
     })
   }, [])
 
+  /** What the phone's background scheduler is actually doing, in words. */
+  const readWatch = useCallback(async () => {
+    const state = await rateWatchState()
+    const last = state.lastAt ? new Date(state.lastAt * 1000).toUTCString().slice(17, 22) : null
+    setWatch((w) => ({
+      ...w,
+      on: state.on,
+      available: state.available,
+      note: !state.available
+        ? 'This phone will not run background tasks for Henad. Check its battery settings.'
+        : state.on
+          ? `On, no sooner than every ${INTERVAL_MINUTES} minutes.${last ? ` Last read ${last} UTC.` : ' Nothing read yet.'}`
+          : 'Off. Turn it on to be told hourly what a dollar buys, and which way it moved.',
+    }))
+  }, [])
+
   useEffect(() => {
-    if (view === 'settings') void readAlerts()
-  }, [view, readAlerts])
+    if (view !== 'settings') return
+    void readAlerts()
+    void readWatch()
+  }, [view, readAlerts, readWatch])
+
+  const toggleWatch = useCallback(async () => {
+    if (watch.on) {
+      await stopRateWatch()
+    } else {
+      if (!(await requestAlertPermission())) {
+        setWatch((w) => ({ ...w, note: 'Notifications are blocked for Henad, so there is nowhere to put a rate alert.' }))
+        return
+      }
+      setWatchedCorridors(watch.keys)
+      await startRateWatch()
+    }
+    await readWatch()
+  }, [watch.on, watch.keys, readWatch])
+
+  const toggleCorridor = useCallback((key: string) => {
+    setWatch((w) => {
+      const keys = w.keys.includes(key) ? w.keys.filter((k) => k !== key) : [...w.keys, key]
+      setWatchedCorridors(keys)
+      return { ...w, keys }
+    })
+  }, [])
+
+  /** The same pass the background task runs, on demand: proves the whole path in one tap. */
+  const checkRatesNow = useCallback(async () => {
+    setWatch((w) => ({ ...w, note: 'Reading the rates…' }))
+    try {
+      const { posted, summary } = await runRateWatch(watch.keys)
+      setWatch((w) => ({ ...w, note: posted ? summary : 'No rate was available to read just now.' }))
+    } catch (e) {
+      setWatch((w) => ({ ...w, note: e instanceof Error ? e.message : 'Could not read the rates.' }))
+    }
+  }, [watch.keys])
 
   const toggleAlerts = useCallback(async () => {
     if (alerts.on) {
@@ -355,6 +413,10 @@ export default function App() {
         alerts={alerts}
         onToggleAlerts={() => void toggleAlerts()}
         onTestAlert={() => void sendTestAlert()}
+        watch={watch}
+        onToggleWatch={() => void toggleWatch()}
+        onToggleCorridor={toggleCorridor}
+        onCheckNow={() => void checkRatesNow()}
         onSignOut={() => void signOut()}
         onBack={() => setView('profile')}
       />
