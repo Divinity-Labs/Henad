@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Wordmark, BuiltOnMonad } from './ui/Brand'
 
-const REPO = 'https://github.com/Miracle656/Henad'
+const REPO = 'https://github.com/Divinity-Labs/Henad'
 /** The receipt store: the one address worth handing a stranger who wants to check the ledger. */
 const LEDGER = 'https://monadscan.com/address/0xCA9536F48Ac5C1673c7D7B20D4E76056Fc4fE3B1'
 

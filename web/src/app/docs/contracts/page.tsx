@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'The Henad contracts on Monad mainnet, their addresses, and exactly what the owner key can do.',
 }
 
-const REPO = 'https://github.com/Miracle656/Henad'
+const REPO = 'https://github.com/Divinity-Labs/Henad'
 
 const DEPLOYED = HENAD[MONAD_MAINNET_ID]
 

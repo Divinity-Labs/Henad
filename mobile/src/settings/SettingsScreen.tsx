@@ -6,9 +6,9 @@ import { WATCHABLE } from '@/lib/rate-watch'
 import { Button, Card, Dashed, Eyebrow, Line, TextLink } from '@/ui'
 import { color, font, track } from '@/theme'
 
-const REPO = 'https://github.com/Miracle656/Henad'
+const REPO = 'https://github.com/Divinity-Labs/Henad'
 const RELEASES = `${REPO}/releases`
-const LATEST = 'https://api.github.com/repos/Miracle656/Henad/releases/latest'
+const LATEST = 'https://api.github.com/repos/Divinity-Labs/Henad/releases/latest'
 const SITE = 'https://usehenad.xyz'
 
 export interface WatchView {

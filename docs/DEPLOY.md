@@ -1,7 +1,7 @@
 # Deploying the web app
 
 Vercel project **henad** (`prj_UqclSIe5Pk7AjrS3TbMhvO7hJFwf`), linked to
-`Miracle656/Henad`, production branch `main`, root directory `web`. Every push to main
+`Divinity-Labs/Henad`, production branch `main`, root directory `web`. Every push to main
 deploys. Vercel detects Next.js and pnpm workspaces on its own; `@henad/core` is compiled
 through `transpilePackages`, so nothing extra is needed.
 
