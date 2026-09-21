@@ -22,10 +22,7 @@ export function ProfileScreen({
   copied,
   onCopy,
   onRefresh,
-  onSignOut,
-  alerts,
-  onToggleAlerts,
-  onAbout,
+  onSettings,
 }: {
   address: Address
   network: string
@@ -34,11 +31,7 @@ export function ProfileScreen({
   copied: boolean
   onCopy: () => void
   onRefresh: () => void
-  onSignOut: () => void
-  /** Whether market open/close alerts are scheduled, and what the next one says. */
-  alerts: { on: boolean; note: string }
-  onToggleAlerts: () => void
-  onAbout: () => void
+  onSettings: () => void
 }) {
   const held = holdings?.filter((h) => h.value > 0n) ?? []
   return (
@@ -83,19 +76,10 @@ export function ProfileScreen({
           )}
         </Card>
 
-        <Card style={s.card}>
-          <View style={s.rowBetween}>
-            <Eyebrow>Market alerts</Eyebrow>
-            <TextLink label={alerts.on ? 'Turn off' : 'Turn on'} tone="purple" onPress={onToggleAlerts} />
-          </View>
-          <Dashed />
-          <Text style={s.help}>{alerts.note}</Text>
-        </Card>
 
         <View style={s.spacer} />
-        <Button label="About and updates" variant="secondary" onPress={onAbout} />
-        <Button label="Sign out of this phone" variant="secondary" onPress={onSignOut} />
-        <Text style={s.foot}>Signing out forgets the account on this phone. Your passkey still opens it, here or on the web.</Text>
+        <Button label="Settings" variant="secondary" onPress={onSettings} />
+        <Text style={s.foot}>Alerts, this build&apos;s version, and signing out live in settings.</Text>
       </View>
     </ScrollView>
   )
@@ -115,5 +99,6 @@ const s = StyleSheet.create({
   symbol: { fontFamily: font.mono, fontSize: 13, color: color.grey },
   value: { fontFamily: font.display, fontSize: 22, letterSpacing: track(22, -0.02), color: color.ink },
   spacer: { flex: 1, minHeight: 12 },
+  queued: { fontFamily: font.mono, fontSize: 11, color: color.muted, textAlign: 'center' },
   foot: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.muted, textAlign: 'center' },
 })

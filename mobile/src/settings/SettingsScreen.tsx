@@ -7,15 +7,38 @@ import { color, font, track } from '@/theme'
 const REPO = 'https://github.com/Miracle656/Henad'
 const RELEASES = `${REPO}/releases`
 const LATEST = 'https://api.github.com/repos/Miracle656/Henad/releases/latest'
+const SITE = 'https://usehenad.xyz'
+
+export interface AlertsView {
+  on: boolean
+  note: string
+  /** The times this phone is actually holding, so a schedule that never fired is visible. */
+  queued: string[]
+}
 
 /**
- * About: what you are running, whether there is a newer one, and the promises the app makes.
+ * Settings: the things that are true of this installation rather than of your account.
  *
- * An app installed from a file rather than a store has no update mechanism, so it has to ask.
- * This reads GitHub's latest release once when the screen opens. A failure says so plainly
- * rather than claiming you are up to date, because "up to date" would be a guess.
+ * An app installed from a file has no store behind it, so it has to answer for itself which
+ * version it is, whether a newer one exists, and what it promises. The alert controls live
+ * here too, with the queue shown: a notification that never arrives is otherwise indis-
+ * tinguishable from one that was never scheduled.
  */
-export function AboutScreen({ network, onBack }: { network: string; onBack: () => void }) {
+export function SettingsScreen({
+  network,
+  alerts,
+  onToggleAlerts,
+  onTestAlert,
+  onSignOut,
+  onBack,
+}: {
+  network: string
+  alerts: AlertsView
+  onToggleAlerts: () => void
+  onTestAlert: () => void
+  onSignOut: () => void
+  onBack: () => void
+}) {
   const version = Constants.expoConfig?.version ?? '0.0.0'
   const build = Constants.expoConfig?.android?.versionCode
   const [update, setUpdate] = useState<{ state: 'checking' | 'current' | 'newer' | 'unknown'; tag?: string }>({ state: 'checking' })
@@ -42,23 +65,42 @@ export function AboutScreen({ network, onBack }: { network: string; onBack: () =
       : update.state === 'current'
         ? 'This is the newest release.'
         : update.state === 'newer'
-          ? `Version ${update.tag} has been released. Installing it keeps your account: your passkey is what owns it, not the app.`
+          ? `Version ${update.tag} is out. Installing it keeps your account: your passkey owns it, not the app.`
           : 'Could not reach GitHub, so this cannot say whether a newer build exists.'
 
   return (
     <ScrollView contentContainerStyle={s.scroll}>
       <View style={s.body}>
         <View style={s.rowBetween}>
-          <Eyebrow tone="purple">About</Eyebrow>
+          <Eyebrow tone="purple">Settings</Eyebrow>
           <Eyebrow>{network}</Eyebrow>
         </View>
-        <Text style={s.title}>Henad {version}</Text>
 
         <Card style={s.card}>
+          <View style={s.rowBetween}>
+            <Eyebrow>Market alerts</Eyebrow>
+            <TextLink label={alerts.on ? 'Turn off' : 'Turn on'} tone="purple" onPress={onToggleAlerts} />
+          </View>
+          <Dashed />
+          <Text style={s.help}>{alerts.note}</Text>
+          {alerts.queued.map((q) => (
+            <Text key={q} style={s.queued}>
+              {q}
+            </Text>
+          ))}
+          <TextLink label="Send a test alert" tone="purple" onPress={onTestAlert} />
+          <Text style={s.fine}>
+            If the test does not arrive, this phone is holding the notification back rather than Henad failing to send it. Allow notifications for Henad, and
+            exclude it from battery optimisation.
+          </Text>
+        </Card>
+
+        <Card style={s.card}>
+          <Eyebrow>This build</Eyebrow>
+          <Dashed />
           <Line k="Version" v={version} strong />
           <Line k="Build" v={build !== undefined ? String(build) : 'unnumbered'} />
           <Line k="Network" v={network} last />
-          <Dashed />
           <Text style={s.help}>{updateNote}</Text>
           <Button
             label={update.state === 'newer' ? `Get ${update.tag}` : 'Releases'}
@@ -73,13 +115,13 @@ export function AboutScreen({ network, onBack }: { network: string; onBack: () =
           <Eyebrow>What this app promises</Eyebrow>
           <Dashed />
           <Text style={s.help}>
-            Your passkey is your account. Nobody can reset it, recover it or move your funds, including us. A payout cannot be undone, and it settles on
-            Monad mainnet with real money.
+            Your passkey is your account. Nobody can reset it, recover it or move your funds, including us. A payout cannot be undone, and it settles with
+            real money.
           </Text>
           <View style={s.links}>
-            <TextLink label="Terms of service ↗" tone="purple" onPress={() => void Linking.openURL('https://usehenad.xyz/docs/terms')} />
-            <TextLink label="Privacy ↗" tone="purple" onPress={() => void Linking.openURL('https://usehenad.xyz/docs/privacy')} />
-            <TextLink label="The contracts ↗" tone="purple" onPress={() => void Linking.openURL('https://usehenad.xyz/docs/contracts')} />
+            <TextLink label="Terms of service ↗" tone="purple" onPress={() => void Linking.openURL(`${SITE}/docs/terms`)} />
+            <TextLink label="Privacy ↗" tone="purple" onPress={() => void Linking.openURL(`${SITE}/docs/privacy`)} />
+            <TextLink label="The contracts ↗" tone="purple" onPress={() => void Linking.openURL(`${SITE}/docs/contracts`)} />
           </View>
         </Card>
 
@@ -95,7 +137,9 @@ export function AboutScreen({ network, onBack }: { network: string; onBack: () =
         </Card>
 
         <View style={s.spacer} />
-        <Button label="Back to account" variant="secondary" onPress={onBack} />
+        <Button label="Sign out of this phone" variant="secondary" onPress={onSignOut} />
+        <Text style={s.fine}>Signing out forgets the account on this phone. Your passkey still opens it, here or on the web.</Text>
+        <Button label="Back to account" variant="secondary" height={44} small onPress={onBack} />
       </View>
     </ScrollView>
   )
@@ -105,9 +149,10 @@ const s = StyleSheet.create({
   scroll: { flexGrow: 1 },
   body: { flex: 1, gap: 12, paddingTop: 20, paddingHorizontal: 16, paddingBottom: 16 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: font.display, fontSize: 28, lineHeight: 30, letterSpacing: track(28, -0.03), color: color.ink },
   card: { padding: 16, gap: 10 },
   help: { fontFamily: font.sans, fontSize: 13, lineHeight: 19, color: color.grey },
+  fine: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.muted },
+  queued: { fontFamily: font.mono, fontSize: 11, color: color.muted, letterSpacing: track(11, 0.02) },
   links: { gap: 8 },
   spacer: { flex: 1, minHeight: 12 },
 })

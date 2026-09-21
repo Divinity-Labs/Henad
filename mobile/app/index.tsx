@@ -10,9 +10,9 @@ import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
 import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
-import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts } from '@/lib/market-alerts'
+import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts, sendTestAlert } from '@/lib/market-alerts'
 import { ProfileScreen } from '@/profile/ProfileScreen'
-import { AboutScreen } from '@/settings/AboutScreen'
+import { SettingsScreen } from '@/settings/SettingsScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
 import { ReceiptsScreen } from '@/receipts/ReceiptsScreen'
@@ -27,7 +27,7 @@ import { BuiltOnMonad, Chip, Header } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
-type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'about'
+type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'settings'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -64,7 +64,11 @@ export default function App() {
   const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null)
   const [receiptsLoading, setReceiptsLoading] = useState(false)
   const [receiptsError, setReceiptsError] = useState<string | null>(null)
-  const [alerts, setAlerts] = useState({ on: false, note: 'Get told when the FX market opens and closes.' })
+  const [alerts, setAlerts] = useState<{ on: boolean; note: string; queued: string[] }>({
+    on: false,
+    note: 'Get told when the FX market opens and closes.',
+    queued: [],
+  })
 
   /** Read the schedule and say, in words, what the next alert will be. */
   const readAlerts = useCallback(async () => {
@@ -76,13 +80,19 @@ export default function App() {
       on: state.count > 0,
       note:
         state.count > 0
-          ? `On. The market is ${state.open ? 'open' : 'closed'} now, and ${what}. That is when your phone will tell you.`
+          ? `On. The market is ${state.open ? 'open' : 'closed'} now, and ${what}. Your phone holds these:`
           : `Off. The market is ${state.open ? 'open' : 'closed'} now, and ${what}.`,
+      // The times the phone is actually holding, so a schedule that never arrived is visible
+      // here rather than only by waiting for it again.
+      queued: state.queued.map((q) => {
+        const d = new Date(q * 1000)
+        return `${d.toUTCString().slice(0, 22)} UTC`
+      }),
     })
   }, [])
 
   useEffect(() => {
-    if (view === 'profile') void readAlerts()
+    if (view === 'settings') void readAlerts()
   }, [view, readAlerts])
 
   const toggleAlerts = useCallback(async () => {
@@ -306,7 +316,7 @@ export default function App() {
     <Header right={<BuiltOnMonad />} />
   )
 
-  const activeTab: Tab | null = view === 'profile' || view === 'about' ? 'account' : view
+  const activeTab: Tab | null = view === 'profile' || view === 'settings' ? 'account' : view
   const selectTab = (tab: Tab) => {
     setError(null)
     // Account without an account is the sign-in screen, which lives under Send.
@@ -335,14 +345,20 @@ export default function App() {
         copied={copied}
         onCopy={copyAddress}
         onRefresh={() => void loadHoldings()}
-        onSignOut={() => void signOut()}
-        alerts={alerts}
-        onToggleAlerts={() => void toggleAlerts()}
-        onAbout={() => setView('about')}
+        onSettings={() => setView('settings')}
       />
     )
-  } else if (view === 'about') {
-    body = <AboutScreen network={network} onBack={() => setView('profile')} />
+  } else if (view === 'settings') {
+    body = (
+      <SettingsScreen
+        network={network}
+        alerts={alerts}
+        onToggleAlerts={() => void toggleAlerts()}
+        onTestAlert={() => void sendTestAlert()}
+        onSignOut={() => void signOut()}
+        onBack={() => setView('profile')}
+      />
+    )
   } else if (view === 'fund' && address) {
     body = <FundScreen address={address} chainId={chainId} network={network} onDone={() => setView('send')} />
   } else if (view === 'receipts') {
