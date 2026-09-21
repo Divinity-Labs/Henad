@@ -5,8 +5,9 @@ export const metadata: Metadata = {
   description: 'The three corridor tiers Henad proposes as the convention for onchain FX receipts on Monad.',
 }
 
-/** Placeholder until the draft's discussion topic is opened: the MIPs category it will live in. */
+/** The MIPs category. The draft's own topic replaces this once it is opened. */
 const FORUM_THREAD = 'https://forum.monad.xyz/c/mips/8'
+const DRAFT = 'https://github.com/Divinity-Labs/Henad/blob/main/docs/MRC-DRAFT.md'
 
 export default function MrcPage() {
   return (
@@ -25,6 +26,13 @@ export default function MrcPage() {
           on the Monad forum ↗
         </a>{' '}
         before it is filed.
+      </p>
+      <p className="pretty m-0 max-w-[520px] text-[16px] leading-[1.6] text-grey">
+        The draft itself proposes the receipt as a standard: a struct, an event, and a read interface, written in the same transaction as the conversion, so
+        the reference rate, the executed rate and the spread in basis points are recorded in one shape across applications rather than one per application.{' '}
+        <a href={DRAFT} target="_blank" rel="noreferrer" className="text-purple">
+          Read the draft ↗
+        </a>
       </p>
     </>
   )

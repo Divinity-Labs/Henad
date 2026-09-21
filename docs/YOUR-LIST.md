@@ -214,10 +214,19 @@ Only if the mainnet payout is done. My read on each:
 - **Mera "One Passkey, Many Keys", $2,500.** A passkey-encrypted address book and private
   receipt memos. Small, and it also solves the stateless test.
 
-### 10. The MRC draft
-It has to be written and posted to forum.monad.xyz before it can be cited. The forum
-thread must exist first, because the standard's `discussions-to` field cannot point at a
-GitHub PR. Say when you want me to draft it.
+### 10. The MRC draft — written; it needs your name and a forum thread
+`docs/MRC-DRAFT.md` is a complete MRC in the MIP-1 shape: abstract, motivation, the
+`IFxReceipt` interface, rationale, the mainnet settlement as a worked test case with
+arithmetic a reader can redo, and security considerations. `/docs/mrc` links it.
+
+Two fields are deliberately `TBD` because only you can fill them:
+
+- **`author:`** — the name you want on a standard, plus `(@Miracle656)`. MRC-14's line
+  reads `Mohsen Ahmadvand (@mr-ma)`.
+- **`discussions-to:`** — open a topic in https://forum.monad.xyz/c/mips/8 with the draft's
+  text, then paste its URL. The field cannot point at a GitHub PR, so the thread has to
+  exist first. The PR to https://github.com/monad-crypto/MIPs comes after that, and the
+  number stays `TBD` until an editor assigns it.
 
 ---
 
