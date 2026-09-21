@@ -50,7 +50,17 @@ Two things that outlive everything else here:
 - The ₦3,652 Truehost charge for `henad.xyz`, which could never complete, is still
   outstanding on invoice 553722.
 
-### 2. Finish the passkey test — creation works, restore is untested
+### 2. One environment variable for the faster ledger
+`/receipts`, `/rates` and the landing page now read the whole ledger from Envio's
+HyperSync in a single request instead of about three RPC calls per receipt. It needs
+**`ENVIO_API_TOKEN_HS`** in Vercel → Settings → Environment Variables → Production. The
+value is already in your local `.env`.
+
+Without it nothing breaks: the pages fall back to reading the chain directly, which is
+what they did yesterday. With it they are roughly a hundred times fewer calls, and the
+ledger stops being capped by what a public RPC will answer.
+
+### 3. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
 Manager under `rpId=localhost`, the ceremony completed: a passkey was created, the PRF
 output derived a key, and the account chip rendered `0xC8C7…2Db6`. The account layer of
@@ -65,7 +75,7 @@ requirement is not really met.
 Note the derivation is deterministic per passkey, so a *second* passkey gives a
 different address. Restore must reuse the first one.
 
-### 3. Pimlico — put money on the account before 25 Sep
+### 4. Pimlico — a card before mainnet sponsorship, though it is no longer blocking
 Your key works. I called the API with it, and the free plan really is free, so your
 dashboard is not lying to you. What it will not do is mainnet.
 
@@ -82,6 +92,11 @@ doubted the Free plan existed. It does, on the docs pricing page: 1,000,000 cred
 month, 500 requests a minute, all testnets, **no mainnets**, no card. Pay-as-you-go is
 $0 a month with a card on file, 10,000,000 credits, and mainnet gas billed at cost plus
 ten percent with a $1,000 monthly threshold.
+
+**It is not blocking.** An unfunded Pimlico account fails with a `sponsorship` error, and
+`settle()` falls back once to the ERC-3009 relayer, which pays the gas itself. The phone
+never asks Pimlico at all. Nobody is ever charged gas from their own wallet. What matters
+instead is the relayer's MON balance, in the money table above.
 
 **What to do:** add a card at https://dashboard.pimlico.io/billing before the week-4
 payout. One payout costs about **0.16 MON** of gas plus their ten percent, so the real

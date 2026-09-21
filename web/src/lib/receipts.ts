@@ -4,6 +4,7 @@ import { HENAD, TOKENS, rateAttestationAbi, spreadCost, type HenadDeployment } f
 import { appChain, appChainId } from './chain'
 import { CORRIDORS, corridorById, type Corridor } from '@henad/core'
 import { SAMPLE_RECEIPT, fixturesEnabled } from './fixtures'
+import { hypersyncEnabled, settlementLogs, type SettlementLog } from './hypersync'
 
 /** A settled payout as the product shows it. Every figure is read from the chain. */
 export interface Receipt {
@@ -124,10 +125,59 @@ export async function getReceipt(intentId: Hex): Promise<Receipt | null> {
   }
 }
 
-/** The whole ledger, newest last. Pages through RateAttestation.intentIdAt without an indexer. */
+/** One settlement event into the receipt the pages render. Everything comes from the log. */
+function fromLog(log: SettlementLog, index: number): Receipt | null {
+  const corridor = corridorById(log.corridor)
+  if (!corridor) return null
+  const a = log.attestation
+  const src = assetInfo(log.sourceAsset)
+  const dst = assetInfo(log.targetAsset)
+  return {
+    intentId: log.intentId,
+    index,
+    corridor,
+    payer: log.payer,
+    recipient: log.recipient,
+    sourceAsset: src,
+    targetAsset: dst,
+    sourceAmount: a.sourceAmount,
+    deliveredAmount: a.deliveredAmount,
+    referenceRate: a.referenceRate,
+    executedRate: a.executedRate,
+    spreadBps: a.spreadBps,
+    spreadCost: spreadCost(a.referenceRate, a.sourceAmount, src.decimals, a.deliveredAmount, dst.decimals),
+    rateSource: a.rateSource,
+    referenceObservation: a.referenceObservation,
+    venue: a.venue,
+    settledAt: Number(a.settledAt),
+    settledAtBlock: a.settledAtBlock,
+    txHash: log.txHash,
+    sample: false,
+  }
+}
+
+/**
+ * The whole ledger, newest last.
+ *
+ * HyperSync first, because it answers in one request what the RPC answers in three per
+ * receipt, and it can read the entire range at once where Monad's public node caps
+ * `eth_getLogs` at a hundred blocks. When it is not configured or not reachable, the
+ * chain itself still answers, one `intentIdAt` at a time.
+ */
 export async function listReceipts(limit = 50): Promise<Receipt[]> {
   const dep = deploymentAddresses()
   if (!dep) return fixturesEnabled() ? [SAMPLE_RECEIPT] : []
+
+  if (hypersyncEnabled()) {
+    const logs = await settlementLogs(appChainId(), dep.rateAttestation, dep.deployedAtBlock)
+    if (logs) {
+      // Index is the settlement's place in the whole ledger, so it is numbered before the
+      // tail is taken: receipt 7 stays receipt 7 on a page that shows the last three.
+      const all = logs.map((l, i) => fromLog(l, i + 1)).filter((r): r is Receipt => r !== null)
+      return all.slice(Math.max(0, all.length - limit))
+    }
+  }
+
   const client = appChain()
   const count = Number(await client.readContract({ address: dep.rateAttestation, abi: rateAttestationAbi, functionName: 'count' }))
   const from = Math.max(0, count - limit)

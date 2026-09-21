@@ -23,9 +23,8 @@ const RAILS: Rail[] = [
   { name: 'Chainlink', mark: 'chainlink', height: 20, label: `${chainlinkTargets} feeds · reference rate` },
   { name: 'Agora', mark: 'agora', height: 18, label: 'AUSD source asset' },
   { name: 'Mera', label: 'Passkey accounts · no seed phrase' },
-  { name: 'Aurora Intents', label: 'Inbound funds from other chains' },
-  { name: 'Envio', label: 'Receipt indexing · planned' },
-  { name: 'Nansen', mark: 'nansen', height: 20, label: 'Wallet labels · planned' },
+  { name: 'PancakeSwap', label: 'MON to stablecoin · top up' },
+  { name: 'Envio', label: 'Receipt history · HyperSync' },
   { name: 'Pyth', label: `${pyth ? `${pyth.source}/${pyth.target} ` : ''}pull feed · evaluated` },
 ]
 
