@@ -60,6 +60,16 @@ Without it nothing breaks: the pages fall back to reading the chain directly, wh
 what they did yesterday. With it they are roughly a hundred times fewer calls, and the
 ledger stops being capped by what a public RPC will answer.
 
+### 2b. Tell Google and Bing the site exists — ten minutes, only you can do it
+The site now serves a sitemap, canonical URLs and structured data, but search engines find
+a new domain slowly on their own.
+
+1. https://search.google.com/search-console → Add property → **Domain** → `usehenad.xyz`.
+   It gives you a TXT record; add it in Truehost → DNS Management, same place as the A
+   record. Then Sitemaps → submit `https://usehenad.xyz/sitemap.xml`.
+2. https://www.bing.com/webmasters → import from Search Console once step 1 verifies. Bing's
+   index also feeds ChatGPT search and Copilot, which is most of the reason to bother.
+
 ### 3. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
 Manager under `rpId=localhost`, the ceremony completed: a passkey was created, the PRF
