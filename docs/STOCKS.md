@@ -58,7 +58,41 @@ the order, the price actually paid, and the difference — which no stock app do
 
 Estimate: **three to four days** if StockRouter's ABI is available.
 
-## The one real blocker: calling StockRouter
+## Verified on a mainnet fork, 22 Sep 2026
+
+StockRouter's source is not verified anywhere (Monadscan shows only the proxy; Sourcify has
+nothing on Monad, Ethereum or Base). Its interface was reconstructed from the bytecode's
+selectors, the public signature database, and Monday Trade's own live transactions, then
+exercised against a fork of Monad mainnet with a test wallet holding forked USDC.
+
+| Selector | Function | How we know |
+| --- | --- | --- |
+| `0x3ae50b73` | `deposit(address token, uint96 rawAmount)` — USDC in 6-decimal units | Signature database; **succeeded on the fork**, 297,592 gas |
+| `0x8c8c3c9d` | `withdraw(address token, uint96 mUsdAmount)` — 18-decimal credit | Signature database; live transactions |
+| `0x27fd8b2b` | `depositStock(address stock, uint256 amount)` | Signature database |
+| `0xc0c16b76` | market buy `(address stock, uint256 notionalUsd18, uint256 deadline)` | Live transactions; **succeeded on the fork**: a $100 aAAPL buy debited 100.11 credit (fee 11 bps), emitted an order event, returned an order id |
+| `0x8c8bc974` | withdraw stock to wallet `(address stock, uint256 amount)` | Live transactions, one block after a fill |
+| `0x20c1b4d6` | limit order `(stock, quantity, price, side, deadline)` | Live transactions matched to oracle prices |
+| `0x0e5d1a7a` / `0x3ed60570` | market / limit sell, depositing the stock in the same call | Live transactions |
+
+Only 50 transactions have touched StockRouter since its latest upgrade, and it has been
+upgraded ten times since April; the contract Henad would call can change without notice.
+
+## The one real blocker: every wallet must be approved by Monday Trade
+
+The first deposit on the fork reverted with **`UserNotApproved`**. StockRouter calls
+`requireCompliant(user)` on a compliance registry at
+`0xF1aeD4E4816a91CebfCBd33378E38962abf73276` before every deposit and order, and wallets are
+added to it only by Monday Trade's operator accounts, in batches (18 so far). Their FAQ says
+RWA trading is not available in the US or China, so approval is presumably the region check
+their own site runs when a wallet connects.
+
+"No KYC" is true; "permissionless" is not. And Henad's passkey accounts cannot connect to
+monday.trade's site to get themselves approved. **This is not solvable in code.** It needs
+Monday Trade to approve wallets onboarded through Henad — a partner arrangement. Everything
+else is verified and ready.
+
+## Previously the blocker: calling StockRouter
 
 Monday Trade's API builds the transaction data for StockRouter. Using that API needs an API
 key bound to one wallet, HMAC-signed requests, and an **exact IP whitelist** — which Henad's
