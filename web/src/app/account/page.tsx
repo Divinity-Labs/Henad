@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import { Nav } from '@/components/Nav'
 import { AccountView } from '@/components/account/AccountView'
 import { MONAD_MAINNET_ID } from '@henad/core'
 import { appChainId, isLocalFork } from '@/lib/chain'
 
-export const metadata: Metadata = { title: 'Account' }
+// One person's address and balances: nothing a search result should ever show.
+export const metadata: Metadata = pageMeta({ title: 'Account', description: 'Your Henad address, its QR code, and what it holds on Monad.', path: '/account', index: false })
 
 /** /account — the signed-in address, its QR code and holdings, in the same column as /send. */
 export default function AccountPage() {

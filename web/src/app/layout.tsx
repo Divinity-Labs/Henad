@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Instrument_Sans, Roboto_Mono } from 'next/font/google'
+import { SiteJsonLd } from '@/components/JsonLd'
+import { DESCRIPTION, SITE_NAME, X_HANDLE } from '@/lib/site'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-inter', display: 'swap' })
@@ -17,12 +19,19 @@ const siteUrl =
   (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined) ??
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
+const HOME_TITLE = 'Henad — cross-border payouts with a public FX receipt'
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: 'Henad', template: '%s · Henad' },
-  description:
-    'Send money abroad. Keep proof of the rate. Cross-border payouts settled through onchain FX on Monad, with the reference rate, the executed rate, and the exact spread on every payment.',
-  applicationName: 'Henad',
+  // The home title carries what the product is, because "Henad" alone is a word nobody
+  // searches for yet. Every other page reads "<Page> · Henad".
+  title: { default: HOME_TITLE, template: '%s · Henad' },
+  description: DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: { canonical: '/' },
+  openGraph: { type: 'website', siteName: SITE_NAME, title: HOME_TITLE, description: DESCRIPTION, url: '/', locale: 'en_GB' },
+  twitter: { card: 'summary_large_image', site: X_HANDLE, creator: X_HANDLE, title: HOME_TITLE, description: DESCRIPTION },
+  category: 'finance',
   manifest: '/manifest.webmanifest',
   // Icons come from src/app/icon.svg and apple-icon.svg (the file-based convention).
   // Never Monad's logomark: it is their trademark, and Henad has its own mark.
@@ -38,7 +47,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${instrument.variable} ${mono.variable}`}>
-      <body className="min-h-dvh bg-canvas text-ink">{children}</body>
+      <body className="min-h-dvh bg-canvas text-ink">
+        <SiteJsonLd />
+        {children}
+      </body>
     </html>
   )
 }

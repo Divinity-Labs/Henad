@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import Link from 'next/link'
+import { Faq } from '@/components/docs/Faq'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Docs',
   description: 'What Henad publishes on every payout, the corridor tiers, and how to fund a payout.',
-}
+  path: '/docs',
+})
 
 export default function DocsPage() {
   return (
@@ -27,6 +30,7 @@ export default function DocsPage() {
         </Link>
         .
       </p>
+      <Faq />
     </>
   )
 }

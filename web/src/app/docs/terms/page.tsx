@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import Link from 'next/link'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Terms',
   description: 'What Henad is, what it is not, and what you take on by using it.',
-}
+  path: '/docs/terms',
+})
 
 const UPDATED = '20 September 2026'
 

@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import Link from 'next/link'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Privacy',
   description: 'What Henad stores, what it cannot store, and what is public on Monad forever.',
-}
+  path: '/docs/privacy',
+})
 
 const UPDATED = '20 September 2026'
 

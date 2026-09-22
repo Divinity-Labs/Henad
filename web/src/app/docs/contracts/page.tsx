@@ -1,11 +1,13 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import { HENAD, MONAD_MAINNET_ID } from '@henad/core'
 import { monadscanAddress } from '@/lib/receipt-page'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Contracts',
   description: 'The Henad contracts on Monad mainnet, their addresses, and exactly what the owner key can do.',
-}
+  path: '/docs/contracts',
+})
 
 const REPO = 'https://github.com/Divinity-Labs/Henad'
 

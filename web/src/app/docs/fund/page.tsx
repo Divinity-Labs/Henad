@@ -1,10 +1,12 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'Funding a payout',
   description: 'What a Henad payout spends, and how to get it onto Monad.',
-}
+  path: '/docs/fund',
+})
 
 export default function FundPage() {
   return (

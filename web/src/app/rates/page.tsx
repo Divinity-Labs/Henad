@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import { Suspense } from 'react'
 import { Nav } from '@/components/Nav'
 import { NavAccount } from '@/components/NavAccount'
@@ -15,7 +16,12 @@ import { CORRIDORS } from '@henad/core'
 import { liveRates } from '@/lib/rates'
 import { settledReceipts, totals } from '@/lib/receipts'
 
-export const metadata: Metadata = { title: 'Rates' }
+export const metadata: Metadata = pageMeta({
+  title: 'Live FX rates on Monad',
+  description:
+    'What a dollar buys in pounds, euros, francs and yen right now, from Chainlink reference feeds on Monad, and the spread every settled payout actually paid against them.',
+  path: '/rates',
+})
 // Read per request: the rate and the receipt are read from the chain, and a build
 // artefact of either would be a number the chain no longer has. liveRates() coalesces
 // concurrent reads for 12 s in process, which is the throttle this used to get from ISR.

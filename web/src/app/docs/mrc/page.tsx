@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMeta({
   title: 'MRC draft',
   description: 'The three corridor tiers Henad proposes as the convention for onchain FX receipts on Monad.',
-}
+  path: '/docs/mrc',
+})
 
 /** The MIPs category. The draft's own topic replaces this once it is opened. */
 const FORUM_THREAD = 'https://forum.monad.xyz/c/mips/8'

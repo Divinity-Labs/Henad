@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import { SendFlow } from '@/components/send/send-flow'
 import type { SendInitial } from '@/components/send/send-reducer'
 import { CORRIDORS, LIVE_CORRIDOR } from '@henad/core'
@@ -7,7 +8,12 @@ import { liveRates } from '@/lib/rates'
 import { settledReceipts } from '@/lib/receipts'
 import { rateToDto, receiptToDto } from '@/lib/send-serial'
 
-export const metadata: Metadata = { title: 'Send' }
+export const metadata: Metadata = pageMeta({
+  title: 'Send money abroad',
+  description:
+    'Send AUSD or USDC and the recipient receives pounds, euros, francs or yen on Monad in one transaction. The rate, the spread and the worst rate you will accept are shown before you sign.',
+  path: '/send',
+})
 
 type Search = Record<string, string | string[] | undefined>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { pageMeta } from '@/lib/site'
 import { Nav } from '@/components/Nav'
 import { NavAccount } from '@/components/NavAccount'
 import { FooterStrip } from '@/components/rates/FooterStrip'
@@ -7,7 +8,12 @@ import { SettlementsBlock } from '@/components/rates/SettlementsLedger'
 import { explorerHref } from '@/components/rates/ledger'
 import { settledReceipts } from '@/lib/receipts'
 
-export const metadata: Metadata = { title: 'Receipts' }
+export const metadata: Metadata = pageMeta({
+  title: 'Every payout, with its spread',
+  description:
+    'The public ledger of Henad payouts on Monad: each one with the reference rate, the executed rate and the spread in basis points, written onchain in the same transaction.',
+  path: '/receipts',
+})
 // Read per request: the rate and the receipt are read from the chain, and a build
 // artefact of either would be a number the chain no longer has. liveRates() coalesces
 // concurrent reads for 12 s in process, which is the throttle this used to get from ISR.
