@@ -133,8 +133,9 @@ export function SettingsScreen({
           </View>
           <TextLink label="Check now" tone="purple" onPress={onCheckNow} />
           <Text style={s.fine}>
-            An hour is the soonest Android will wake the app, not a promise of when: it batches background work and skips it while the phone is dozing. The
-            figures come from the same endpoint the rates screen reads.
+            An hour is the soonest Android will wake the app, not a promise of when: it batches background work, skips it while the phone is dozing, and
+            starts the hour again each time Henad is opened. For it to run at all, set Henad&apos;s battery use to Unrestricted in the phone&apos;s app
+            settings. The figures come from the same endpoint the rates screen reads.
           </Text>
         </Card>
 

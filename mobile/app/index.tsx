@@ -24,7 +24,7 @@ import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
 import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts, sendTestAlert } from '@/lib/market-alerts'
-import { INTERVAL_MINUTES, WATCHABLE, rateWatchState, runRateWatch, setWatchedCorridors, startRateWatch, stopRateWatch } from '@/lib/rate-watch'
+import { INTERVAL_MINUTES, WATCHABLE, rateWatchState, runRateWatch, setWatchedCorridors, startRateWatch, stopRateWatch, watchedKeys } from '@/lib/rate-watch'
 import { ProfileScreen } from '@/profile/ProfileScreen'
 import { SettingsScreen } from '@/settings/SettingsScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
@@ -41,6 +41,15 @@ import { BuiltOnMonad, Chip, Header } from '@/ui'
 import { color } from '@/theme'
 
 type Step = 'signin' | 'amount' | 'quote' | 'sent'
+
+/** "4 min ago", "3 h ago": how stale a background run is, without a date library. */
+function ago(at: number): string {
+  const s = Math.max(0, Math.floor(Date.now() / 1000) - at)
+  if (s < 90) return 'just now'
+  if (s < 90 * 60) return `${Math.round(s / 60)} min ago`
+  if (s < 36 * 3600) return `${Math.round(s / 3600)} h ago`
+  return `${Math.round(s / 86400)} days ago`
+}
 type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'settings'
 
 /**
@@ -114,16 +123,22 @@ export default function App() {
 
   /** What the phone's background scheduler is actually doing, in words. */
   const readWatch = useCallback(async () => {
-    const state = await rateWatchState()
-    const last = state.lastAt ? new Date(state.lastAt * 1000).toUTCString().slice(17, 22) : null
+    const [state, keys] = await Promise.all([rateWatchState(), watchedKeys()])
+    const bg = state.background
+    // Only the background task writes this, so it answers the one question that matters:
+    // has Android actually woken the app, or has every reading so far come from a tap?
+    const background = bg
+      ? `Last background check ${new Date(bg.at * 1000).toUTCString().slice(17, 22)} UTC, ${ago(bg.at)}${bg.outcome === 'failed' ? ', and it could not read the rates' : bg.outcome === 'nothing' ? ', with nothing to report' : ''}.`
+      : 'No background check has run yet. Close Henad and leave it: Android wakes it no sooner than an hour after it was last opened.'
     setWatch((w) => ({
       ...w,
       on: state.on,
       available: state.available,
+      keys,
       note: !state.available
         ? 'This phone will not run background tasks for Henad. Check its battery settings.'
         : state.on
-          ? `On, no sooner than every ${INTERVAL_MINUTES} minutes.${last ? ` Last read ${last} UTC.` : ' Nothing read yet.'}`
+          ? `On, no sooner than every ${INTERVAL_MINUTES} minutes. ${background}`
           : 'Off. Turn it on to be told hourly what a dollar buys, and which way it moved.',
     }))
   }, [])
