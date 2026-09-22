@@ -1,20 +1,18 @@
 # Stocks in Henad — what it would take
 
-Researched 22 Sep 2026. Everything marked **verified** was read from Monad mainnet, not
-from a press release.
+Researched 22 Sep 2026, revised the same day after reading Monday Trade's RWA trading
+docs. Everything marked **verified** was read from Monad mainnet.
 
 ## The short answer
 
-It is technically possible on Monad today without redeploying anything, and it is the
-wrong thing to build before 14 October. The engineering is a week if one partner
-cooperates. The real obstacle is legal: a payout that delivers a stock is a securities
-distribution, and Henad's whole posture — no fiat, no custody, no KYC, software rather
-than an intermediary — does not survive it.
+**It is buildable, as a Stocks page next to Top up, in three to four days** — provided we
+can call Monday Trade's StockRouter directly rather than through their API. It is not a
+payout corridor: stock orders fill later, against the real US market, so the receipt
+cannot be written in the same transaction the way an FX receipt is.
 
-The part worth keeping is the observation underneath: the receipt is asset-agnostic. A
-reference price, an executed price and the spread between them work for a share of Apple
-exactly as they work for a pound. That belongs in the submission as the roadmap and in the
-MRC as its generality, not in the app as a half-built corridor.
+What makes it worth doing is the receipt. Monday Trade publishes an on-chain stock oracle
+with bid and ask. Henad can show, for every purchase, the quoted price at the moment of
+the order, the price actually paid, and the difference — which no stock app does.
 
 ---
 
@@ -22,97 +20,86 @@ MRC as its generality, not in the app as a half-built corridor.
 
 | | Status | Detail |
 | --- | --- | --- |
-| **Anchored aStocks** | **Verified on chain** | 100+ tickers (aAAPL, aNVDA, aTSLA…), plain ERC-20, 18 decimals, same address on Ethereum, Arbitrum, Base and Monad. "Freely transferable", but administrators can pause transfers. `aAAPL` at `0x17683e492d0C8910F7c0157D04af31Cb7A23Ad71` reads back as "Apple aStock". |
-| aAAPL supply on Monad | **Verified** | **44.64 tokens** — about $10k of Apple, in total, on the whole chain. |
-| Where aStocks trade | Press release | Monday Trade (monday.trade): order book plus AMM, live since 16 Apr 2026, "24/5". No documented router or contract addresses for integrators. |
-| aStocks on PancakeSwap | **Verified** | No pool against USDC or AUSD at any fee tier. |
-| Ondo Global Markets, xStocks, Dinari | Not on Monad | Ethereum, Solana, BNB Chain, Arbitrum, Base, TON, Plume. |
-| Chainlink equity feeds on Monad | **Verified: none** | 102 feeds on Monad mainnet: 91 crypto, 5 fiat, 3 tokenized-fund NAVs, 2 commodities. Zero equities. |
-| Pyth equity feeds | Available, with limits | Pyth is deployed on Monad and has ~50 US equity feeds. Since 15 Jun 2026 Pyth Core carries the regular session only; pre-market, after-hours and overnight moved to Pyth Pro at $5,000/month. Pull oracle: someone must post the price update before it can be read. |
-| **Gold: Chainlink XAU/USD** | **Verified** | Live on Monad, `0x61dD33A34E47a181EE02e42eE0546a3DA808f1B4`. Silver too. |
-| **Gold: XAUt0** (Tether Gold) | **Verified** | `0x01bFF41798a0BcF287b996046Ca68b395DbC1071`, 6 decimals, 3,763 oz on Monad. |
-| XAUt0 on PancakeSwap | **Verified: dust** | Pools exist against USDC and AUSD holding 0.000052 XAUt0 and $0.003. Not a venue. |
+| **Anchored aStocks** | **Verified** | 100+ tickers (aAAPL, aNVDA, aTSLA…), plain ERC-20, 18 decimals, same address on Ethereum, Arbitrum, Base and Monad. Freely transferable; the issuer can pause transfers. `aAAPL` = `0x17683e492d0C8910F7c0157D04af31Cb7A23Ad71`, 44.64 tokens on Monad. |
+| **Monday Trade RWA trading** | Docs | Buys and sells aStocks against the real US market through broker partners. **No KYC** (their docs: "RWA Trading on Monday Trade does not require KYC"). Terms under Singapore law. |
+| StockRouter | Docs | `0x4f090d817fd83753988a7b0c1d76f170f8461be8` — the only contract integrators call. Same address on Base, Monad, Ethereum. |
+| Cashier / Stock / OneClickRouter | Docs | `0x8c1b182b…a9` (holds mUSD credit), `0x6d202d2f…ac` (orders and stock balances), `0x102c30ac…65` (optional gasless forwarding via their API). |
+| **StockOracle** | **Verified live** | `0x037848af338c38e1e0ab722be80bf4c2e612a1f7`. `priceId = keccak256("AAPL")`. Read at 13:24 UTC today: **AAPL $340.155**, bid $340.11, ask $340.20, 8 decimals, published 5 minutes earlier. Source quote is about 15 minutes delayed, 10-minute heartbeat. |
+| Cash token on Monad | Docs | **USDC only** (`0x7547…b603`). Not AUSD. |
+| Minimum deposit | Docs | **90 USDC.** |
+| Fees | Docs | Deposit 0. Buy 11 bps (10 third-party, 1 protocol). Sell 1 bps. Withdrawal of cash 21 bps. |
+| Instant limits | Docs | A deposit is instant only up to 20% of the current credit buffer (capacity 20,000 mUSD, so roughly $4,000). Larger ones queue. |
+| Chainlink equity feeds on Monad | **Verified: none** | 102 feeds; none are equities. Not needed — StockOracle covers it. |
+| Gold | **Verified** | Chainlink XAU/USD live on Monad; XAUt0 on Monad (3,763 oz), but PancakeSwap pools hold dust. |
 
-## What it would take to build
+## How a purchase works
 
-Henad's router was built for this kind of extension. A new asset is a new rate source, a
-new venue adapter and one owner-key transaction — no router redeploy.
+1. The user approves USDC to StockRouter.
+2. One transaction deposits USDC (becoming mUSD, a non-transferable trading credit) and
+   places a market buy by dollar amount (`orders/with-deposit`).
+3. The order fills against the traditional market — possibly partially, possibly not at
+   all outside US hours. Settlement is asynchronous; the docs warn not to treat a mined
+   transaction as a filled order.
+4. Bought stock is credited inside Monday Trade's Stock contract. Withdrawing it puts the
+   aStock ERC-20 in the user's own wallet.
 
-1. **A venue adapter for Monday Trade** implementing `IVenueAdapter` (`status`, `quote`,
-   `swap`). **Blocker:** Monday Trade publishes no integrator contracts. This needs their
-   team.
-2. **A rate source backed by Pyth** implementing `IRateSource.getRate`. The relayer would
-   post the Hermes price update in the same transaction as the settlement, because a pull
-   oracle has no price until someone pays to write one. Regular session only, so stock
-   payouts would settle **13:30–20:00 UTC on weekdays** (14:30–21:00 in Lagos), narrower
-   than FX's 24/5.
-3. **Register the corridor**: `registerCorridor(AUSD, aAAPL, corridorId("USD","AAPL"),
-   pythSource, mondayAdapter)` from the deployer key.
-4. **Corporate actions.** Anchored's docs do not say whether one aAAPL stays one Apple
-   share through dividends and splits. If the ratio drifts, the Pyth share price stops
-   being the token's reference and every receipt prints a false spread. **Blocker** until
-   Anchored answers it in writing.
-5. **Liquidity.** There are 44 Apple shares on Monad. A fifty-dollar payout would move the
-   book, and the receipt would honestly show a large spread. Honest, and bad for the product.
-6. **UI and copy**: a corridor tier for equities, market-hours language for the US session,
-   and disclaimers.
+## What Henad would build
 
-Estimate: **four to six days** if Monday Trade provides integrable contracts and Anchored
-answers the corporate-actions question. Unbounded if either does not.
+- **Stocks page, web and mobile**: a short list (Apple, NVIDIA, Tesla…), each price read
+  from StockOracle on chain, with bid, ask and age.
+- **Buy**: USDC in, market order by amount, $90 minimum. AUSD holders swap to USDC first
+  (Henad already routes both).
+- **Holdings**: read the user's balance in the Stock contract, plus aStocks in the wallet;
+  a withdraw-to-wallet button.
+- **The receipt, adapted honestly**: oracle bid, ask and publish time at the moment of the
+  order, the fill price once settled, and the difference in bps. It is computed from chain
+  data after the fill, not written in the order transaction, and it says the oracle quote
+  can be fifteen minutes old — so part of any difference is the market moving, not a fee.
 
-## What it would take legally — the real obstacle
+Estimate: **three to four days** if StockRouter's ABI is available.
 
-- **Tokenized stocks are securities.** Issuers exclude US persons as standard (xStocks by
-  design, under Swiss law); Ondo also excludes the UK and most of the EEA. Anchored says
-  "additional geographic restrictions may apply" without listing them.
-- **Nigeria.** The Investments and Securities Act 2025 puts digital assets with investment
-  characteristics under the SEC. In August 2026 Nigeria approved tokenized securities —
-  through the NASD exchange's platform. An unlicensed app routing people into foreign stock
-  tokens is precisely what the Act regulates.
-- **Henad's own promises.** The landing page says Henad takes no fiat, holds no custody,
-  does no KYC, and "routes between existing licensed on/off ramps; it is not one." A payout
-  that delivers a security makes Henad an investment intermediary almost everywhere. That
-  means geoblocking, KYC, and a lawyer — the opposite of the product.
+## The one real blocker: calling StockRouter
+
+Monday Trade's API builds the transaction data for StockRouter. Using that API needs an API
+key bound to one wallet, HMAC-signed requests, and an **exact IP whitelist** — which Henad's
+Vercel functions cannot provide without paid static IPs, and which does not fit an app with
+many users each holding their own passkey account.
+
+The way around it is to encode StockRouter calls ourselves. That needs its ABI: either its
+source verified on Monadscan, or the ABI from Monday Trade. Until one of those exists, this
+is not buildable safely; guessing calldata for a contract that moves people's money is how
+funds get lost.
+
+## Legal position
+
+Monday Trade operates without KYC under Singapore law, and Henad would be a front end to
+it, the same way Top up is a front end to PancakeSwap. The user signs from their own wallet;
+Henad holds nothing. The common guardrail across these platforms is excluding US persons,
+which is a line in the terms and a notice on the page. Tokenized stocks remain securities,
+and Nigeria's Investments and Securities Act 2025 covers them; this is a risk to take
+knowingly rather than one that disappears.
 
 ## Fit with the submission
 
-- Henad is entered in **Track 02, Consumer Products & Payments**, and chasing Agora's
-  **cross-border payments** bounty. Stocks are Track 01 and trading-bounty territory; Agora
-  runs a separate $10,000 *Best Mobile Trading App* bounty for that. Adding stocks to a
-  payments submission blurs the one thing it does well.
-- Judges reward depth and coherence over features that follow the week's narrative.
+A Stocks page sits beside payouts rather than inside them, so it does not blur the payments
+pitch if it is framed as "the receipt, pointed at a second asset": the same promise that
+the cost of a conversion is public, applied to buying Apple.
 
-## The version that does fit, later
+## Next step
 
-**"Send someone a share."** A cross-border payout that arrives as a stock, with a receipt
-showing the reference price and the price actually paid. It uses the same receipt, the same
-router and the same promise — that the cost of the conversion is public. Gold is the closer
-first step: its reference feed is already Chainlink on Monad, the same oracle family as
-every current corridor, and XAUt0 is on the chain. What gold lacks is a venue with depth.
-
-## Recommendation
-
-Do not build it before 14 October. Say it in the submission instead:
-
-> The receipt is asset-agnostic. Anchored's tokenized stocks and Tether Gold are already on
-> Monad; once there is liquidity to route through and a legal perimeter to operate in, a
-> stock or gold payout is a new rate source and a new venue adapter away, with no change to
-> the router or the receipt.
+Get StockRouter's ABI. Check `https://monadscan.com/address/0x4f090d817fd83753988a7b0c1d76f170f8461be8#code`;
+if it is not verified, ask in Monday Trade's Discord, which their docs name as the place for
+integration questions.
 
 ## Sources
 
+- Monday Trade RWA API docs (via their GitBook MCP): https://docs.monday.trade/rwa-trading-apis/getting-started/product-and-contracts
+- Environments and contracts: https://docs.monday.trade/rwa-trading-apis/reference/environments-and-chains
+- Stock oracle: https://docs.monday.trade/rwa-trading-apis/market-data/stock-oracle
+- Orders with deposit: https://docs.monday.trade/rwa-trading-apis/trading/place-and-cancel-orders
+- API authentication and IP whitelist: https://docs.monday.trade/rwa-trading-apis/authentication/headers-and-permissions
+- RWA fees and KYC: https://docs.monday.trade/rwa-trading/faqs-for-rwas
 - Anchored tokens: https://docs.anchored.finance/getting-started/anchored-tokens
-- Anchored launch: https://www.businesswire.com/news/home/20260416940316/en/Anchored-Launches-US-Tokenized-Stocks-to-Expand-Global-Investor-Access
-- Anchored and Alpaca: https://alpaca.markets/blog/anchored-finance-launches-us-tokenized-stocks-to-expand-global-investor-access/
-- Monday Trade on Monad: https://www.prnewswire.com/news-releases/monday-trade-brings-top-nasdaq-stocks-on-chain-launching-first-tokenized-stock-trading-on-monad-network-powered-by-anchored-302744659.html
-- Monday Trade docs: https://docs.monday.trade/
 - Chainlink feeds on Monad: https://reference-data-directory.vercel.app/feeds-monad-mainnet.json
-- Chainlink tokenized equity feeds: https://docs.chain.link/data-feeds/tokenized-equity-feeds
-- Pyth extended-hours change: https://www.pyth.network/blog/extended-hours-us-equity-data-moves-to-pyth-pro
-- Pyth market hours: https://docs.pyth.network/price-feeds/core/market-hours
-- Ondo eligibility: https://docs.ondo.finance/ondo-global-markets/eligibility
-- Ondo chains: https://thedefiant.io/converge/defi/ondo-finance-adds-173-tokenized-stocks-etfs-430-assets-three-chains
-- xStocks restrictions: https://eco.com/support/en/articles/15254023-tokenized-equities-2026-backed-dinari-robinhood
 - Nigeria ISA 2025: https://cryptoslate.com/crypto-laws/nigeria-investments-securities-act-2025-virtual-digital-assets/
-- Nigeria tokenized assets approval: https://www.bloomberg.com/news/articles/2026-08-04/nigeria-approves-tokenized-assets-to-boost-capital-market-growth
 - Monad token list (XAUt0): https://raw.githubusercontent.com/monad-crypto/token-list/main/tokenlist-mainnet.json
