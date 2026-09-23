@@ -2,11 +2,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { color, font, track } from '@/theme'
 
-export type Tab = 'send' | 'fund' | 'rates' | 'receipts' | 'account'
+export type Tab = 'send' | 'fund' | 'earn' | 'rates' | 'receipts' | 'account'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'send', label: 'Send' },
   { key: 'fund', label: 'Top up' },
+  { key: 'earn', label: 'Earn' },
   { key: 'rates', label: 'Rates' },
   { key: 'receipts', label: 'Receipts' },
   { key: 'account', label: 'Account' },
@@ -28,6 +29,13 @@ function Icon({ tab, tint }: { tab: Tab; tint: string }) {
           {/* Two arrows swapping, the universal mark for an exchange. */}
           <Path d="M4.5 9h12m0 0-3-3m3 3-3 3" {...stroke} />
           <Path d="M19.5 15h-12m0 0 3 3m-3-3 3-3" {...stroke} />
+        </>
+      )}
+      {tab === 'earn' && (
+        <>
+          {/* Coins stacking: money that sits still and grows, rather than moving. */}
+          <Path d="M5 8.5h9M5 12h9M5 15.5h9" {...stroke} />
+          <Path d="M17 17V9m0 0-2.2 2.2M17 9l2.2 2.2" {...stroke} />
         </>
       )}
       {tab === 'rates' && (

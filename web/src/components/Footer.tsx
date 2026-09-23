@@ -6,7 +6,7 @@ const REPO = 'https://github.com/Divinity-Labs/Henad'
 const LEDGER = 'https://monadscan.com/address/0xCA9536F48Ac5C1673c7D7B20D4E76056Fc4fE3B1'
 
 const cols = [
-  { items: [['/send', 'Send'], ['/top-up', 'Top up'], ['/rates', 'Rates'], ['/receipts', 'Receipts']] },
+  { items: [['/send', 'Send'], ['/top-up', 'Top up'], ['/earn', 'Earn'], ['/rates', 'Rates'], ['/receipts', 'Receipts']] },
   {
     items: [
       ['/docs/mrc', 'MRC draft'],

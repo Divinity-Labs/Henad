@@ -24,6 +24,7 @@ const RAILS: Rail[] = [
   { name: 'Agora', mark: 'agora', height: 18, label: 'AUSD source asset' },
   { name: 'Mera', label: 'Passkey accounts · no seed phrase' },
   { name: 'PancakeSwap', label: 'MON to stablecoin · top up' },
+  { name: 'Upshift', label: 'earnAUSD vault · Earn' },
   { name: 'Envio', label: 'Receipt history · HyperSync' },
   { name: 'Pyth', label: `${pyth ? `${pyth.source}/${pyth.target} ` : ''}pull feed · evaluated` },
 ]

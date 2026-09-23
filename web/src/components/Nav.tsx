@@ -9,6 +9,7 @@ import { Button } from './ui/Button'
 const LINKS = [
   { href: '/send', label: 'Send' },
   { href: '/top-up', label: 'Top up' },
+  { href: '/earn', label: 'Earn' },
   { href: '/rates', label: 'Rates' },
   { href: '/receipts', label: 'Receipts' },
   { href: '/account', label: 'Account' },

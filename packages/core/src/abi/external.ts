@@ -184,3 +184,42 @@ export const pancakeSwapRouterAbi = [
     outputs: [{ name: 'amountOut', type: 'uint256' }],
   },
 ] as const
+
+/**
+ * Upshift's vault, as much of it as Henad calls.
+ *
+ * Reconstructed from the deployed implementation's selectors and exercised against a fork:
+ * deposit, previewDeposit, instantRedeem, and the reads a screen needs to state the terms
+ * before anyone signs. The queued redemption path (requestRedeem, claim) is deliberately
+ * absent — Henad offers the instant exit, whose fee is a number it can show.
+ */
+export const upshiftVaultAbi = [
+  { type: 'function', name: 'asset', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] },
+  { type: 'function', name: 'getSharePrice', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'getTotalAssets', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'instantRedemptionFee', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  { type: 'function', name: 'depositsPaused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'withdrawalsPaused', stateMutability: 'view', inputs: [], outputs: [{ type: 'bool' }] },
+  { type: 'function', name: 'maxDepositAmount', stateMutability: 'view', inputs: [], outputs: [{ type: 'uint256' }] },
+  {
+    type: 'function',
+    name: 'previewDeposit',
+    stateMutability: 'view',
+    inputs: [{ name: 'asset', type: 'address' }, { name: 'amount', type: 'uint256' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'deposit',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'asset', type: 'address' }, { name: 'amount', type: 'uint256' }, { name: 'receiver', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'instantRedeem',
+    stateMutability: 'nonpayable',
+    inputs: [{ name: 'shares', type: 'uint256' }, { name: 'receiver', type: 'address' }],
+    outputs: [{ type: 'uint256' }],
+  },
+] as const

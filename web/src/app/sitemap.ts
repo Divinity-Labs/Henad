@@ -11,6 +11,7 @@ const PAGES: { path: string; priority: number; changeFrequency: 'hourly' | 'dail
   { path: '/rates', priority: 0.8, changeFrequency: 'hourly' },
   { path: '/receipts', priority: 0.8, changeFrequency: 'hourly' },
   { path: '/top-up', priority: 0.6, changeFrequency: 'weekly' },
+  { path: '/earn', priority: 0.7, changeFrequency: 'daily' },
   { path: '/docs', priority: 0.7, changeFrequency: 'weekly' },
   { path: '/docs/contracts', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/docs/mrc', priority: 0.6, changeFrequency: 'monthly' },

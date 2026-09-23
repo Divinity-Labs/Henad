@@ -74,6 +74,24 @@ export const MENTO_MAINNET = {
  * bytecode and reverts. The router is payable and wraps MON itself, so no approval is needed
  * when spending native MON.
  */
+/**
+ * Upshift's earnAUSD vault on Monad: AUSD in, a share token out, the yield accruing in the
+ * share price rather than in your balance.
+ *
+ * Verified on a fork of mainnet on 23 Sep 2026: 1,000 AUSD deposited returned 958.864077
+ * shares at a share price of 1.042895, and redeeming them instantly returned 997.995328
+ * AUSD — the 0.2% instant-exit fee and nothing else. There is no whitelist and no gate.
+ *
+ * `shareToken` is a LayerZero OFT, so the same shares exist on other chains; the vault
+ * itself is what mints and burns them here.
+ */
+export const UPSHIFT_MAINNET = {
+  vault: '0x36eDbF0C834591BFdfCaC0Ef9605528c75c406aA',
+  shareToken: '0x103222f020e98Bba0AD9809A011FDF8e6F067496',
+  /** Both the asset and the share carry 6 decimals. */
+  decimals: 6,
+} as const
+
 export const PANCAKE_MAINNET = {
   swapRouter: '0x1b81D678ffb9C0263b24A97847620C99d213eB14',
   quoterV2: '0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997',

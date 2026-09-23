@@ -30,6 +30,7 @@ import { SettingsScreen } from '@/settings/SettingsScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
 import { ReceiptsScreen } from '@/receipts/ReceiptsScreen'
+import { EarnScreen } from '@/earn/EarnScreen'
 import { FundScreen } from '@/fund/FundScreen'
 import { RatesScreen } from '@/rates/RatesScreen'
 import { AmountStep } from '@/send/AmountStep'
@@ -50,7 +51,7 @@ function ago(at: number): string {
   if (s < 36 * 3600) return `${Math.round(s / 3600)} h ago`
   return `${Math.round(s / 86400)} days ago`
 }
-type View_ = 'send' | 'fund' | 'rates' | 'receipts' | 'profile' | 'settings'
+type View_ = 'send' | 'fund' | 'earn' | 'rates' | 'receipts' | 'profile' | 'settings'
 
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
@@ -501,6 +502,8 @@ export default function App() {
     )
   } else if (view === 'fund' && address) {
     body = <FundScreen address={address} chainId={chainId} network={network} onDone={() => setView('send')} />
+  } else if (view === 'earn' && address) {
+    body = <EarnScreen address={address} network={network} />
   } else if (view === 'receipts') {
     body = (
       <ReceiptsScreen
