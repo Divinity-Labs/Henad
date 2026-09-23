@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { formatUnits, parseEther, type Hex } from 'viem'
-import { SOURCE_ASSETS, type SourceAssetSymbol } from '@henad/core'
+import { SOURCE_ASSETS, describeTxFailure, type SourceAssetSymbol } from '@henad/core'
 import { Button } from '@/components/ui/Button'
 import { TokenIcon } from '@/components/ui/TokenIcon'
 import { Card, Notice, StepHeader } from '@/components/send/send-ui'
@@ -119,7 +119,8 @@ export function FundView({ network }: { network: string }) {
       setAmount('')
       setQuote(null)
     } catch (e) {
-      setError(`${e instanceof Error ? e.message : 'The swap failed.'} Nothing moved.`)
+      console.error('[top-up]', e)
+      setError(describeTxFailure(e).message)
     } finally {
       account.end()
       setBusy(false)

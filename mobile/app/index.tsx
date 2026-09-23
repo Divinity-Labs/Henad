@@ -10,6 +10,7 @@ import {
   MAX_SPREAD_MAX,
   MAX_SPREAD_MIN,
   corridorsFor,
+  describeTxFailure,
   isFxMarketOpen,
   quoteMaths,
   settleableFrom,
@@ -393,7 +394,8 @@ export default function App() {
       setStep('sent')
       void loadRates()
     } catch (e) {
-      setError(`${e instanceof Error ? e.message : 'Settlement failed.'} Nothing moved.`)
+      console.error('[settle]', e)
+      setError(`${describeTxFailure(e).message} Nothing moved.`)
     } finally {
       setBusy(false)
     }

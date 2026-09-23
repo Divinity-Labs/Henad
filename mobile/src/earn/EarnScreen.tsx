@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { parseUnits, type Address, type Hex } from 'viem'
+import { describeTxFailure } from '@henad/core'
 import { explorerTx } from '@/lib/display'
 import { approveVault, depositAusd, previewDeposit, readEarnState, readVaultAllowance, redeemShares, redeemValue, type EarnState } from '@/lib/earn'
 import { readBalance } from '@/lib/balance'
+import { readMonBalance } from '@/lib/swap'
 import { appChain, appChainId } from '@/lib/config'
 import { unlockStoredAccount, describeAccountError } from '@/lib/mera'
 import { Button, Card, Dashed, ErrorText, Eyebrow, Line, TextLink } from '@/ui'
@@ -12,6 +14,9 @@ import { units as fmt } from '@/send/format'
 import { TokenIcon } from '@/tokens/TokenIcon'
 
 const DECIMALS = 6
+
+/** Below this much MON an account cannot pay for its own transaction. Two transactions' worth. */
+const GAS_FLOOR = 2_000_000_000_000_000n
 
 /**
  * Earn: AUSD that is not being sent, working in Upshift's earnAUSD vault.
@@ -23,6 +28,7 @@ const DECIMALS = 6
 export function EarnScreen({ address, network }: { address: Address; network: string }) {
   const [state, setState] = useState<EarnState | null>(null)
   const [ausd, setAusd] = useState<bigint | null>(null)
+  const [mon, setMon] = useState<bigint | null>(null)
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
   const [shares, setShares] = useState<bigint | null>(null)
@@ -39,11 +45,12 @@ export function EarnScreen({ address, network }: { address: Address; network: st
   useEffect(() => {
     let alive = true
     const read = () =>
-      Promise.all([readEarnState(address), readBalance(address, 'AUSD')]).then(
-        ([s, b]) => {
+      Promise.all([readEarnState(address), readBalance(address, 'AUSD'), readMonBalance(address)]).then(
+        ([s, b, m]) => {
           if (!alive) return
           setState(s)
           setAusd(b)
+          setMon(m)
         },
         () => {},
       )
@@ -72,8 +79,11 @@ export function EarnScreen({ address, network }: { address: Address; network: st
   }, [units, depositing])
 
   const available = state ? redeemValue(state.shares, state.sharePrice, state.instantFeeBps) : null
+  // Gas is paid in MON by this account. Saying so first beats explaining a failure after.
   const blocker =
-    units === null
+    mon !== null && mon < GAS_FLOOR
+      ? 'This account needs a little MON for the network fee. Top up first.'
+      : units === null
       ? depositing
         ? 'Enter an amount of AUSD.'
         : 'Enter an amount to withdraw.'
@@ -92,9 +102,16 @@ export function EarnScreen({ address, network }: { address: Address; network: st
     setBusy(true)
     setError(null)
     setTxHash(null)
+    let account
     try {
-      const account = await unlockStoredAccount()
-      try {
+      account = await unlockStoredAccount()
+    } catch (e) {
+      setError(describeAccountError(e))
+      setBusy(false)
+      return
+    }
+    try {
+      {
         if (depositing) {
           // Approve only this deposit: the vault can be upgraded, so a standing unlimited
           // allowance would outlive the code it was granted to.
@@ -113,12 +130,12 @@ export function EarnScreen({ address, network }: { address: Address; network: st
         }
         setAmount('')
         setShares(null)
-      } finally {
-        account.end()
       }
     } catch (e) {
-      setError(`${describeAccountError(e)} Nothing moved.`)
+      console.error('[earn]', e)
+      setError(describeTxFailure(e).message)
     } finally {
+      account.end()
       setBusy(false)
     }
   }

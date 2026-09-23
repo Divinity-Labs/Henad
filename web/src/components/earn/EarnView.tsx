@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { parseUnits, type Hex } from 'viem'
+import { describeTxFailure } from '@henad/core'
 import { Button } from '@/components/ui/Button'
 import { TokenIcon } from '@/components/ui/TokenIcon'
 import { Card, Notice, StepHeader } from '@/components/send/send-ui'
@@ -9,9 +10,13 @@ import { appChain } from '@/lib/chain'
 import { money, tokens } from '@/lib/format'
 import { describeAccountError, readBalance, unlockStoredAccount } from '@/lib/send-mera'
 import { approveVault, depositAusd, previewDeposit, readEarnState, readVaultAllowance, redeemShares, redeemValue, type EarnState } from '@/lib/earn'
+import { readMonBalance } from '@/lib/swap'
 import { useStoredAddress } from '@/lib/use-stored-address'
 
 const DECIMALS = 6
+
+/** Below this much MON, a deposit cannot pay for its own gas. Two transactions' worth. */
+const GAS_FLOOR = 2_000_000_000_000_000n
 
 /**
  * Earn: AUSD that is not being sent, put to work in Upshift's earnAUSD vault.
@@ -26,6 +31,8 @@ export function EarnView({ network }: { network: string }) {
   const address = useStoredAddress()
   const [state, setState] = useState<EarnState | null>(null)
   const [ausd, setAusd] = useState<bigint | null>(null)
+  const [mon, setMon] = useState<bigint | null>(null)
+  const [needsGas, setNeedsGas] = useState(false)
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
   const [amount, setAmount] = useState('')
   const [shares, setShares] = useState<bigint | null>(null)
@@ -36,11 +43,16 @@ export function EarnView({ network }: { network: string }) {
   useEffect(() => {
     let live = true
     const read = () =>
-      Promise.all([readEarnState(address ?? null), address ? readBalance(address, 'AUSD') : Promise.resolve(null)]).then(
-        ([s, b]) => {
+      Promise.all([
+        readEarnState(address ?? null),
+        address ? readBalance(address, 'AUSD') : Promise.resolve(null),
+        address ? readMonBalance(address) : Promise.resolve(null),
+      ]).then(
+        ([s, b, m]) => {
           if (!live) return
           setState(s)
           setAusd(b)
+          setMon(m)
         },
         () => {},
       )
@@ -75,9 +87,14 @@ export function EarnView({ network }: { network: string }) {
   const overBalance =
     units !== null && (depositing ? ausd !== null && units > ausd : state !== null && units > (state.value * BigInt(10_000 - state.instantFeeBps)) / 10_000n)
 
+  // Every transaction here is paid for in MON by the account itself. Saying so before the
+  // button is pressed is better than explaining a failure afterwards.
+  const noGas = mon !== null && mon < GAS_FLOOR
   const blocker = !address
     ? 'Sign in first.'
-    : units === null
+    : noGas
+      ? 'This account needs a little MON to pay the network fee.'
+      : units === null
       ? depositing
         ? 'Enter an amount of AUSD.'
         : 'Enter an amount to withdraw.'
@@ -95,6 +112,7 @@ export function EarnView({ network }: { network: string }) {
     if (units === null || !address || !state) return
     setBusy(true)
     setError(null)
+    setNeedsGas(false)
     setTxHash(null)
     let account
     try {
@@ -126,7 +144,10 @@ export function EarnView({ network }: { network: string }) {
       setAmount('')
       setShares(null)
     } catch (e) {
-      setError(`${e instanceof Error ? e.message : 'The transaction failed.'} Nothing moved.`)
+      console.error('[earn]', e)
+      const failure = describeTxFailure(e)
+      setError(failure.message)
+      setNeedsGas(failure.needsGas)
     } finally {
       account.end()
       setBusy(false)
@@ -239,7 +260,19 @@ export function EarnView({ network }: { network: string }) {
         </p>
       </Card>
 
-      {error && <Notice>{error}</Notice>}
+      {error && (
+        <Notice>
+          {error}
+          {needsGas && (
+            <>
+              {' '}
+              <a href="/top-up" className="text-purple">
+                Top up with MON ↗
+              </a>
+            </>
+          )}
+        </Notice>
+      )}
       {txHash && !error && (
         <Notice tone="info">
           {depositing ? 'Deposited. Your shares are in your own account.' : 'Withdrawn. The AUSD is back in your account.'}{' '}

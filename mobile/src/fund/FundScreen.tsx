@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { formatUnits, parseEther, type Address, type Hex } from 'viem'
-import { SOURCE_ASSETS } from '@henad/core'
+import { SOURCE_ASSETS, describeTxFailure } from '@henad/core'
 import { explorerTx } from '@/lib/display'
 import { quoteMonForStable, readMonBalance, stableToken, swapMonForStable, type SwapQuote } from '@/lib/swap'
 import { unlockStoredAccount, describeAccountError } from '@/lib/mera'
@@ -94,18 +94,23 @@ export function FundScreen({ address, chainId, network, onDone }: { address: Add
     setBusy(true)
     setError(null)
     setTxHash(null)
+    let account
     try {
-      const account = await unlockStoredAccount()
-      try {
-        setTxHash(await swapMonForStable(account.account, fresh, symbol))
-        setAmount('')
-        setQuote(null)
-      } finally {
-        account.end()
-      }
+      account = await unlockStoredAccount()
     } catch (e) {
-      setError(`${describeAccountError(e)} Nothing moved.`)
+      setError(describeAccountError(e))
+      setBusy(false)
+      return
+    }
+    try {
+      setTxHash(await swapMonForStable(account.account, fresh, symbol))
+      setAmount('')
+      setQuote(null)
+    } catch (e) {
+      console.error('[top-up]', e)
+      setError(describeTxFailure(e).message)
     } finally {
+      account.end()
       setBusy(false)
     }
   }

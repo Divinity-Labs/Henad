@@ -2,7 +2,7 @@
 
 import { useEffect, useReducer } from 'react'
 import { isAddress, toHex } from 'viem'
-import { MONAD_MAINNET_ID, hashIntent, type Intent } from '@henad/core'
+import { MONAD_MAINNET_ID, describeTxFailure, hashIntent, type Intent } from '@henad/core'
 import { Nav } from '@/components/Nav'
 import { BuiltOnMonad } from '@/components/ui/Brand'
 import { Button } from '@/components/ui/Button'
@@ -149,7 +149,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
       if (!res.ok || 'error' in body) throw new Error('error' in body ? body.error : `The quote failed (${res.status}). Try again.`)
       dispatch({ type: 'quoted', quote: body })
     } catch (e) {
-      dispatch({ type: 'fail', message: e instanceof Error ? e.message : 'The quote failed. Try again.' })
+      console.error('[quote]', e)
+      dispatch({ type: 'fail', message: describeTxFailure(e).message })
     }
   }
 
@@ -187,8 +188,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
       settled = await settle(intent, acc.account, { chainId, router: deployment.corridorRouter })
       if (settled.intentId.toLowerCase() !== intentId.toLowerCase()) throw new Error('The transport settled a different intent from the one you approved.')
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Settlement failed.'
-      dispatch({ type: 'fail', message: `${msg} Nothing moved.` })
+      console.error('[settle]', e)
+      dispatch({ type: 'fail', message: `${describeTxFailure(e).message} Nothing moved.` })
       return
     } finally {
       acc.end()
