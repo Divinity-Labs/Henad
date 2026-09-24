@@ -7,3 +7,9 @@
 # is mainnet's and the broadcast is real, so only `localFork` separates these addresses
 # from the ones on Monad. See script/Deploy.s.sol:isLocalFork.
 *.local.json
+
+# Broadcasts that have not been confirmed on chain. forge writes files while it executes
+# the script, before it sends anything, so these name addresses that may never have got
+# code. `--sig "confirm()"` checks them and writes the real record. See
+# script/DeployClaims.s.sol.
+*.pending.json
