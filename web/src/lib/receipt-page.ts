@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import type { Hex } from 'viem'
-import { money, shortAddress, tokens } from './format'
+import { money, tokens } from './format'
 import { getReceipt, type Receipt } from './receipts'
 
 /**
@@ -59,12 +59,16 @@ export function spreadSentence(r: Receipt): string {
   return r.spreadCost < 0n ? `The rate beat the reference by ${cost}.` : `The spread was ${cost}.`
 }
 
-/** The verification headline. There are no names in the data layer, so the recipient is its short address. */
-export function headline(r: Receipt): string {
+/**
+ * The verification headline after its subject: "received £78.25 for $100.00. …". The subject
+ * is the recipient as the viewer knows them, which only the viewer's browser can say, so the
+ * page renders it separately; the full account number stays in the field list below.
+ */
+export function receivedLine(r: Receipt): string {
   const c = r.corridor
   const got = tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, c.currencyDp)
   const paid = money(r.sourceAmount, r.sourceAsset.decimals, '$')
-  return `${shortAddress(r.recipient)} received ${got} for ${paid}. ${spreadSentence(r)} Anyone can check.`
+  return `received ${got} for ${paid}. ${spreadSentence(r)} Anyone can check.`
 }
 
 const MONADSCAN = 'https://monadscan.com'

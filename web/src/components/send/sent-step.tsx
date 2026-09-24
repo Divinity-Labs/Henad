@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Receipt } from '@/lib/receipts'
 import { ReceiptSlip } from '@/components/ReceiptSlip'
 import { Button } from '@/components/ui/Button'
@@ -15,6 +16,7 @@ export function SentStep({
   explorerTx,
   maxSpreadBps,
   notice,
+  contactOffer,
   onShare,
   onAgain,
 }: {
@@ -23,6 +25,8 @@ export function SentStep({
   /** the cap the payer approved; null for the fixture, which has none */
   maxSpreadBps: number | null
   notice: string | null
+  /** "Save as a contact", when the account just paid is not one yet */
+  contactOffer?: ReactNode
   onShare: () => void
   onAgain: () => void
 }) {
@@ -45,6 +49,7 @@ export function SentStep({
           <ReceiptSlip receipt={receipt} size="md" animate maxSpreadBps={maxSpreadBps ?? undefined} />
         </div>
         <div className="flex-1" />
+        {contactOffer && <div className="pb-3">{contactOffer}</div>}
         {notice && <Notice tone="info">{notice}</Notice>}
         <div className="flex gap-2 pb-4 pt-2">
           <Button variant="primary" size="xl" className="flex-1" onClick={onShare}>
@@ -52,11 +57,11 @@ export function SentStep({
           </Button>
           {explorerTx ? (
             <Button variant="secondary" size="xl" className="flex-1" href={explorerTx} external>
-              Monadscan ↗
+              Public record ↗
             </Button>
           ) : (
             <Button variant="disabled" size="xl" className="flex-1">
-              Monadscan ↗
+              Public record ↗
             </Button>
           )}
         </div>

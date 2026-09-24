@@ -1,15 +1,22 @@
-import { useEffect, useRef } from 'react'
-import { Animated, Easing, Linking, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Easing, Linking, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native'
 import type { Hex } from 'viem'
-import type { Corridor } from '@henad/core'
+import { cleanName, type Corridor } from '@henad/core'
 import { receiptUrl } from '@/lib/api'
+import { sourceLine, type Recipient, type RecipientSource } from '@/lib/contacts'
 import { dateTimeStamp, explorerTx, moneyText, rateLineText, tokenText } from '@/lib/display'
-import { Button, Dashed, HenadMark } from '@/ui'
+import { Button, Card, Dashed, Eyebrow, HenadMark } from '@/ui'
 import { color, font, track } from '@/theme'
 import { shortId, units } from './format'
 
 /** Everything the printed receipt shows. Nulls are figures the chain has not yet returned. */
 export interface SentReceipt {
+  /**
+   * The corridor this payment settled in, fixed when it was sent. The send screen's corridor
+   * can change while a payment is in flight, and a receipt read from live state would then
+   * print the wrong currency and decimals.
+   */
+  corridor: Corridor
   intentId: Hex
   txHash: Hex
   chainId: number
@@ -17,7 +24,11 @@ export interface SentReceipt {
   settledAt: number | null
   block: bigint | null
   finalMs: number | null
-  recipient: string
+  /**
+   * Who was paid, as they were chosen when the payment was signed. The screen is named from this
+   * and never from the send screen's current choice, which can change while a payment is in flight.
+   */
+  to: Recipient
   sourceAmount: bigint
   sourceSymbol: string
   sourceDecimals: number
@@ -36,9 +47,35 @@ export interface SentReceipt {
  * "Final in" is measured on this device, from the tap to the transaction receipt arriving,
  * rather than copied from the canvas. When the chain has not answered, the figure is left
  * out instead of guessed.
+ *
+ * The receipt names the recipient the way the payer knows them, and prints the full account
+ * number lower down with the other figures someone might check. Anyone the payer has not saved
+ * is offered as a contact here, after the money has moved and never before: a contact is the
+ * one name Henad trusts, so it is only ever made by the payer, about someone they have paid.
  */
-export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentReceipt; onDone: () => void }) {
+export function SentStep({
+  corridor,
+  r,
+  to,
+  saved,
+  onSaveContact,
+  onDone,
+}: {
+  corridor: Corridor
+  r: SentReceipt
+  to: { label: string; source: RecipientSource }
+  /** The recipient is already one of the payer's contacts. */
+  saved: boolean
+  onSaveContact: (name: string) => void
+  onDone: () => void
+}) {
   const td = corridor.targetAsset?.decimals ?? 18
+  // Prefilled with what the screen already calls them; the field selects it all on focus, so
+  // "Account 2EA1…EAA6" is one keystroke from being a real name. A name from a link is prefilled
+  // too, but the card says where it came from: saving is the one step that turns the link's
+  // claim into a name Henad trusts.
+  const [name, setName] = useState(to.label)
+  const [savedAs, setSavedAs] = useState<string | null>(null)
   const feed = useRef(new Animated.Value(0)).current
   const stamp = useRef(new Animated.Value(0)).current
   const toast = useRef(new Animated.Value(0)).current
@@ -54,7 +91,9 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
     ]).start()
   }, [feed, stamp, toast])
 
-  const final = r.finalMs !== null ? `final in ${(r.finalMs / 1000).toFixed(1)} s` : 'broadcast'
+  const final = r.finalMs !== null ? `final in ${(r.finalMs / 1000).toFixed(1)} s` : 'confirming'
+  // A block number already says it landed, so "confirming" is not printed beside one.
+  const blockLine = r.block === null ? '—' : r.finalMs !== null ? `${r.block.toLocaleString('en-US')} · ${final}` : r.block.toLocaleString('en-US')
   const url = receiptUrl(r.intentId)
 
   return (
@@ -82,7 +121,7 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
                 <Text style={s.receiptNo}>{`SETTLEMENT RECEIPT${r.index !== null ? ` · #${r.index}` : ''}`}</Text>
               </View>
               <View style={s.rowBetween}>
-                <Text style={s.small}>{`${r.sourceSymbol} → ${corridor.targetAsset?.symbol ?? corridor.target} · Monad`}</Text>
+                <Text style={s.small}>{`${r.sourceSymbol} → ${corridor.targetAsset?.symbol ?? corridor.target}`}</Text>
                 <Text style={s.small}>{r.settledAt ? dateTimeStamp(r.settledAt) : ''}</Text>
               </View>
               <Dashed />
@@ -94,7 +133,8 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
               <View style={s.deliveredBlock}>
                 <Text style={s.label}>DELIVERED</Text>
                 <Text style={s.deliveredAmount}>{tokenText(r.delivered, td, corridor.targetAsset?.symbol ?? corridor.target, corridor.currencyDp)}</Text>
-                <Text style={s.small}>{`to ${r.recipient.slice(0, 6)}…${r.recipient.slice(-4)}`}</Text>
+                <Text style={s.small}>{`to ${to.label}`}</Text>
+                {to.source === 'link' ? <Text style={[s.small, s.claim]}>{sourceLine('link')}</Text> : null}
                 <Animated.View
                   style={[
                     s.stamp,
@@ -107,18 +147,54 @@ export function SentStep({ corridor, r, onDone }: { corridor: Corridor; r: SentR
               <Dashed />
               <Row k="Rate source" v={`${corridor.feed?.label ?? '—'}${r.rateSource ? `\n${r.rateSource.slice(0, 6)}…${r.rateSource.slice(-4)}` : ''}`} />
               <Row k="Venue" v={corridor.venue?.label ?? '—'} />
+              <Row k="To account" v={r.to.address} />
               <Row k="Intent" v={shortId(r.intentId)} />
-              <Row k="Block" v={r.block !== null ? `${r.block.toLocaleString('en-US')} · ${final}` : '—'} />
+              <Row k="Block" v={blockLine} />
               <Row k="Max spread" v={`${r.maxSpreadBps} bps · ${r.spreadBps <= r.maxSpreadBps ? 'not exceeded' : 'exceeded'}`} />
             </View>
             <TornEdge />
           </Animated.View>
         </View>
 
+        {savedAs ? (
+          <Text style={s.savedNote}>{`Saved as ${savedAs}. Next time they are at the top of your list.`}</Text>
+        ) : saved ? null : (
+          <Card style={s.save}>
+            <Eyebrow>Save as a contact</Eyebrow>
+            <View style={s.saveRow}>
+              <TextInput
+                style={s.saveInput}
+                value={name}
+                onChangeText={setName}
+                placeholder="Their name"
+                placeholderTextColor={color.muted}
+                autoCapitalize="words"
+                selectTextOnFocus
+                accessibilityLabel="Contact name"
+              />
+              <Button
+                label="Save"
+                small
+                height={40}
+                style={s.saveButton}
+                variant={cleanName(name) ? 'primary' : 'disabled'}
+                onPress={() => {
+                  const clean = cleanName(name)
+                  if (!clean) return
+                  onSaveContact(clean)
+                  setSavedAs(clean)
+                }}
+              />
+            </View>
+            {to.source === 'link' ? <Text style={[s.saveHelp, s.claim]}>This name came from their link, and nobody has checked it. Change it if it is not what you call them.</Text> : null}
+            <Text style={s.saveHelp}>Only on this phone. The name is yours to choose; they never see it.</Text>
+          </Card>
+        )}
+
         <View style={s.spacer} />
         <View style={s.actions}>
           <Button label="Share receipt" small style={s.flex} onPress={() => void Share.share({ message: url, url })} />
-          <Button label="Monadscan ↗" small variant="secondary" style={s.flex} onPress={() => void Linking.openURL(explorerTx(r.chainId, r.txHash))} />
+          <Button label="Public record ↗" small variant="secondary" style={s.flex} onPress={() => void Linking.openURL(explorerTx(r.chainId, r.txHash))} />
         </View>
         <Button label="Send another" variant="secondary" height={44} small onPress={onDone} />
       </View>
@@ -166,6 +242,8 @@ const s = StyleSheet.create({
   brandText: { fontFamily: font.displayBold, fontSize: 16, letterSpacing: track(16, -0.03), color: color.ink },
   receiptNo: { fontFamily: font.mono, fontSize: 10, letterSpacing: track(10, 0.12), color: color.purple },
   small: { fontFamily: font.mono, fontSize: 10, color: color.muted },
+  // The same mark the send screen gives a name nobody has checked.
+  claim: { color: color.lilacInk },
   key: { fontFamily: font.mono, fontSize: 11, color: color.muted },
   val: { fontFamily: font.mono, fontSize: 11, color: color.ink, textAlign: 'right', flexShrink: 1, fontVariant: ['tabular-nums'] },
   deliveredBlock: { gap: 4, paddingVertical: 2 },
@@ -176,6 +254,12 @@ const s = StyleSheet.create({
   edge: { flexDirection: 'row', height: 8, overflow: 'hidden', borderLeftWidth: 1, borderRightWidth: 1, borderColor: color.hairline },
   tooth: { width: 14, height: 8, backgroundColor: color.surface, overflow: 'hidden' },
   bite: { position: 'absolute', left: 1.5, top: 2.5, width: 11, height: 11, borderRadius: 5.5, backgroundColor: color.canvas },
+  save: { padding: 14, gap: 8 },
+  saveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saveInput: { flex: 1, height: 40, paddingHorizontal: 10, borderWidth: 1, borderColor: color.border, borderRadius: 4, fontFamily: font.sans, fontSize: 14, color: color.ink },
+  saveButton: { paddingHorizontal: 18 },
+  saveHelp: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.grey },
+  savedNote: { fontFamily: font.sans, fontSize: 12, lineHeight: 18, color: color.grey, textAlign: 'center' },
   spacer: { flex: 1, minHeight: 8 },
   actions: { flexDirection: 'row', gap: 8, paddingBottom: 8 },
   flex: { flex: 1 },

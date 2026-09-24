@@ -1,5 +1,6 @@
 import type { Receipt } from '@/lib/receipts'
 import { HenadMark } from './ui/HenadMark'
+import { RecipientName } from './RecipientName'
 import { blockNumber, money, rateLine, shortAddress, shortHash, spreadLine, tokens, utcStamp, utcTime } from '@/lib/format'
 
 type Size = 'sm' | 'md' | 'lg'
@@ -8,7 +9,9 @@ type Size = 'sm' | 'md' | 'lg'
  * The hero artifact: a paper settlement receipt with a torn bottom edge.
  * Rendered from a Receipt read off the chain. `animate` plays the one
  * orchestrated motion moment (feed in, then stamp) used on the confirmation
- * screen; everything else is static. Server-safe: no hooks.
+ * screen; everything else is static. Server-safe: no hooks of its own. The
+ * recipient's name is a client island, because only the viewer's browser knows
+ * whether that account is one of their contacts.
  */
 export function ReceiptSlip({
   receipt,
@@ -64,7 +67,7 @@ export function ReceiptSlip({
         </div>
         <div className="flex justify-between text-muted">
           <span>
-            {r.sourceAsset.symbol} → {r.targetAsset.symbol} · Monad
+            {r.sourceAsset.symbol} → {r.targetAsset.symbol}
           </span>
           <span>{compact ? utcTime(r.settledAt) : utcStamp(r.settledAt)}</span>
         </div>
@@ -79,7 +82,11 @@ export function ReceiptSlip({
           <div className={`font-display font-medium tracking-[-.035em] leading-none ${s.big}`}>
             {tokens(r.deliveredAmount, r.targetAsset.decimals, r.targetAsset.symbol, dp)}
           </div>
-          {!compact && <div className="text-muted">to {shortAddress(r.recipient)}</div>}
+          {!compact && (
+            <div className="text-muted">
+              to <RecipientName address={r.recipient} />
+            </div>
+          )}
           <SettledStamp animate={animate} size={size} />
         </div>
         {showMeta && !compact && (

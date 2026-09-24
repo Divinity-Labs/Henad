@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { BackHandler, Linking, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
-import { getAddress, isAddress, type Address, type Hex } from 'viem'
+import type { Address, Hex } from 'viem'
 import {
   CORRIDORS,
   LIVE_CORRIDOR,
@@ -11,16 +11,22 @@ import {
   MAX_SPREAD_MIN,
   corridorsFor,
   describeTxFailure,
+  findContact,
   isFxMarketOpen,
+  notePayment,
   quoteMaths,
+  saveContact,
   settleableFrom,
+  type Contact,
   type Corridor,
+  type ParsedRecipient,
   type QuoteDto,
   type SourceAssetSymbol,
 } from '@henad/core'
 import { fetchQuote, fetchRates, fetchReceipt, fetchReceipts, receiptUrl, type RatesPayload, type ReceiptDto } from '@/lib/api'
 import { readBalance, readHoldings, sourceToken, type Holding } from '@/lib/balance'
 import { appChain, appChainId, deployment, isLocalFork } from '@/lib/config'
+import { describeRecipient, loadContacts, loadMyName, safeParseRecipient, storeContacts, storeMyName, type Recipient } from '@/lib/contacts'
 import { chainLabel } from '@/lib/display'
 import { continueWithPasskey, describeAccountError, forgetStoredAccount, loadStoredAccount, signIn, unlockStoredAccount, type MeraAccount } from '@/lib/mera'
 import { settleFromPhone } from '@/lib/settle'
@@ -54,6 +60,20 @@ function ago(at: number): string {
 }
 type View_ = 'send' | 'fund' | 'earn' | 'rates' | 'receipts' | 'profile' | 'settings'
 
+/** A link or scan that already names an account; `.nad` names and typos are the send screen's. */
+function chosenFrom(parsed: ParsedRecipient): Recipient | null {
+  if (parsed.kind === 'paylink') return { address: parsed.address, linkName: parsed.name }
+  if (parsed.kind === 'address') return { address: parsed.address }
+  return null
+}
+
+/**
+ * The URL that launched the app is read once per process. Android hands the same one back on
+ * every call, so reading it again after a remount would put back a recipient the person had
+ * already paid or cleared.
+ */
+let launchUrlRead = false
+
 /**
  * The app: the send flow and the rates screen, in the canvas's six states.
  *
@@ -73,7 +93,14 @@ export default function App() {
   const [sourceSymbol, setSourceSymbol] = useState<SourceAssetSymbol>('AUSD')
   const source = sourceToken(sourceSymbol)
   const [amount, setAmount] = useState('')
-  const [recipient, setRecipient] = useState('')
+  const [recipient, setRecipient] = useState<Recipient | null>(null)
+  const [recipientText, setRecipientText] = useState('')
+  const [contacts, setContacts] = useState<Contact[]>([])
+  // Read by the async send path, which must note a payment against the list as it is now.
+  const contactsRef = useRef<Contact[]>([])
+  const [myName, setMyName] = useState<string | null>(null)
+  /** A pay link opened before anyone was signed in, or during a payment, held until it can be applied. */
+  const [pendingPay, setPendingPay] = useState<Recipient | null>(null)
   const [quote, setQuote] = useState<QuoteDto | null>(null)
   const [maxSpreadBps, setMaxSpreadBps] = useState(MAX_SPREAD_DEFAULT)
   const [sent, setSent] = useState<SentReceipt | null>(null)
@@ -86,7 +113,6 @@ export default function App() {
   const [scanning, setScanning] = useState(false)
   const [holdings, setHoldings] = useState<Holding[] | null>(null)
   const [holdingsLoading, setHoldingsLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [receipts, setReceipts] = useState<ReceiptDto[] | null>(null)
   const [receiptsLoading, setReceiptsLoading] = useState(false)
   const [receiptsError, setReceiptsError] = useState<string | null>(null)
@@ -232,12 +258,112 @@ export default function App() {
     return () => clearInterval(id)
   }, [view, loadHoldings])
 
-  const copyAddress = useCallback(() => {
+  // Contacts belong to the signed-in account, so a sign-out or a switch empties the list
+  // before the other account's is read.
+  useEffect(() => {
+    contactsRef.current = []
+    setContacts([])
     if (!address) return
-    void Clipboard.setStringAsync(address)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    let live = true
+    void loadContacts(address).then((list) => {
+      if (!live) return
+      contactsRef.current = list
+      setContacts(list)
+    })
+    return () => {
+      live = false
+    }
   }, [address])
+
+  /** Change the contacts and store them under this account, in one step so the two cannot drift. */
+  const changeContacts = useCallback(
+    (fn: (list: Contact[]) => Contact[]) => {
+      if (!address) return
+      const next = fn(contactsRef.current)
+      contactsRef.current = next
+      setContacts(next)
+      void storeContacts(address, next)
+    },
+    [address],
+  )
+
+  // The name on the pay link is per account as well, so the chip and the link never carry the
+  // previous account's name while this one's is read.
+  useEffect(() => {
+    setMyName(null)
+    if (!address) return
+    let live = true
+    void loadMyName(address).then((name) => {
+      if (live) setMyName(name)
+    })
+    return () => {
+      live = false
+    }
+  }, [address])
+
+  const changeMyName = useCallback(
+    (name: string | null) => {
+      if (!address) return
+      setMyName(name)
+      void storeMyName(address, name)
+    },
+    [address],
+  )
+
+  /** Stable, because the send screen looks a `.nad` name up again whenever this changes. */
+  const chooseRecipient = useCallback((r: Recipient) => {
+    setRecipient(r)
+    setRecipientText('')
+  }, [])
+
+  const clearRecipient = useCallback(() => {
+    setRecipient(null)
+    setRecipientText('')
+  }, [])
+
+  /** Typed, pasted or scanned: a link or an account is chosen at once, anything else waits in the field. */
+  const enterRecipient = useCallback(
+    (text: string) => {
+      const chosen = chosenFrom(safeParseRecipient(text))
+      if (chosen) chooseRecipient(chosen)
+      else setRecipientText(text)
+    },
+    [chooseRecipient],
+  )
+
+  // Pay links: https://usehenad.xyz/pay/... as a verified App Link, or henad://pay/... from a QR.
+  // The router is told to land on this screen (app/+native-intent.tsx); what the link says is
+  // read here, where it is known whether anyone is signed in to pay from.
+  useEffect(() => {
+    const take = (url: string | null) => {
+      if (!url) return
+      // The safe parser, because this runs inside a native URL event, where a thrown error
+      // closes the app: a damaged link is dropped rather than fatal.
+      const parsed = safeParseRecipient(url)
+      if (parsed.kind === 'paylink') setPendingPay({ address: parsed.address, linkName: parsed.name })
+    }
+    if (!launchUrlRead) {
+      launchUrlRead = true
+      Linking.getInitialURL().then(take, () => {})
+    }
+    const sub = Linking.addEventListener('url', ({ url }) => take(url))
+    return () => sub.remove()
+  }, [])
+
+  // A link opened while signed out waits here and is applied the moment an account appears.
+  // One that arrives mid-payment waits for the payment to finish: applying it then would put the
+  // amount screen up over a payment still in flight.
+  useEffect(() => {
+    if (!address || !pendingPay || busy) return
+    setPendingPay(null)
+    setScanning(false)
+    setSent(null)
+    setQuote(null)
+    setError(null)
+    chooseRecipient(pendingPay)
+    setStep('amount')
+    setView('send')
+  }, [address, pendingPay, busy, chooseRecipient])
 
   // USDC funds the pound corridor and nothing else yet, so picking it cannot leave you
   // holding a pair the router would revert on.
@@ -259,7 +385,11 @@ export default function App() {
     setHoldings(null)
     setQuote(null)
     setSent(null)
-    setRecipient('')
+    // Stored contacts stay: they are kept per account and come back with it. Only who was
+    // about to be paid is forgotten, along with any link still waiting for a sign-in.
+    setRecipient(null)
+    setRecipientText('')
+    setPendingPay(null)
     setStep('signin')
     setView('send')
   }, [])
@@ -345,7 +475,11 @@ export default function App() {
   }, [amount, corridor.target, source.symbol])
 
   const send = useCallback(async () => {
-    if (!quote || !dep || !isAddress(recipient)) return
+    if (!quote || !dep || !recipient) return
+    // Who is being paid, fixed now. The receipt and the offer to save a contact are built from
+    // this, never from the send screen's choice, which can change before the payment lands.
+    const to = recipient
+    const settledIn = corridor
     setBusy(true)
     setError(null)
     const started = Date.now()
@@ -353,7 +487,7 @@ export default function App() {
       const account = await unlockStoredAccount()
       let result: Awaited<ReturnType<typeof settleFromPhone>>
       try {
-        result = await settleFromPhone({ account, corridor, sourceSymbol, quote, recipient: getAddress(recipient), maxSpreadBps, router: dep.corridorRouter })
+        result = await settleFromPhone({ account, corridor, sourceSymbol, quote, recipient: to.address, maxSpreadBps, router: dep.corridorRouter })
       } finally {
         account.end()
       }
@@ -369,9 +503,10 @@ export default function App() {
         // Still pending or unreachable: show the receipt without the figure.
       }
       const chainReceipt = await fetchReceipt(result.intentId)
-      const td = corridor.targetAsset?.decimals ?? 18
+      const td = settledIn.targetAsset?.decimals ?? 18
       const m = quoteMaths(quote, source.decimals, td)
       setSent({
+        corridor: settledIn,
         intentId: result.intentId,
         txHash: result.txHash,
         chainId,
@@ -379,7 +514,7 @@ export default function App() {
         settledAt: chainReceipt?.settledAt ?? null,
         block: chainReceipt ? BigInt(chainReceipt.settledAtBlock) : block,
         finalMs,
-        recipient,
+        to,
         sourceAmount: m.sourceAmount,
         sourceSymbol: source.symbol,
         sourceDecimals: source.decimals,
@@ -391,6 +526,11 @@ export default function App() {
         rateSource: chainReceipt?.rateSource ?? null,
         maxSpreadBps,
       })
+      // Only once the money has moved: contacts are ordered by who was actually paid.
+      if (findContact(contactsRef.current, to.address)) {
+        const at = chainReceipt?.settledAt ?? Math.floor(Date.now() / 1000)
+        changeContacts((list) => notePayment(list, to.address, at))
+      }
       setStep('sent')
       void loadRates()
     } catch (e) {
@@ -399,13 +539,14 @@ export default function App() {
     } finally {
       setBusy(false)
     }
-  }, [quote, dep, recipient, corridor, sourceSymbol, maxSpreadBps, source, chainId, loadRates])
+  }, [quote, dep, recipient, corridor, sourceSymbol, maxSpreadBps, source, chainId, loadRates, changeContacts])
 
   const reset = useCallback(() => {
     setSent(null)
     setQuote(null)
     setAmount('')
-    setRecipient('')
+    setRecipient(null)
+    setRecipientText('')
     setStep('amount')
   }, [])
 
@@ -436,21 +577,31 @@ export default function App() {
         return true
       }
       if (step === 'quote') {
-        setStep('amount')
+        // Swallowed while a payment is in flight, the same as the screen's own Back link.
+        if (!busy) setStep('amount')
         return true
       }
       return false
     }
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack)
     return () => sub.remove()
-  }, [scanning, view, step, reset])
+  }, [scanning, view, step, busy, reset])
 
   const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
 
   // Routing lives in the tab bar now. The header carries the brand and, once signed in, the
-  // address chip, which is a second way into the account.
+  // account chip, which is a second way into the account. It shows the person's own name
+  // rather than their account number; the number is still read out to a screen reader.
+  const nameChars = myName ? Array.from(myName) : []
+  const chipName = myName ? (nameChars.length > 16 ? `${nameChars.slice(0, 15).join('')}…` : myName) : 'Your account'
   const header = address ? (
-    <Header right={<Chip onPress={() => setView('profile')}>{`${address.slice(0, 6)}…${address.slice(-4)}`}</Chip>} />
+    <Header
+      right={
+        <Chip onPress={() => setView('profile')} accessibilityLabel={`${myName ?? 'Your account'}, account number ${address}`}>
+          {chipName}
+        </Chip>
+      }
+    />
   ) : (
     <Header right={<BuiltOnMonad />} />
   )
@@ -468,7 +619,9 @@ export default function App() {
     body = (
       <ScanScreen
         onScanned={(scanned) => {
-          setRecipient(scanned)
+          const chosen = chosenFrom(scanned)
+          if (chosen) chooseRecipient(chosen)
+          else if (scanned.kind === 'nad') setRecipientText(scanned.nadName)
           setScanning(false)
         }}
         onCancel={() => setScanning(false)}
@@ -478,11 +631,10 @@ export default function App() {
     body = (
       <ProfileScreen
         address={address}
-        network={network}
         holdings={holdings}
         loading={holdingsLoading}
-        copied={copied}
-        onCopy={copyAddress}
+        myName={myName}
+        onMyName={changeMyName}
         onRefresh={() => void loadHoldings()}
         onSettings={() => setView('settings')}
       />
@@ -513,6 +665,7 @@ export default function App() {
         loading={receiptsLoading}
         error={receiptsError}
         me={address}
+        contacts={contacts}
         onRefresh={() => void loadReceipts()}
         onOpen={(r) => void Linking.openURL(receiptUrl(r.intentId))}
       />
@@ -532,9 +685,23 @@ export default function App() {
       />
     )
   } else if (step === 'signin') {
-    body = <SignInStep busy={busy} error={error} chain={network} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
+    body = <SignInStep busy={busy} error={error} chain={isLocalFork() ? network : null} onContinue={() => void withAccount(continueWithPasskey)} onSignIn={() => void withAccount(() => signIn())} />
   } else if (step === 'sent' && sent) {
-    body = <SentStep corridor={corridor} r={sent} onDone={reset} />
+    const sentTo = describeRecipient(sent.to, contacts)
+    body = (
+      <SentStep
+        corridor={sent.corridor}
+        r={sent}
+        to={sentTo}
+        saved={sentTo.contact !== null}
+        onSaveContact={(name) => {
+          const at = sent.settledAt ?? Math.floor(Date.now() / 1000)
+          // Saved and counted together: this payment is the one that made them a contact.
+          changeContacts((list) => notePayment(saveContact(list, sent.to.address, name), sent.to.address, at))
+        }}
+        onDone={reset}
+      />
+    )
   } else if (closed) {
     body = (
       <ClosedStep
@@ -547,7 +714,8 @@ export default function App() {
         onOpenReceipt={(id) => void Linking.openURL(receiptUrl(id as Hex))}
       />
     )
-  } else if (step === 'quote' && quote) {
+  } else if (step === 'quote' && quote && recipient) {
+    const to = describeRecipient(recipient, contacts)
     body = (
       <QuoteStep
         corridor={corridor}
@@ -556,6 +724,8 @@ export default function App() {
         source={source}
         maxSpreadBps={maxSpreadBps}
         onSpread={(bps) => setMaxSpreadBps(Math.min(MAX_SPREAD_MAX, Math.max(MAX_SPREAD_MIN, bps)))}
+        to={to}
+        firstPayment={to.contact === null}
         deployed={dep !== null}
         busy={busy}
         error={error}
@@ -575,8 +745,12 @@ export default function App() {
         amount={amount}
         onAmount={setAmount}
         recipient={recipient}
-        onRecipient={setRecipient}
-        onPaste={() => void Clipboard.getStringAsync().then((t) => setRecipient(t.trim()))}
+        recipientText={recipientText}
+        onRecipientText={enterRecipient}
+        onChoose={chooseRecipient}
+        onClearRecipient={clearRecipient}
+        contacts={contacts}
+        onPaste={() => void Clipboard.getStringAsync().then((t) => enterRecipient(t.trim()))}
         onScan={() => setScanning(true)}
         balance={balance}
         source={source}

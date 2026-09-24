@@ -76,7 +76,11 @@ export function parseRecipient(input: string): ParsedRecipient {
   const link = parsePayLink(text)
   if (link) return link
 
-  if (isAddress(text, { strict: false })) return { kind: 'address', address: getAddress(text) }
+  if (isAddress(text, { strict: false })) {
+    return checksumHolds(text)
+      ? { kind: 'address', address: getAddress(text) }
+      : { kind: 'invalid', reason: 'That account number has a mistake in it. Copy it again.' }
+  }
 
   const lower = text.toLowerCase()
   if (lower.endsWith('.nad')) {
@@ -88,6 +92,19 @@ export function parseRecipient(input: string): ParsedRecipient {
   }
 
   return { kind: 'invalid', reason: 'That is not a Henad link, a .nad name or an account number.' }
+}
+
+/**
+ * EIP-55: a mixed-case account number carries a checksum in its letter cases, and a mistyped
+ * character breaks it. Accepting it anyway and quietly re-checksumming would send money to the
+ * typo. All-lowercase and all-uppercase numbers carry no checksum and pass as they are.
+ *
+ * Written out rather than left to viem's strict mode, which also rejects all-uppercase.
+ */
+function checksumHolds(address: string): boolean {
+  const hex = address.slice(2)
+  if (hex === hex.toLowerCase() || hex === hex.toUpperCase()) return true
+  return isAddress(address, { strict: true })
 }
 
 function parsePayLink(text: string): ParsedRecipient | null {
@@ -106,8 +123,16 @@ function parsePayLink(text: string): ParsedRecipient | null {
   // henad://pay/0x… parses with "pay" as the host; https://usehenad.xyz/pay/0x… as the path.
   const segments = (henadApp ? `${url.hostname}${url.pathname}` : url.pathname).split('/').filter(Boolean)
   if (segments[0] !== 'pay' || !segments[1]) return null
-  const target = decodeURIComponent(segments[1])
+  // A link cut off mid-escape ('%', '%E') makes decodeURIComponent throw. That is a damaged
+  // link, not a crash.
+  let target: string
+  try {
+    target = decodeURIComponent(segments[1])
+  } catch {
+    return { kind: 'invalid', reason: 'That Henad link is damaged. Ask them to send it again.' }
+  }
   if (!isAddress(target, { strict: false })) return { kind: 'invalid', reason: 'That Henad link does not contain a valid account.' }
+  if (!checksumHolds(target)) return { kind: 'invalid', reason: 'That Henad link has a mistake in its account number. Ask them to send it again.' }
   return { kind: 'paylink', address: getAddress(target), name: cleanName(url.searchParams.get('n')) }
 }
 

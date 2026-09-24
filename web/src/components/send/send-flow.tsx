@@ -1,15 +1,18 @@
 'use client'
 
 import { useEffect, useReducer } from 'react'
-import { isAddress, toHex } from 'viem'
-import { MONAD_MAINNET_ID, describeTxFailure, hashIntent, type Intent } from '@henad/core'
+import { toHex } from 'viem'
+import { MONAD_MAINNET_ID, describeTxFailure, findContact, hashIntent, notePayment, saveContact, type Intent } from '@henad/core'
 import { Nav } from '@/components/Nav'
+import { AccountChip } from '@/components/NavAccount'
 import { BuiltOnMonad } from '@/components/ui/Brand'
 import { Button } from '@/components/ui/Button'
 import { appChainId } from '@/lib/chain'
+import { loadContacts, storeContacts, useContacts } from '@/lib/contacts'
 import { LIVE_CORRIDOR, corridorByKey } from '@henad/core'
 import { isFxMarketOpen } from '@henad/core'
 import {
+  PASSKEY_STORAGE_KEY,
   continueWithPasskey,
   describeAccountError,
   loadStoredAccount,
@@ -20,13 +23,15 @@ import {
   type MeraAccount,
 } from '@/lib/send-mera'
 import { deploymentAddresses } from '@/lib/receipts'
+import { ACCOUNT_EVENT } from '@/lib/use-stored-address'
 import { quoteMaths, type QuoteDto } from '@henad/core'
 import { receiptFromDto, type ReceiptDto } from '@/lib/send-serial'
 import { settle } from '@/lib/settle'
 import { AmountStep } from './amount-step'
 import { ClosedStep } from './closed-step'
-import { AccountChip, MeraSignIn } from './mera-account'
+import { MeraSignIn } from './mera-account'
 import { QuoteStep, type LiveVenue } from './quote-step'
+import { SaveContact, describeRecipient } from './recipient'
 import { initialState, sendReducer, type SendInitial } from './send-reducer'
 import { SentStep } from './sent-step'
 
@@ -60,7 +65,26 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     if (stored) dispatch({ type: 'signedIn', address: stored.address, credentialId: stored.credentialId })
   }, [])
 
+  // Signing out on /account, or in another tab, forgets the account; this screen follows, and
+  // takes the recipient with it. Contacts stay in storage under the account they belong to.
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      // Other tabs' storage writes include contacts and names; only the account matters here.
+      if (e instanceof StorageEvent && e.key !== null && e.key !== PASSKEY_STORAGE_KEY) return
+      dispatch({ type: 'storedAccount', account: loadStoredAccount() })
+    }
+    window.addEventListener('storage', onChange)
+    window.addEventListener(ACCOUNT_EVENT, onChange)
+    return () => {
+      window.removeEventListener('storage', onChange)
+      window.removeEventListener(ACCOUNT_EVENT, onChange)
+    }
+  }, [])
+
   const address = s.account?.address
+  const contacts = useContacts(address)
+  const contact = findContact(contacts, s.recipient)
+  const recipient = s.recipient ? describeRecipient(s.recipient, contacts, s.recipientNad, s.recipientName) : null
   // Money arrives from outside this tab: a swap, a payout from a phone, someone paying you.
   // Reading once per step meant a full page reload to see it, so this keeps reading while
   // the page is open and again the moment the tab is looked at.
@@ -124,9 +148,9 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
 
   async function paste() {
     try {
-      dispatch({ type: 'recipient', value: await navigator.clipboard.readText() })
+      dispatch({ type: 'recipientInput', value: await navigator.clipboard.readText() })
     } catch {
-      dispatch({ type: 'fail', message: 'Could not read the clipboard. Paste the address into the field instead.' })
+      dispatch({ type: 'fail', message: 'Could not read the clipboard. Paste their link into the field instead.' })
     }
   }
 
@@ -156,7 +180,8 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
 
   async function sendPayout() {
     const quote = s.quote
-    if (!quote || !venue || !deployment || !isAddress(s.recipient)) return
+    const to = s.recipient
+    if (!quote || !venue || !deployment || !to) return
     dispatch({ type: 'busy', busy: 'send' })
     // Every payout asks for the passkey. A key held in the tab after the first payout let
     // the next one go out with a single click from anyone at the open page, and the
@@ -171,7 +196,7 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     const m = quoteMaths(quote, SOURCE_DECIMALS, venue.targetDecimals)
     const intent: Intent = {
       payer: acc.address,
-      recipient: s.recipient,
+      recipient: to,
       sourceAsset: sourceToken(s.sourceAsset).address,
       targetAsset: venue.targetAddress,
       sourceAmount: m.sourceAmount,
@@ -194,6 +219,10 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
     } finally {
       acc.end()
     }
+    // Only now, with the payout settled: a contact's place in the list is who you actually paid.
+    // Read fresh rather than from this render, which may be a tab's worth of edits behind.
+    const list = loadContacts(acc.address)
+    if (findContact(list, to)) storeContacts(acc.address, notePayment(list, to, Math.floor(Date.now() / 1000)))
     try {
       const res = await fetch(`/api/receipt/${settled.intentId}`, { cache: 'no-store' })
       if (!res.ok) throw new Error(`receipt ${res.status}`)
@@ -212,14 +241,33 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
         return
       }
       await navigator.clipboard.writeText(url)
-      dispatch({ type: 'notice', message: 'Link copied.' })
-      window.setTimeout(() => dispatch({ type: 'notice', message: null }), 2500)
+      flash('Link copied.')
     } catch {
       // The share sheet was dismissed; nothing to report.
     }
   }
 
+  function flash(message: string) {
+    dispatch({ type: 'notice', message })
+    window.setTimeout(() => dispatch({ type: 'notice', message: null }), 2500)
+  }
+
+  /** Saving is also the payout's first entry in the contact's history, so the list opens on them. */
+  function saveRecipient(name: string, paidAt: number) {
+    if (!address || !s.recipient) return
+    const list = notePayment(saveContact(loadContacts(address), s.recipient, name), s.recipient, paidAt)
+    // saveContact returns the list unchanged for a name with nothing left after cleaning, and
+    // "Saved" then would promise a contact that the next payout does not find.
+    if (!findContact(list, s.recipient)) {
+      flash('That name has nothing in it to save. Type their name.')
+      return
+    }
+    flash(storeContacts(address, list) ? 'Saved to your contacts.' : 'This browser would not keep the contact. Storage may be blocked.')
+  }
+
   const receipt = s.receipt ? receiptFromDto(s.receipt) : null
+  // Offered for a real payout to an account that is not a contact yet, and only to its payer.
+  const offerSave = receipt && !receipt.sample && recipient && !contact && address && receipt.recipient.toLowerCase() === recipient.address.toLowerCase()
   let view
   if (s.step === 'sent' && receipt) {
     view = (
@@ -228,6 +276,15 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
         explorerTx={s.txHash ? explorerTx(chainId, s.txHash) : null}
         maxSpreadBps={receipt.sample ? null : s.maxSpreadBps}
         notice={s.notice}
+        contactOffer={
+          offerSave ? (
+            <SaveContact
+              key={recipient.address}
+              prefill={recipient.source === 'account' ? '' : recipient.label}
+              onSave={(name) => saveRecipient(name, receipt.settledAt)}
+            />
+          ) : null
+        }
         onShare={share}
         onAgain={() => dispatch({ type: 'again' })}
       />
@@ -245,21 +302,20 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
   } else if (!s.account) {
     view = (
       <MeraSignIn
-        chainId={chainId}
         busy={s.busy === 'account'}
         error={s.error}
         onContinue={() => withAccount(continueWithPasskey)}
         onSignIn={() => withAccount(() => signInWithPasskey())}
       />
     )
-  } else if (s.step === 'quote' && s.quote && venue) {
+  } else if (s.step === 'quote' && s.quote && venue && recipient) {
     view = (
       <QuoteStep
         quote={s.quote}
         corridor={corridor}
         venue={venue}
         sourceAsset={s.sourceAsset}
-        recipientName={s.recipientName}
+        recipient={recipient}
         maxSpreadBps={s.maxSpreadBps}
         now={s.now}
         busy={s.busy === 'send'}
@@ -280,16 +336,17 @@ export function SendFlow({ initial }: { initial: SendInitial }) {
         sourceAsset={s.sourceAsset}
         amount={s.amount}
         balance={s.balance}
-        recipient={s.recipient}
-        recipientName={s.recipientName}
+        recipient={recipient}
+        recipientInput={s.recipientInput}
         editingRecipient={s.editingRecipient}
+        contacts={contacts}
         busy={s.busy === 'quote'}
         error={s.error}
         onAmount={(value) => dispatch({ type: 'amount', value })}
         onAsset={(value) => dispatch({ type: 'asset', value })}
         onCorridor={chooseCorridor}
-        onRecipient={(value) => dispatch({ type: 'recipient', value })}
-        onRecipientName={(value) => dispatch({ type: 'recipientName', value })}
+        onRecipientInput={(value) => dispatch({ type: 'recipientInput', value })}
+        onChooseRecipient={(choice) => dispatch({ type: 'chooseRecipient', ...choice })}
         onEditRecipient={(editing) => dispatch({ type: 'editRecipient', editing })}
         onPaste={paste}
         onQuote={getQuote}

@@ -78,7 +78,7 @@ export function ClosedStep({
         <div className="label text-muted">You send</div>
         <div className="flex items-center justify-between gap-3">
           <div className="font-display text-[38px] font-medium leading-none tracking-[-.035em] tabular">{units ? money(units, 6, '$') : '—'}</div>
-          <span className="whitespace-nowrap rounded-[4px] border border-border bg-surface-2 px-[10px] py-[7px] font-mono text-[11px]">{sourceAsset} · Monad</span>
+          <span className="whitespace-nowrap rounded-[4px] border border-border bg-surface-2 px-[10px] py-[7px] font-mono text-[11px]">{sourceAsset}</span>
         </div>
       </Card>
 

@@ -52,10 +52,15 @@ export function BuiltOnMonad() {
   )
 }
 
-export function Chip({ children, onPress, filled = false }: { children: ReactNode; onPress?: () => void; filled?: boolean }) {
-  const body = <Text style={[s.chip, filled && s.chipFilled]}>{children}</Text>
+/** `accessibilityLabel` is for when the words on the chip are not the whole story, like an account's name standing in for its number. */
+export function Chip({ children, onPress, filled = false, accessibilityLabel }: { children: ReactNode; onPress?: () => void; filled?: boolean; accessibilityLabel?: string }) {
+  const body = (
+    <Text style={[s.chip, filled && s.chipFilled]} accessibilityLabel={onPress ? undefined : accessibilityLabel}>
+      {children}
+    </Text>
+  )
   return onPress ? (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
       {body}
     </Pressable>
   ) : (

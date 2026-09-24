@@ -1,5 +1,6 @@
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
-import type { Address } from 'viem'
+import { isAddress, type Address } from 'viem'
+import { findContact, recipientLabel, type Contact } from '@henad/core'
 import type { ReceiptDto } from '@/lib/api'
 import { tokenText } from '@/lib/display'
 import { units } from '@/send/format'
@@ -15,12 +16,17 @@ function when(unix: number): string {
 /**
  * Every settlement on the ledger, newest first, read from the chain through the web app.
  * Payouts to or from this account are marked, and each row opens the public receipt.
+ *
+ * Accounts are named the way the payer knows them: a saved contact's name, or else
+ * "Account 2EA1…EAA6". The public receipt each row opens carries the full addresses, which is
+ * where someone checking a payment needs them.
  */
 export function ReceiptsScreen({
   receipts,
   loading,
   error,
   me,
+  contacts,
   onRefresh,
   onOpen,
 }: {
@@ -28,9 +34,11 @@ export function ReceiptsScreen({
   loading: boolean
   error: string | null
   me: Address | null
+  contacts: Contact[]
   onRefresh: () => void
   onOpen: (r: ReceiptDto) => void
 }) {
+  const nameFor = (a: Address) => (isAddress(a, { strict: false }) ? recipientLabel({ address: a, contact: findContact(contacts, a) }).label : a)
   const mine = (r: ReceiptDto) => (me ? (r.payer.toLowerCase() === me.toLowerCase() ? 'Sent' : r.recipient.toLowerCase() === me.toLowerCase() ? 'Received' : null) : null)
   return (
     <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={color.purple} />}>
@@ -59,7 +67,8 @@ export function ReceiptsScreen({
                   <Text style={s.amount}>{`$${units(BigInt(r.sourceAmount), r.sourceAsset.decimals, 2)} → ${tokenText(BigInt(r.deliveredAmount), r.targetAsset.decimals, r.targetAsset.symbol, 2)}`}</Text>
                 </View>
                 <View style={s.rowBetween}>
-                  <Text style={s.meta}>{`${r.spreadBps} bps · to ${r.recipient.slice(0, 6)}…${r.recipient.slice(-4)}`}</Text>
+                  {/* A payout that reached this account is named by who sent it; "to" would be you. */}
+                  <Text style={s.meta} numberOfLines={1}>{`${r.spreadBps} bps · ${tag === 'Received' ? `from ${nameFor(r.payer)}` : `to ${nameFor(r.recipient)}`}`}</Text>
                   {tag ? <Text style={[s.tag, tag === 'Received' && s.tagIn]}>{tag.toUpperCase()}</Text> : <Text style={s.open}>Open ↗</Text>}
                 </View>
               </Card>

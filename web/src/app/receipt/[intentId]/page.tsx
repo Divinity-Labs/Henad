@@ -4,9 +4,10 @@ import { Nav } from '@/components/Nav'
 import { Button } from '@/components/ui/Button'
 import { CopyPermalink } from '@/components/receipt/CopyPermalink'
 import { ReceiptPanel } from '@/components/receipt/ReceiptPanel'
+import { RecipientName } from '@/components/RecipientName'
 import { VerificationList } from '@/components/receipt/VerificationList'
-import { money, rateLine, shortAddress, spreadLine, tokens } from '@/lib/format'
-import { headline, isIntentId, loadReceipt, monadscanAddress, monadscanTx, requestOrigin } from '@/lib/receipt-page'
+import { money, rateLine, spreadLine, tokens } from '@/lib/format'
+import { isIntentId, loadReceipt, monadscanAddress, monadscanTx, receivedLine, requestOrigin } from '@/lib/receipt-page'
 import { deploymentAddresses, type Receipt } from '@/lib/receipts'
 
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const spread = spreadLine(r.spreadCost, r.targetAsset.decimals, c.targetSymbol, r.spreadBps, { dp: c.currencyDp })
   const description =
     (r.sample ? "The design's sample settlement, nothing on chain. " : '') +
-    `${shortAddress(r.recipient)} received ${delivered} for ${paid} on Monad. Spread ${spread} against ${c.feed?.label ?? 'the reference'}. ` +
+    `${delivered} delivered for ${paid} on Monad. Spread ${spread} against ${c.feed?.label ?? 'the reference'}. ` +
     `Reference ${rateLine(r.referenceRate, c.targetSymbol, c.rateDp)}, executed ${rateLine(r.executedRate, c.targetSymbol, c.rateDp)}.`
   return {
     title,
@@ -63,7 +64,9 @@ export default async function ReceiptPage({ params }: Props) {
                 <span className="label-md text-purple">Verification</span>
                 {r.sample && <span className="label rounded-[3px] bg-amber px-2 py-[3px] text-ink">Sample</span>}
               </div>
-              <h1 className="pretty m-0 font-display text-[28px] leading-[1.05] font-medium tracking-[-.03em] md:text-[30px] lg:text-[36px]">{headline(r)}</h1>
+              <h1 className="pretty m-0 font-display text-[28px] leading-[1.05] font-medium tracking-[-.03em] md:text-[30px] lg:text-[36px]">
+                <RecipientName address={r.recipient} /> {receivedLine(r)}
+              </h1>
               <p className="pretty m-0 max-w-[520px] text-[16px] leading-[1.6] text-grey">
                 This receipt is a <span className="font-mono text-[13px] text-ink">PayoutSettled</span> event emitted by RateAttestation on Monad in the same transaction
                 that moved the funds. The values below are read from the chain, not from Henad.

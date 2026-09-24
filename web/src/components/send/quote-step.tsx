@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import type { ReactNode } from 'react'
 import type { Address } from 'viem'
 import type { Corridor, SourceAssetSymbol } from '@henad/core'
@@ -18,7 +17,7 @@ import {
   type QuoteDto,
 } from '@henad/core'
 import { Button } from '@/components/ui/Button'
-import { firstName } from './amount-step'
+import { FirstPaymentNotice, receiverName, sourceLine, type RecipientView } from './recipient'
 import { Card, Notice, Rows, StepHeader, linkLabel, type Row } from './send-ui'
 
 const SOURCE_DECIMALS = 6
@@ -75,7 +74,7 @@ export function QuoteStep({
   corridor,
   venue,
   sourceAsset,
-  recipientName,
+  recipient,
   maxSpreadBps,
   now,
   busy,
@@ -90,7 +89,7 @@ export function QuoteStep({
   corridor: Corridor
   venue: LiveVenue
   sourceAsset: SourceAssetSymbol
-  recipientName: string
+  recipient: RecipientView
   maxSpreadBps: number
   now: number
   busy: boolean
@@ -131,15 +130,7 @@ export function QuoteStep({
       ),
     },
     { k: 'Venue', v: venue.venueLabel },
-    {
-      k: 'Network fee',
-      v: (
-        <span className="inline-flex items-center gap-[6px]">
-          <Image src="/brand/mon-token.svg" alt="MON" width={14} height={14} className="rounded-[3px]" />
-          sponsored
-        </span>
-      ),
-    },
+    { k: 'Network fee', v: 'none · Henad pays it' },
   ]
 
   return (
@@ -159,10 +150,15 @@ export function QuoteStep({
       <Rows rows={rows} />
 
       <div className="flex flex-col gap-1 rounded-[12px] bg-dark px-[14px] py-3 text-white">
-        <div className="label text-lilac-2">{firstName(recipientName)} receives</div>
+        <div className="label text-lilac-2">{receiverName(recipient)} receives</div>
         <div className="font-display text-[32px] font-medium leading-none tracking-[-.035em] tabular">{tokens(m.delivered, venue.targetDecimals, c.targetAsset?.symbol ?? c.target, dp)}</div>
         <div className="font-mono text-[11px] text-dim">
           for {money(m.sourceAmount, SOURCE_DECIMALS, '$')} {sourceAsset} · final in 0.6 s
+        </div>
+        {/* Who, by name, with how that name is known: a link's name never appears without it. */}
+        <div className="mt-1 flex min-w-0 flex-col gap-[2px] border-t border-white/10 pt-2">
+          <span className="truncate text-[14px] font-medium">To {recipient.label}</span>
+          <span className="font-mono text-[10px] text-dim">{sourceLine(recipient.source)}</span>
         </div>
       </div>
 
@@ -183,10 +179,11 @@ export function QuoteStep({
             </StepButton>
           </div>
         </div>
-        <p className="m-0 text-[12px] leading-[1.5] text-grey">If the fill is worse than this, the payout reverts. Nothing moves.</p>
+        <p className="m-0 text-[12px] leading-[1.5] text-grey">If the rate comes in worse than this, the payment is cancelled and nothing moves.</p>
       </Card>
 
       <div className="flex-1" />
+      {recipient.source !== 'contact' && <FirstPaymentNotice />}
       {error && <Notice>{error}</Notice>}
       {fresh === 'expired' ? (
         <Button variant="secondary" size="xl" block onClick={onRequote}>

@@ -3,7 +3,7 @@ import { Button, ErrorText, Eyebrow } from '@/ui'
 import { color, font, images, track } from '@/theme'
 
 const POINTS = [
-  'Henad never holds your money. Funds move wallet to wallet in one transaction.',
+  'Henad never holds your money. It goes straight from your account to theirs, in one step.',
   'No fiat, no custody, no KYC. Identity checks stay with the licensed ramps you already use.',
 ]
 
@@ -17,6 +17,9 @@ const POINTS = [
  * passkey for this relying party, which is how a new phone reaches an account made on the web.
  *
  * The design's "You can export it any time" is also gone. Export is not built.
+ *
+ * It speaks of an account, not a wallet or a network. Someone signing up is opening a way to
+ * pay people; the network is named in settings for anyone who wants to know.
  */
 export function SignInStep({
   busy,
@@ -27,7 +30,8 @@ export function SignInStep({
 }: {
   busy: boolean
   error: string | null
-  chain: string
+  /** Named only on a developer's local fork; someone signing up is not asked to know the network. */
+  chain: string | null
   onContinue: () => void
   onSignIn: () => void
 }) {
@@ -36,9 +40,9 @@ export function SignInStep({
       <View style={s.hero}>
         <Image source={images.signinGlow} style={s.glow} resizeMode="stretch" />
         <Eyebrow tone="purple">Sign in</Eyebrow>
-        <Text style={s.title}>A wallet you don’t have to think about.</Text>
+        <Text style={s.title}>An account you don’t have to think about.</Text>
         <Text style={s.body}>
-          Your passkey creates your account on Monad. No seed phrase, nothing to write down, and the same passkey opens it on the web.
+          Your passkey creates your Henad account. No seed phrase, nothing to write down, and the same passkey opens it on the web.
         </Text>
       </View>
 
@@ -48,7 +52,7 @@ export function SignInStep({
         {error ? <ErrorText>{error}</ErrorText> : null}
         <View style={s.meta}>
           <Text style={s.metaText}>PASSKEY BY MERA</Text>
-          <Text style={s.metaText}>{chain.toUpperCase()}</Text>
+          {chain ? <Text style={s.metaText}>{chain.toUpperCase()}</Text> : null}
         </View>
         <View style={s.spacer} />
         <View style={s.points}>

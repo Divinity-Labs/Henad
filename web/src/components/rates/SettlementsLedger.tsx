@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { money, shortHash, spreadLine, tokens } from '@/lib/format'
+import { money, spreadLine, tokens } from '@/lib/format'
 import type { Receipt } from '@/lib/receipts'
 import { ledgerStamp, pad2, settled } from './ledger'
 
@@ -64,7 +64,7 @@ export function SettlementsBlock({ receipts, title = 'Settlements', heading: Hea
                 <span>{amount(r)}</span>
                 <span className="text-right">{spread(r)}</span>
                 <Link href={`/receipt/${r.intentId}`} className="text-right text-purple">
-                  {r.sample ? 'Sample receipt' : shortHash(r.intentId)} ↗
+                  {r.sample ? 'Sample receipt' : 'Receipt'} ↗
                 </Link>
               </div>
             ))}

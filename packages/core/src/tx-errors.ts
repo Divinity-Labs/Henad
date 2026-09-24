@@ -68,7 +68,7 @@ export function describeTxFailure(error: unknown): TxFailure {
   }
 
   if (/paused|not accepting deposits/.test(m)) {
-    return { message: 'The contract has paused this right now. Nothing moved.', needsGas: false }
+    return { message: 'This is paused right now. Nothing moved.', needsGas: false }
   }
 
   if (/slippage|too little received|price impact|amountoutmin/.test(m)) {
@@ -76,15 +76,15 @@ export function describeTxFailure(error: unknown): TxFailure {
   }
 
   if (/timeout|timed out|waitfortransactionreceipt/.test(m)) {
-    return { message: 'Monad did not confirm in time. It may still land: check your account before sending it again.', needsGas: false }
+    return { message: 'This did not confirm in time. It may still go through: check your account before trying again.', needsGas: false }
   }
 
   if (/fetch failed|network error|failed to fetch|econnrefused|http request failed|socket|503|502|429/.test(m)) {
-    return { message: 'Monad could not be reached just now. Try again in a moment.', needsGas: false }
+    return { message: 'Henad could not be reached just now. Try again in a moment.', needsGas: false }
   }
 
   if (/execution reverted|reverted with|custom error/.test(m)) {
-    return { message: 'The contract refused this transaction, so nothing moved.', needsGas: false }
+    return { message: 'That was refused, so nothing moved.', needsGas: false }
   }
 
   // Messages Henad wrote itself are already for people: a closed market, a stale rate, a

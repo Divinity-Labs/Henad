@@ -115,13 +115,19 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     // A verified App Link makes Android check assetlinks.json against this build's signing
     // certificate at install, which is how the domain trust is established on the phone.
-    // One narrow path, /app, so receipt and rates links keep opening in the browser.
+    // Two narrow paths, so receipt and rates links keep opening in the browser: /app, and
+    // /pay, so a pay link someone shares opens straight into paying them. The henad:// scheme
+    // above covers the same links for anything that cannot open https into an app.
+    // A change here is baked into the APK and needs a new build.
     intentFilters: [
       {
         action: 'VIEW',
         autoVerify: true,
         category: ['BROWSABLE', 'DEFAULT'],
-        data: [{ scheme: 'https', host: RP_ID, pathPrefix: '/app' }],
+        data: [
+          { scheme: 'https', host: RP_ID, pathPrefix: '/app' },
+          { scheme: 'https', host: RP_ID, pathPrefix: '/pay' },
+        ],
       },
     ],
   },
@@ -130,12 +136,12 @@ const config: ExpoConfig = {
     'expo-secure-store',
     // The launch screen is the first thing the app shows; left unset it shows Expo's mark.
     ['expo-splash-screen', { image: './assets/splash-icon.png', imageWidth: 180, resizeMode: 'contain', backgroundColor: '#fbfbfc' }],
-    // Scanning a recipient's address QR. Photos and audio are never used, so the
+    // Scanning the QR code of someone being paid. Photos and audio are never used, so the
     // microphone permission is not requested at all.
     [
       'expo-camera',
       {
-        cameraPermission: "Henad uses the camera to scan a recipient's wallet address QR code.",
+        cameraPermission: 'Henad uses the camera to scan the QR code of someone you are paying.',
         microphonePermission: false,
         recordAudioAndroid: false,
       },

@@ -22,6 +22,12 @@ export interface SendInitial {
   /** ?demo=receipt renders S3 with the fixture; ?demo=closed forces S5 */
   demo: 'receipt' | 'closed' | null
   sampleReceipt: ReceiptDto | null
+  /** The account a pay link was opened for (/pay/[address]); absent on /send. */
+  recipient?: Address
+  /** The name that link carries, already through `cleanName`. A claim, never a fact. */
+  recipientName?: string | null
+  /** Where `recipient` came from. Only a pay link hands one over today. */
+  recipientSource?: 'link'
 }
 
 export interface SendState {
@@ -34,9 +40,18 @@ export interface SendState {
   sourceAsset: SourceAssetSymbol
   /** raw text of the amount field, sanitised to d+(.dd)? */
   amount: string
-  recipient: string
-  /** display name for the recipient; lives in this state only and never leaves the device */
-  recipientName: string
+  /** raw text of the recipient field: a Henad link, a .nad name or an account number */
+  recipientInput: string
+  /** the account being paid, once chosen */
+  recipient: Address | null
+  /**
+   * The name the recipient's pay link carried, if they were chosen from one. Unverified:
+   * anyone can type ?n=Mum, so it is shown as coming from the link until the payer saves a
+   * contact of their own.
+   */
+  recipientName: string | null
+  /** the .nad name the payer typed, if they chose the recipient by one */
+  recipientNad: string | null
   editingRecipient: boolean
   account: { address: Address; credentialId: string } | null
   /** source-asset balance on the app chain; null while unread */
@@ -56,12 +71,14 @@ export type SendAction =
   | { type: 'amount'; value: string }
   | { type: 'asset'; value: SourceAssetSymbol }
   | { type: 'corridor'; key: string }
-  | { type: 'recipient'; value: string }
-  | { type: 'recipientName'; value: string }
+  | { type: 'recipientInput'; value: string }
+  | { type: 'chooseRecipient'; address: Address; linkName: string | null; nadName: string | null }
   | { type: 'editRecipient'; editing: boolean }
   | { type: 'busy'; busy: Exclude<Busy, null> }
   | { type: 'fail'; message: string }
   | { type: 'signedIn'; address: Address; credentialId: string }
+  /** The stored account as it now stands, after a sign-out or sign-in here or in another tab. */
+  | { type: 'storedAccount'; account: { address: Address; credentialId: string } | null }
   | { type: 'balance'; value: bigint | null }
   | { type: 'quoted'; quote: QuoteDto }
   | { type: 'requote' }
@@ -84,8 +101,19 @@ export function sanitizeAmount(raw: string): string {
   return `${int}.${frac}`
 }
 
+/** Nobody chosen: what a new payout, a sign-out or a switch of account starts from. */
+const NO_RECIPIENT = { recipientInput: '', recipient: null, recipientName: null, recipientNad: null, editingRecipient: true } as const
+
+/**
+ * No payout in hand. A quote or a receipt belongs to the account that asked for it: left behind
+ * after a sign-out or a switch, the next recipient chosen would jump straight to the old quote,
+ * priced for another amount and maybe another pair, and send it.
+ */
+const NO_PAYOUT = { quote: null, receipt: null, txHash: null, notice: null } as const
+
 export function initialState(i: SendInitial): SendState {
   const demoReceipt = i.demo === 'receipt' ? i.sampleReceipt : null
+  const fromLink = i.recipientSource === 'link' && i.recipient ? i.recipient : null
   return {
     step: demoReceipt ? 'sent' : 'signin',
     now: i.now,
@@ -95,9 +123,8 @@ export function initialState(i: SendInitial): SendState {
     forceClosed: i.demo === 'closed',
     sourceAsset: 'AUSD',
     amount: '',
-    recipient: '',
-    recipientName: '',
-    editingRecipient: true,
+    ...NO_RECIPIENT,
+    ...(fromLink ? { recipient: fromLink, recipientName: i.recipientName ?? null, editingRecipient: false } : {}),
     account: null,
     balance: null,
     busy: null,
@@ -127,25 +154,46 @@ export function sendReducer(s: SendState, a: SendAction): SendState {
     }
     case 'corridor':
       return a.key === s.corridorKey ? s : { ...s, corridorKey: a.key, error: null }
-    case 'recipient':
-      return { ...s, recipient: a.value.trim(), error: null }
-    case 'recipientName':
-      return { ...s, recipientName: a.value.slice(0, 40) }
+    case 'recipientInput':
+      return { ...s, recipientInput: a.value, error: null }
+    case 'chooseRecipient':
+      return {
+        ...s,
+        recipient: a.address,
+        recipientName: a.linkName,
+        recipientNad: a.nadName,
+        recipientInput: '',
+        editingRecipient: false,
+        error: null,
+      }
     case 'editRecipient':
-      return { ...s, editingRecipient: a.editing }
+      return { ...s, editingRecipient: a.editing, recipientInput: '' }
     case 'busy':
       return { ...s, busy: a.busy, error: null }
     case 'fail':
       return { ...s, busy: null, error: a.message }
-    case 'signedIn':
+    case 'signedIn': {
+      // A different account has different contacts, and a recipient chosen from the last
+      // one's list is not something this one picked.
+      const switched = s.account !== null && s.account.address.toLowerCase() !== a.address.toLowerCase()
       return {
         ...s,
+        ...(switched ? { ...NO_RECIPIENT, ...NO_PAYOUT } : {}),
         busy: null,
         error: null,
         account: { address: a.address, credentialId: a.credentialId },
         balance: null,
-        step: s.step === 'signin' ? 'amount' : s.step,
+        step: switched || s.step === 'signin' ? 'amount' : s.step,
       }
+    }
+    case 'storedAccount': {
+      const next = a.account
+      // Contacts stay in storage under the account they belong to; only what is on screen goes.
+      if (!next) return s.account ? { ...s, ...NO_RECIPIENT, ...NO_PAYOUT, account: null, balance: null, busy: null, error: null, step: 'signin' } : s
+      // The same account written again (a sign-in elsewhere with the same passkey) changes nothing here.
+      if (s.account?.address.toLowerCase() === next.address.toLowerCase()) return s
+      return sendReducer(s, { type: 'signedIn', ...next })
+    }
     case 'balance':
       return { ...s, balance: a.value }
     case 'quoted':

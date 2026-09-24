@@ -25,6 +25,20 @@ describe('parseRecipient', () => {
     expect(parseRecipient('https://usehenad.xyz/pay/0x1234')).toMatchObject({ kind: 'invalid' })
   })
 
+  it('treats a link cut off mid-escape as damaged, not as a crash', () => {
+    for (const bad of ['https://usehenad.xyz/pay/%', 'usehenad.xyz/pay/%E0%A4%A', 'henad://pay/%zz']) {
+      expect(parseRecipient(bad)).toMatchObject({ kind: 'invalid' })
+    }
+  })
+
+  it('refuses a mixed-case account number whose checksum fails', () => {
+    // One character's case flipped: the checksum catches exactly this kind of typo.
+    const typo = ADA.replace('Ea1A', 'ea1A')
+    expect(parseRecipient(typo)).toMatchObject({ kind: 'invalid' })
+    expect(parseRecipient(`https://usehenad.xyz/pay/${typo}`)).toMatchObject({ kind: 'invalid' })
+    expect(parseRecipient(ADA.toUpperCase().replace('0X', '0x'))).toEqual({ kind: 'address', address: ADA })
+  })
+
   it('still accepts a bare account number', () => {
     expect(parseRecipient(LOWER)).toEqual({ kind: 'address', address: ADA })
   })

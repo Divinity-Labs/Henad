@@ -1,18 +1,18 @@
 import { useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { CameraView, useCameraPermissions } from 'expo-camera'
-import type { Address } from 'viem'
-import { addressFromScan } from '@/lib/scan'
+import { recipientFromScan, type ScannedRecipient } from '@/lib/scan'
 import { Button, Eyebrow } from '@/ui'
 import { color, font } from '@/theme'
 
 /**
- * Scan a recipient's address QR into the recipient field.
+ * Scan the QR code of the person being paid.
  *
- * Only a code that holds an address is accepted. The first valid one closes the scanner, and
- * the address still shows on the amount screen for the person to check before quoting.
+ * Only a code that names someone to pay is accepted: a Henad pay link, a `.nad` name or an
+ * account. The first valid one closes the scanner, and who it names still shows on the amount
+ * screen, with where the name came from, for the person to check before quoting.
  */
-export function ScanScreen({ onScanned, onCancel }: { onScanned: (address: Address) => void; onCancel: () => void }) {
+export function ScanScreen({ onScanned, onCancel }: { onScanned: (recipient: ScannedRecipient) => void; onCancel: () => void }) {
   const [permission, requestPermission] = useCameraPermissions()
   const [rejected, setRejected] = useState<string | null>(null)
   const done = useRef(false)
@@ -22,7 +22,7 @@ export function ScanScreen({ onScanned, onCancel }: { onScanned: (address: Addre
   if (!permission.granted) {
     return (
       <View style={s.ask}>
-        <Eyebrow tone="purple">Scan an address</Eyebrow>
+        <Eyebrow tone="purple">Scan to pay</Eyebrow>
         <Text style={s.title}>Henad needs the camera to read a QR code.</Text>
         <Text style={s.body}>It is used only while this screen is open. Nothing is recorded.</Text>
         <Button label={permission.canAskAgain ? 'Allow camera' : 'Camera is blocked in Settings'} variant={permission.canAskAgain ? 'primary' : 'disabled'} onPress={() => void requestPermission()} />
@@ -39,18 +39,18 @@ export function ScanScreen({ onScanned, onCancel }: { onScanned: (address: Addre
         barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
         onBarcodeScanned={({ data }) => {
           if (done.current) return
-          const address = addressFromScan(data)
-          if (!address) {
-            setRejected('That QR code does not hold a wallet address.')
+          const recipient = recipientFromScan(data)
+          if (recipient.kind === 'invalid') {
+            setRejected(recipient.reason)
             return
           }
           done.current = true
-          onScanned(address)
+          onScanned(recipient)
         }}
       />
       <View style={s.overlay} pointerEvents="box-none">
         <View style={s.frame} />
-        <Text style={s.hint}>{rejected ?? 'Point at the recipient’s address QR'}</Text>
+        <Text style={s.hint}>{rejected ?? 'Point at the QR code of the person you are paying'}</Text>
         <Button label="Cancel" variant="secondary" onPress={onCancel} style={s.cancel} />
       </View>
     </View>

@@ -73,7 +73,7 @@ export function ClosedStep({
           <Eyebrow>You send</Eyebrow>
           <View style={s.rowBetween}>
             <Text style={s.amount}>{`$${amount || '0.00'}`}</Text>
-            <Chip filled>{`${source.symbol} · Monad`}</Chip>
+            <Chip filled>{source.symbol}</Chip>
           </View>
         </Card>
 

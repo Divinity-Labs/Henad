@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ImageResponse } from 'next/og'
 import { notFound } from 'next/navigation'
-import { money, rateLine, shortAddress, shortHash, tokens, utcStamp } from '@/lib/format'
+import { money, rateLine, shortHash, tokens, utcStamp } from '@/lib/format'
 import { isIntentId, loadReceipt, requestOrigin } from '@/lib/receipt-page'
 
 // Read per request: the rate and the receipt are read from the chain, and a build
@@ -134,7 +134,6 @@ export default async function Image({ params }: { params: Promise<{ intentId: st
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative', padding: '4px 0' }}>
             <span style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: MUTED }}>Delivered</span>
             <span style={{ fontSize: 60, lineHeight: 1, letterSpacing: '-0.035em' }}>{delivered}</span>
-            <span style={{ color: MUTED }}>{`to ${shortAddress(r.recipient)}`}</span>
             <div
               style={{
                 position: 'absolute',

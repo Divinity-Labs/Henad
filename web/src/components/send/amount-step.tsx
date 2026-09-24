@@ -1,15 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { isAddress, parseUnits } from 'viem'
-import { deliveredAt } from '@henad/core'
+import { parseUnits } from 'viem'
+import { deliveredAt, type Contact } from '@henad/core'
 import { CORRIDORS, SOURCE_ASSETS, settleableFrom, type Corridor, type SourceAssetSymbol } from '@henad/core'
-import { money, rateLine, shortAddress, tokens } from '@/lib/format'
+import { money, rateLine, tokens } from '@/lib/format'
 import type { RateDto } from '@/lib/send-serial'
 import { Button } from '@/components/ui/Button'
 import { TierPill } from '@/components/ui/TierPill'
 import { TokenIcon } from '@/components/ui/TokenIcon'
 import { AssetSelect } from './asset-select'
+import { ChosenRecipient, RecipientPicker, receiverName, type RecipientChoice, type RecipientView } from './recipient'
 import { Card, Notice, StepHeader, linkLabel } from './send-ui'
 
 const SOURCE_DECIMALS = 6
@@ -21,21 +22,10 @@ export function amountUnits(amount: string): bigint | null {
   return units > 0n ? units : null
 }
 
-/** "AO" from "Ada Okonkwo"; the first two hex characters of the address when there is no name. */
-export function initials(name: string, address: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length) return words.slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('')
-  return address.slice(2, 4).toUpperCase()
-}
-
-export function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] || 'Recipient'
-}
-
 function refusal(c: Corridor): string {
   return c.tier === 'quote'
-    ? `Priced on Monad, but there is no ${c.targetName} asset to deliver into.`
-    : `Henad cannot price ${c.targetName} on Monad yet.`
+    ? `Henad can show a rate for ${c.targetName}, but cannot deliver them yet.`
+    : `Henad has no rate for ${c.targetName} yet.`
 }
 
 export interface AmountStepProps {
@@ -45,16 +35,19 @@ export interface AmountStepProps {
   sourceAsset: SourceAssetSymbol
   amount: string
   balance: bigint | null
-  recipient: string
-  recipientName: string
+  /** the chosen recipient, labelled; null until one is chosen */
+  recipient: RecipientView | null
+  recipientInput: string
   editingRecipient: boolean
+  /** the payer's contacts, most recently paid first */
+  contacts: Contact[]
   busy: boolean
   error: string | null
   onAmount: (value: string) => void
   onAsset: (value: SourceAssetSymbol) => void
   onCorridor: (key: string) => void
-  onRecipient: (value: string) => void
-  onRecipientName: (value: string) => void
+  onRecipientInput: (value: string) => void
+  onChooseRecipient: (choice: RecipientChoice) => void
   onEditRecipient: (editing: boolean) => void
   onPaste: () => void
   onQuote: () => void
@@ -71,12 +64,12 @@ export function AmountStep(p: AmountStepProps) {
     units !== null && rate !== null && targetAsset
       ? tokens(deliveredAt(rate, units, SOURCE_DECIMALS, targetAsset.decimals), targetAsset.decimals, targetAsset.symbol, c.currencyDp)
       : '—'
-  const validRecipient = isAddress(p.recipient)
+  const chosen = p.recipient !== null && !p.editingRecipient
   const overBalance = units !== null && p.balance !== null && units > p.balance
   const age = p.rate?.updatedAt ? Math.max(0, Math.floor(p.now / 1000 - p.rate.updatedAt)) : null
   const fundable = settleableFrom(c, p.sourceAsset)
   const blocker = !live
-    ? `USD → ${c.target} cannot settle on Monad.`
+    ? `Henad cannot send ${c.targetName} yet.`
     : // The router has no corridor for this pair, so it would revert at settlement.
       !fundable
       ? `${p.sourceAsset} cannot fund USD → ${c.target}. ${c.sources.join(' or ')} can.`
@@ -84,8 +77,8 @@ export function AmountStep(p: AmountStepProps) {
       ? 'Enter an amount.'
       : overBalance
         ? `That is more than your ${p.sourceAsset} balance.`
-        : !validRecipient
-          ? 'Add a recipient address.'
+        : !chosen
+          ? 'Choose who you are paying.'
           : rate === null
             ? 'No reference rate right now.'
             : null
@@ -127,14 +120,14 @@ export function AmountStep(p: AmountStepProps) {
               value: a.symbol,
               label: a.label,
               icon: <TokenIcon symbol={a.symbol} size={22} />,
-              detail: a.symbol === 'AUSD' ? 'Agora dollar · Monad' : 'Circle USD Coin · Monad',
+              detail: a.symbol === 'AUSD' ? 'Agora dollar' : 'Circle USD Coin',
             }))}
           />
         </div>
         {/* Where you notice the balance is short, so the way out of that belongs here. */}
         <Link href="/top-up" className={`${linkLabel} flex items-center justify-between border-t border-hairline-2 pt-[10px] text-purple`}>
-          <span>Top up with MON</span>
-          <span className="text-muted">Swap on PancakeSwap →</span>
+          <span>Add money</span>
+          <span className="text-muted">Top up →</span>
         </Link>
       </Card>
 
@@ -147,12 +140,12 @@ export function AmountStep(p: AmountStepProps) {
             </span>
           </>
         ) : (
-          <span>{c.feed ? `${c.feed.label} · no answer` : 'No rate on Monad'}</span>
+          <span>{c.feed ? `${c.feed.label} · no answer` : 'No rate yet'}</span>
         )}
       </div>
 
       <Card className="flex flex-col gap-[10px] p-4">
-        <div className="label text-muted">{firstName(p.recipientName)} receives</div>
+        <div className="label text-muted">{receiverName(p.recipient)} receives</div>
         <div className="flex items-center justify-between gap-3">
           <div className="font-display text-[38px] font-medium leading-none tracking-[-.035em] tabular">{receives}</div>
           <AssetSelect
@@ -166,8 +159,8 @@ export function AmountStep(p: AmountStepProps) {
               // Name the token that arrives, or say plainly why nothing can.
               detail: !x.targetAsset
                 ? x.tier === 'quote'
-                  ? `${x.targetName} · priced, no token`
-                  : `${x.targetName} · no rate on Monad`
+                  ? `${x.targetName} · rate only`
+                  : `${x.targetName} · not available yet`
                 : settleableFrom(x, p.sourceAsset)
                   ? `${x.targetName} · ${x.targetAsset.symbol}`
                   : `${x.targetName} · ${x.sources.join(' or ')} only`,
@@ -192,55 +185,18 @@ export function AmountStep(p: AmountStepProps) {
         </Link>
       </Card>
 
-      {validRecipient && !p.editingRecipient ? (
-        <Card className="flex items-center gap-3 px-4 py-3">
-          <div aria-hidden className="flex h-10 w-10 flex-none items-center justify-center rounded-[8px] bg-lilac font-display text-[13px] font-semibold text-purple-deep">
-            {initials(p.recipientName, p.recipient)}
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
-            <div className="truncate text-[15px] font-medium">{p.recipientName.trim() || shortAddress(p.recipient)}</div>
-            <div className="font-mono text-[11px] text-muted">{shortAddress(p.recipient)} · Monad</div>
-          </div>
-          <button type="button" onClick={() => p.onEditRecipient(true)} className={`press ${linkLabel} text-ink`}>
-            Change
-          </button>
-        </Card>
+      {p.recipient && !p.editingRecipient ? (
+        <ChosenRecipient recipient={p.recipient} onChange={() => p.onEditRecipient(true)} />
       ) : (
-        <Card className="flex flex-col gap-[10px] p-4">
-          <div className="label flex justify-between text-muted">
-            <span>Recipient</span>
-            <button type="button" onClick={p.onPaste} className="press label text-purple">
-              Paste
-            </button>
-          </div>
-          <label className="flex flex-col gap-1">
-            <span className="sr-only">Recipient address on Monad</span>
-            <input
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="0x… address on Monad"
-              value={p.recipient}
-              onChange={(e) => p.onRecipient(e.target.value)}
-              className="w-full rounded-[4px] border border-border bg-surface px-3 py-[9px] font-mono text-[12px] text-ink placeholder:text-muted"
-            />
-          </label>
-          <label className="flex flex-col gap-[6px]">
-            <span className="label text-muted">Name · stays on this device</span>
-            <input
-              type="text"
-              autoComplete="off"
-              placeholder="Display name"
-              value={p.recipientName}
-              onChange={(e) => p.onRecipientName(e.target.value)}
-              className="w-full rounded-[4px] border border-border bg-surface px-3 py-[9px] text-[15px] text-ink placeholder:text-muted"
-            />
-          </label>
-          {p.recipient && !validRecipient && <Notice>That is not a Monad address. It starts with 0x and is 42 characters long.</Notice>}
-          <Button variant={validRecipient ? 'secondary' : 'disabled'} size="md" onClick={() => p.onEditRecipient(false)}>
-            Done
-          </Button>
-        </Card>
+        <RecipientPicker
+          contacts={p.contacts}
+          input={p.recipientInput}
+          canCancel={p.recipient !== null}
+          onInput={p.onRecipientInput}
+          onPaste={p.onPaste}
+          onChoose={p.onChooseRecipient}
+          onCancel={() => p.onEditRecipient(false)}
+        />
       )}
 
       <div className="flex-1" />
