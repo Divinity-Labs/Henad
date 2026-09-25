@@ -70,6 +70,10 @@ a new domain slowly on their own.
 2. https://www.bing.com/webmasters → import from Search Console once step 1 verifies. Bing's
    index also feeds ChatGPT search and Copilot, which is most of the reason to bother.
 
+### Parked: tokenized stocks (Monday Trade)
+They declined to discuss until after the hackathon (25 Sep, Discord #ticket-0656). Reopen
+after 14 Oct; everything built so far is in docs/STOCKS.md.
+
 ### 2c. The last mile — cash-out partners (research: docs/LAST-MILE.md)
 No off-ramp accepts GBPm, EURm, CHFm or JPYm on Monad, and about 99% of that supply sits
 in Mento's own pools. Every recipient who wants money in a bank has to go back through a

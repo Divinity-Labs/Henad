@@ -3,6 +3,15 @@
 Researched 22 Sep 2026, revised the same day after reading Monday Trade's RWA trading
 docs. Everything marked **verified** was read from Monad mainnet.
 
+## Status, 25 Sep 2026: parked until after the hackathon
+
+Monday Trade's team replied in their Discord ticket (#ticket-0656) that they will "hold on to
+any discussion until after the hackathon". Without their approval of Henad-onboarded wallets
+in the compliance registry, no Henad user can deposit, so nothing ships before 14 Oct. The
+fork-verified integration below stays as the starting point; reopen the ticket after the
+deadline. In the submission, say "integration verified on a mainnet fork, awaiting partner
+approval" — not "live".
+
 ## The short answer
 
 **It is buildable, as a Stocks page next to Top up, in three to four days** — provided we
