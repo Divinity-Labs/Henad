@@ -70,6 +70,23 @@ a new domain slowly on their own.
 2. https://www.bing.com/webmasters → import from Search Console once step 1 verifies. Bing's
    index also feeds ChatGPT search and Copilot, which is most of the reason to bother.
 
+### 2c. The last mile — cash-out partners (research: docs/LAST-MILE.md)
+No off-ramp accepts GBPm, EURm, CHFm or JPYm on Monad, and about 99% of that supply sits
+in Mento's own pools. Every recipient who wants money in a bank has to go back through a
+dollar stablecoin and a licensed partner. Each of these needs you, because each is an
+account with a regulated company:
+
+- **Ramp Network** — register as a partner for a `hostApiKey`, then test a `MONAD_USDC`
+  cash-out on Ramp's demo environment. Verified to take USDC and AUSD on Monad; pays GBP to
+  a card (4.49%) and EUR by SEPA (0.99%). The best fit for "routes between licensed ramps".
+- **Switch (onswitch.xyz)** — for Nigeria: ask about business onboarding, which licensed
+  company makes the naira payouts, and fees. Takes USDC and USDT0 on Monad.
+- **Onramp Money** — get an app ID and test whether Monad USDC gets a naira or GBP quote.
+- **Bridge (Stripe)** — ask whether Monad is live in their API.
+- **Agora** — ask whether non-US organisations can redeem AUSD.
+
+Only say "integrated" once one of these has actually paid out.
+
 ### 3. Finish the passkey test — creation works, restore is untested
 **Half of this is now proven.** On 11 Sep, on desktop Chrome with Google Password
 Manager under `rpId=localhost`, the ceremony completed: a passkey was created, the PRF
