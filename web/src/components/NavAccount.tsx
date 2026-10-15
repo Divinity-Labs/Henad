@@ -5,15 +5,17 @@ import type { Address } from 'viem'
 import { cleanName } from '@henad/core'
 import { Button } from '@/components/ui/Button'
 import { useMyName } from '@/lib/contacts'
+import { useMyHandle } from '@/lib/handles'
 import { useStoredAddress } from '@/lib/use-stored-address'
 
 /**
- * The signed-in account as a chip linking to /account: the name the person gave themselves,
- * or "Your account". The account number stays in the tooltip and the accessible name, and in
+ * The signed-in account as a chip linking to /account: their Henad name, else the name the
+ * person gave their link, else "Your account". The account number stays in the tooltip and the accessible name, and in
  * full on /account, which is where anyone who needs it goes.
  */
 export function AccountChip({ address }: { address: Address }) {
-  const name = cleanName(useMyName(address))
+  const handle = useMyHandle(address)
+  const name = handle ? `@${handle}` : cleanName(useMyName(address))
   return (
     <Link
       href="/account"

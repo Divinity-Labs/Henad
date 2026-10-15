@@ -1,10 +1,37 @@
+import { useEffect, useState } from 'react'
 import type { Address, Hex, LocalAccount } from 'viem'
 import { handleOf, handleRegistry, handleRegistryAbi, registerTypedData, resolveHandle, toHandle } from '@henad/core'
 import { appChain } from './chain'
 
+/** One read per account per page load, shared by the nav chip and the account page. */
+const known = new Map<string, string | null>()
+const listeners = new Set<() => void>()
+
 /** The name this account holds, without the at-sign, or null. Throws when the chain cannot be read. */
-export function readMyHandle(address: Address): Promise<string | null> {
-  return handleOf(appChain(), address)
+export async function readMyHandle(address: Address): Promise<string | null> {
+  const handle = await handleOf(appChain(), address)
+  rememberHandle(address, handle)
+  return handle
+}
+
+function rememberHandle(address: Address, handle: string | null) {
+  known.set(address.toLowerCase(), handle)
+  listeners.forEach((l) => l())
+}
+
+/** The account's Henad name for display; null until read, or when it has none or the read fails. */
+export function useMyHandle(address: Address): string | null {
+  const key = address.toLowerCase()
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const listen = () => bump((n) => n + 1)
+    listeners.add(listen)
+    if (!known.has(key)) readMyHandle(address).catch(() => {})
+    return () => {
+      listeners.delete(listen)
+    }
+  }, [address, key])
+  return known.get(key) ?? null
 }
 
 /** Whether nobody holds `handle` yet. */
@@ -42,5 +69,6 @@ export async function claimHandle(account: LocalAccount, input: string): Promise
   // The transaction can land and still not give the name, if someone else's claim landed first.
   const held = await handleOf(client, account.address)
   if (held !== handle) throw new Error(`Someone claimed @${handle} a moment before you. Try another.`)
+  rememberHandle(account.address, handle)
   return handle
 }
