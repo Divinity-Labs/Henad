@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { cleanName, payLink } from '@henad/core'
 import { AccountNumber } from '@/components/AccountNumber'
+import { HenadName } from '@/components/account/HenadName'
 import { Button } from '@/components/ui/Button'
 import { Card, StepHeader } from '@/components/send/send-ui'
 import { TokenIcon } from '@/components/ui/TokenIcon'
@@ -39,9 +40,11 @@ export function AccountView({ network }: { network: string | null }) {
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [handle, setHandle] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
-  const link = address ? payLink(address, myName) : null
+  // With no name typed, the link carries the Henad name, so a payer sees who it is.
+  const link = address ? payLink(address, cleanName(myName) ?? (handle ? `@${handle}` : null)) : null
 
   /** A failed read keeps the last good balances rather than blanking them. */
   function apply(next: Holding[] | null) {
@@ -149,8 +152,9 @@ export function AccountView({ network }: { network: string | null }) {
 
       <Card className="flex flex-col gap-4 p-5">
         <div className="label text-muted">Get paid</div>
+        <HenadName address={address} suggestion={myName} onHeld={setHandle} />
         <label className="flex flex-col gap-[6px]">
-          <span className="label text-muted">Your name · shown on your link</span>
+          <span className="label text-muted">Name shown on your link</span>
           <input
             type="text"
             autoComplete="name"

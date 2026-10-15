@@ -47,9 +47,20 @@ describe('parseRecipient', () => {
     expect(parseRecipient('Salmo.nad')).toEqual({ kind: 'nad', nadName: 'salmo.nad' })
   })
 
+  it('reads a Henad name with or without its at-sign, lowercased', () => {
+    for (const input of ['@Miracle', 'miracle', ' @miracle ']) {
+      expect(parseRecipient(input)).toEqual({ kind: 'nad', nadName: '@miracle' })
+    }
+  })
+
+  it('says why an at-name can never be a Henad name', () => {
+    expect(parseRecipient('@ab')).toMatchObject({ kind: 'invalid', reason: 'At least 3 characters.' })
+    expect(parseRecipient('@ada lovelace')).toMatchObject({ kind: 'invalid', reason: 'Only letters, numbers and underscores.' })
+  })
+
   it('returns empty and invalid rather than throwing', () => {
     expect(parseRecipient('   ').kind).toBe('empty')
-    expect(parseRecipient('mum').kind).toBe('invalid')
+    expect(parseRecipient('my mum').kind).toBe('invalid')
   })
 })
 

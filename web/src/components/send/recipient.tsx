@@ -264,8 +264,8 @@ export function RecipientPicker({
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          placeholder="Henad link, name.nad or account number"
-          aria-label="A Henad link, a .nad name, or an account number"
+          placeholder="@name, Henad link or account number"
+          aria-label="A Henad name, a Henad link, a .nad name, or an account number"
           value={input}
           onChange={(e) => onInput(e.target.value)}
           className="w-full rounded-[4px] border border-border bg-surface px-3 py-[9px] text-[15px] text-ink placeholder:text-muted"

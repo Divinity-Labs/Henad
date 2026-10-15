@@ -1,5 +1,6 @@
 import { getAddress, isAddress, type Address, type PublicClient } from 'viem'
 import { namehash, normalize } from 'viem/ens'
+import { handleProblem, resolveHandle, toHandle } from './handles'
 
 /**
  * Who a payment is for, without asking anyone to read an address.
@@ -39,7 +40,7 @@ export type ParsedRecipient =
   | { kind: 'address'; address: Address }
   /** From a Henad pay link. `name` is whatever the link says, unverified. */
   | { kind: 'paylink'; address: Address; name: string | null }
-  /** A `.nad` name, still to be resolved on chain. */
+  /** A name still to be resolved on chain: a `.nad` name, or a Henad name as "@name". */
   | { kind: 'nad'; nadName: string }
   | { kind: 'empty' }
   | { kind: 'invalid'; reason: string }
@@ -91,7 +92,14 @@ export function parseRecipient(input: string): ParsedRecipient {
     }
   }
 
-  return { kind: 'invalid', reason: 'That is not a Henad link, a .nad name or an account number.' }
+  // A Henad name, typed with or without its at-sign. It rides the `nad` kind as "@name" so
+  // every screen that already looks up, labels and warns about a .nad name does the same for
+  // it; resolveNad tells the two apart by the at-sign.
+  const handle = toHandle(text)
+  if (handle) return { kind: 'nad', nadName: `@${handle}` }
+  if (text.startsWith('@')) return { kind: 'invalid', reason: handleProblem(text) ?? 'That is not a valid Henad name.' }
+
+  return { kind: 'invalid', reason: 'That is not a Henad name, a Henad link, a .nad name or an account number.' }
 }
 
 /**
@@ -151,6 +159,7 @@ export function payLink(address: Address, name?: string | null): string {
  * name and treats the first payment to it like any other first payment.
  */
 export async function resolveNad(client: PublicClient, nadName: string): Promise<Address | null> {
+  if (nadName.startsWith('@')) return resolveHandle(client, nadName)
   const resolved = await client.readContract({
     address: NNS_MAINNET,
     abi: nnsAbi,
