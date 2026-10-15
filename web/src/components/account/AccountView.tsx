@@ -226,6 +226,9 @@ export function AccountView({ network }: { network: string | null }) {
         <Button href="/send" size="lg">
           Send a payout
         </Button>
+        <Button href="/link" variant="secondary" size="lg">
+          Send by link
+        </Button>
         <Button href="/receipts" variant="secondary" size="lg">
           Receipts
         </Button>
