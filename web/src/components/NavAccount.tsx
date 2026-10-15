@@ -15,7 +15,8 @@ import { useStoredAddress } from '@/lib/use-stored-address'
  */
 export function AccountChip({ address }: { address: Address }) {
   const handle = useMyHandle(address)
-  const name = handle ? `@${handle}` : cleanName(useMyName(address))
+  const linkName = useMyName(address)
+  const name = handle ? `@${handle}` : cleanName(linkName)
   return (
     <Link
       href="/account"
