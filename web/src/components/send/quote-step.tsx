@@ -158,7 +158,7 @@ export function QuoteStep({
         {/* Who, by name, with how that name is known: a link's name never appears without it. */}
         <div className="mt-1 flex min-w-0 flex-col gap-[2px] border-t border-white/10 pt-2">
           <span className="truncate text-[14px] font-medium">To {recipient.label}</span>
-          <span className="font-mono text-[10px] text-dim">{sourceLine(recipient.source)}</span>
+          <span className="font-mono text-[10px] text-dim">{sourceLine(recipient.source, recipient.label)}</span>
         </div>
       </div>
 

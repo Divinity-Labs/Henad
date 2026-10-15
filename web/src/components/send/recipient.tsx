@@ -37,15 +37,15 @@ export function describeRecipient(address: Address, contacts: Contact[], nadName
   return { address, label, source }
 }
 
-/** The line under a recipient's name that says how much to trust it. */
-export function sourceLine(source: RecipientSource): string {
+/** The line under a recipient's name that says how much to trust it. `label` tells a Henad name from a `.nad` one. */
+export function sourceLine(source: RecipientSource, label = ''): string {
   switch (source) {
     case 'contact':
       return 'Saved contact'
     case 'link':
       return 'From their Henad link — not verified'
     case 'nad':
-      return 'Found by its .nad name'
+      return label.startsWith('@') ? 'Found by their Henad name' : 'Found by its .nad name'
     case 'account':
       return 'New account'
   }
@@ -82,11 +82,11 @@ function Avatar({ r }: { r: RecipientView }) {
   )
 }
 
-function SourceText({ source }: { source: RecipientSource }) {
+function SourceText({ source, label }: { source: RecipientSource; label: string }) {
   return (
     <div className="flex items-center gap-[6px] font-mono text-[11px] text-muted">
       {source === 'link' && <span aria-hidden className="h-[6px] w-[6px] flex-none rounded-full bg-amber" />}
-      <span className="truncate">{sourceLine(source)}</span>
+      <span className="truncate">{sourceLine(source, label)}</span>
     </div>
   )
 }
@@ -99,7 +99,7 @@ export function ChosenRecipient({ recipient, onChange }: { recipient: RecipientV
         <Avatar r={recipient} />
         <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
           <div className="truncate text-[15px] font-medium">{recipient.label}</div>
-          <SourceText source={recipient.source} />
+          <SourceText source={recipient.source} label={recipient.label} />
         </div>
         <button type="button" onClick={onChange} className={`press ${linkLabel} text-ink`}>
           Change
@@ -116,7 +116,7 @@ function RecipientRow({ r, detail, onClick }: { r: RecipientView; detail?: strin
       <Avatar r={r} />
       <span className="flex min-w-0 flex-1 flex-col gap-[2px]">
         <span className="truncate text-[15px] font-medium text-ink">{r.label}</span>
-        {detail ? <span className="truncate font-mono text-[11px] text-muted">{detail}</span> : <SourceText source={r.source} />}
+        {detail ? <span className="truncate font-mono text-[11px] text-muted">{detail}</span> : <SourceText source={r.source} label={r.label} />}
       </span>
       <span className={`${linkLabel} flex-none text-purple`}>Pay</span>
     </button>
