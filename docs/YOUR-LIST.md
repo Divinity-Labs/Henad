@@ -13,12 +13,18 @@ blocked on a human — an account, a card, a domain, a device, or a judgement ca
 > Contracts verified on Monadscan; the site and the app both read mainnet. What is left is
 > money in the right places, the things only you can sign up for, and the submission itself.
 
-### Money, as of 20 Sep
+### Money, as of 15 Oct
 | | | |
 | --- | --- | --- |
-| Deployer `0x2601a8ad…8C18` | 0.4679 MON | owns the contracts; keystore, password known only to you |
-| Relayer `0x5159261D…1F5c` | **0.1368 MON** | **about one payout left — top this up** |
+| Deployer `0x2601a8ad…8C18` | about 4.97 MON | owns the contracts; keystore, password known only to you |
+| Relayer `0x5159261D…1F5c` | 40.14 MON | about 245 payouts at ~0.163 MON each |
+| Your wallet `0x4786…D037` | 12.96 MON | keep 10 MON in it; Monad's reserve rule stops swaps and sends below that |
 | Your passkey account `0x2Ea1A81a…EaA6` | 0.034356 AUSD | what a demo payout spends |
+
+HandleRegistry `0xbf94a64324ef1dF44047bEC15C4EFBC8D651c6c7` and ClaimEscrow
+`0xfa0a9DE27fEd6FFFE77A7A2388470Ea66F9847bA` went live on 15 Oct (block 113,595,598,
+0.39 MON), verified on Monadscan and Sourcify. Handles are first come, first served with
+nothing reserved: register `henad` and `support` yourself before anyone else does.
 
 Topping up the relayer is one command in Git Bash:
 `~/.foundry/bin/cast send 0x5159261D57900ECADf8F380C7c43dcf0B7a11F5c --value 0.3ether --rpc-url https://rpc.monad.xyz --account henad-mainnet`

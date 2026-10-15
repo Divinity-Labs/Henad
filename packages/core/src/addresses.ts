@@ -148,3 +148,23 @@ export const HENAD: Partial<Record<MonadChainId, HenadDeployment>> = {
     deployedAtBlock: 105_928_848n,
   },
 }
+
+/**
+ * Paying a person rather than an address: HandleRegistry (pay "@ada") and ClaimEscrow (pay,
+ * by link, someone with no account yet). Deployed to Monad mainnet on 15 Oct 2026 and
+ * verified on Monadscan and Sourcify. Neither has an owner or an upgrade path, and neither
+ * refers to the settlement stack above. Source of truth: contracts/deployments/143.claims.json.
+ */
+export interface HenadClaimsDeployment {
+  handleRegistry: Address
+  claimEscrow: Address
+  deployedAtBlock: bigint
+}
+
+export const HENAD_CLAIMS: Partial<Record<MonadChainId, HenadClaimsDeployment>> = {
+  [MONAD_MAINNET_ID]: {
+    handleRegistry: '0xbf94a64324ef1dF44047bEC15C4EFBC8D651c6c7',
+    claimEscrow: '0xfa0a9DE27fEd6FFFE77A7A2388470Ea66F9847bA',
+    deployedAtBlock: 113_595_598n,
+  },
+}
