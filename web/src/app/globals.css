@@ -161,6 +161,31 @@
   }
 }
 
+/*
+ * The landing hero waits for its entrance (LandingMotion) instead of painting finished and
+ * then vanishing. If the script is slow or never runs, the parts show themselves at 2.4 s.
+ * Reduced motion never hides anything.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-pre [data-h],
+  .hero-pre [data-card] {
+    opacity: 0;
+    animation: henadShow 0.01s 2.4s forwards;
+  }
+}
+/* The landing's demo phone is 600px tall; on a short laptop screen it shrinks to fit the pin. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .phone-fit {
+    scale: 0.82;
+  }
+}
+
+@keyframes henadShow {
+  to {
+    opacity: 1;
+  }
+}
+
 :focus-visible {
   outline: 2px solid var(--color-purple);
   outline-offset: 2px;

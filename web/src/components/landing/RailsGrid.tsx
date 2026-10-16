@@ -33,10 +33,10 @@ const RAILS: Rail[] = [
 export function RailsGrid() {
   return (
     <section className="hidden md:flex flex-col" aria-labelledby="rails-heading">
-      <h2 id="rails-heading" className="m-0 px-9 py-5 text-[15px] font-normal text-grey border-b border-hairline">
+      <h2 id="rails-heading" data-rise className="m-0 px-9 py-5 text-[15px] font-normal text-grey border-b border-hairline">
         Rails Henad reads or links. It operates none of them.
       </h2>
-      <ul className="m-0 p-0 list-none grid grid-cols-5">
+      <ul data-stagger className="m-0 p-0 list-none grid grid-cols-5">
         {RAILS.map((r, i) => (
           <li key={r.name} className={`flex flex-col justify-center gap-2 h-24 px-9 border-b border-hairline ${(i + 1) % 5 === 0 ? '' : 'border-r'}`}>
             {r.mark ? (

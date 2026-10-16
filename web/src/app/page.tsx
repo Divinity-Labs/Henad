@@ -10,6 +10,8 @@ import { Hero } from '@/components/landing/Hero'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { LandingMobileMenu } from '@/components/landing/MobileMenu'
 import { NotDo } from '@/components/landing/NotDo'
+import { PayPeople } from '@/components/landing/PayPeople'
+import { LandingMotion } from '@/components/landing/motion/LandingMotion'
 import { RailsGrid } from '@/components/landing/RailsGrid'
 import { ReceiptCard, ReceiptPanel } from '@/components/landing/ReceiptPanel'
 import { StatStrip } from '@/components/landing/StatStrip'
@@ -59,20 +61,23 @@ export default async function Home() {
             </>
           }
         />
-        <main>
-          <Hero slip={slip} latest={ledger.latest} rates={rates} />
-          <StatStrip ledger={ledger} />
-          <RailsGrid />
-          <HowItWorks />
-          <ReceiptPanel slip={slip} ghost={ghostBps} />
-          <DeliveredBand figure={delivered} settlements={ledger.settlements} sample={sample} explorer={explorer} />
-          <Corridors rates={rates} />
-          <UnpricedModule />
-          <UnpricedCard />
-          <ReceiptCard ghost={ghostBps} />
-          <NotDo />
-          <Cta latest={ledger.latest} />
-        </main>
+        <LandingMotion>
+          <main>
+            <Hero slip={slip} latest={ledger.latest} rates={rates} />
+            <StatStrip ledger={ledger} />
+            <RailsGrid />
+            <HowItWorks />
+            <PayPeople />
+            <ReceiptPanel slip={slip} ghost={ghostBps} />
+            <DeliveredBand figure={delivered} settlements={ledger.settlements} sample={sample} explorer={explorer} />
+            <Corridors rates={rates} />
+            <UnpricedModule />
+            <UnpricedCard />
+            <ReceiptCard ghost={ghostBps} />
+            <NotDo />
+            <Cta latest={ledger.latest} />
+          </main>
+        </LandingMotion>
         <div className="hidden md:block">
           <Footer />
         </div>

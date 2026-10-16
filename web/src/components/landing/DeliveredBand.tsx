@@ -28,9 +28,12 @@ export function DeliveredBand({ figure, settlements, sample, explorer }: { figur
         aria-hidden="true"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-display font-medium text-[clamp(160px,23vw,300px)] leading-none tracking-[-.05em] text-ghost-2 whitespace-nowrap pointer-events-none select-none tabular"
       >
-        {figure}
+        {/* Animated inside the centred box: GSAP would take over the box's own translate. */}
+        <span data-drift="6" data-zoom data-count className="block">
+          {figure}
+        </span>
       </div>
-      <div className="relative flex flex-col items-center gap-[10px] text-center">
+      <div data-stagger className="relative flex flex-col items-center gap-[10px] text-center">
         <h2 id="delivered-heading" className="m-0 flex flex-col items-center gap-[10px] font-display font-medium text-[36px] tracking-[-.03em] leading-[1.1]">
           <span>Delivered so far</span>
           {explorer ? (
