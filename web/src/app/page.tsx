@@ -11,6 +11,7 @@ import { HowItWorks } from '@/components/landing/HowItWorks'
 import { LandingMobileMenu } from '@/components/landing/MobileMenu'
 import { NotDo } from '@/components/landing/NotDo'
 import { PayPeople } from '@/components/landing/PayPeople'
+import { AndroidApp } from '@/components/landing/AndroidApp'
 import { LandingMotion } from '@/components/landing/motion/LandingMotion'
 import { RailsGrid } from '@/components/landing/RailsGrid'
 import { ReceiptCard, ReceiptPanel } from '@/components/landing/ReceiptPanel'
@@ -68,6 +69,7 @@ export default async function Home() {
             <RailsGrid />
             <HowItWorks />
             <PayPeople />
+            <AndroidApp />
             <ReceiptPanel slip={slip} ghost={ghostBps} />
             <DeliveredBand figure={delivered} settlements={ledger.settlements} sample={sample} explorer={explorer} />
             <Corridors rates={rates} />
