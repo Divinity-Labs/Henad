@@ -19,7 +19,7 @@ const cols = [
     items: [
       [LEDGER, 'The ledger on Monadscan ↗'],
       ['https://x.com/henadonmonad', 'X ↗'],
-      [`${REPO}/releases/latest`, 'Android app ↗'],
+      [`${REPO}/releases/latest/download/henad-android.apk`, 'Android app ↗'],
       ['https://www.monad.xyz/developers/hackathons/metropolis', 'Metropolis 2026 ↗'],
     ],
   },

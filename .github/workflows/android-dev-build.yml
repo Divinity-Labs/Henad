@@ -122,4 +122,8 @@ jobs:
           else
             gh release create "$tag" "$RUNNER_TEMP/${{ steps.name.outputs.file }}" -R "$GITHUB_REPOSITORY"               --title "Henad $tag for Android" --notes-file "$notes"
           fi
+          # The same file under one fixed name, so releases/latest/download/henad-android.apk, the
+          # link on usehenad.xyz, always downloads the newest build.
+          cp "$RUNNER_TEMP/${{ steps.name.outputs.file }}" "$RUNNER_TEMP/henad-android.apk"
+          gh release upload "$tag" "$RUNNER_TEMP/henad-android.apk" -R "$GITHUB_REPOSITORY" --clobber
           echo "::notice::Published $tag: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$tag"

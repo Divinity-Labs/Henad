@@ -11,7 +11,14 @@ export const SITE_NAME = 'Henad'
 export const X_HANDLE = '@henadonmonad'
 export const X_URL = 'https://x.com/henadonmonad'
 export const REPO_URL = 'https://github.com/Divinity-Labs/Henad'
-export const ANDROID_URL = `${REPO_URL}/releases/latest`
+/** The latest release's page: version, notes and the APK's checksum. */
+export const ANDROID_RELEASE_URL = `${REPO_URL}/releases/latest`
+/**
+ * The APK itself, newest first. Every release carries a copy named henad-android.apk
+ * (.github/workflows/android-dev-build.yml), so this one link always downloads the latest
+ * build without a page in between, and without a GitHub account.
+ */
+export const ANDROID_URL = `${REPO_URL}/releases/latest/download/henad-android.apk`
 
 /** What a search result says under the title. Written to be the answer, not the teaser. */
 export const DESCRIPTION =

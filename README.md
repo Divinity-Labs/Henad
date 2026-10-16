@@ -11,7 +11,7 @@ is the proof.
 | | |
 | --- | --- |
 | Web app | **https://usehenad.xyz** |
-| Android app | [latest release](https://github.com/Divinity-Labs/Henad/releases/latest) — an APK, no store account needed |
+| Android app | [download the APK](https://github.com/Divinity-Labs/Henad/releases/latest/download/henad-android.apk) · [release notes](https://github.com/Divinity-Labs/Henad/releases/latest) — no store account needed |
 | A real receipt | [0.40 AUSD → £0.298070 at 19 bps](https://usehenad.xyz/receipt/0x9c1479f156dd1d943e417dea5dbee28cf77548df4c69774042264f146a77503c) |
 | Network | Monad mainnet, chain 143. Live since 18 Sep 2026 |
 

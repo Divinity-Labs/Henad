@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/Button'
 import { HenadMark } from '@/components/ui/HenadMark'
-import { ANDROID_URL } from '@/lib/site'
+import { ANDROID_RELEASE_URL, ANDROID_URL } from '@/lib/site'
 
 const POINTS = ['Passkey sign-in. No seed phrase.', 'Spread shown in pounds before you sign.', 'Every receipt opens as a public link.']
 
 const label = 'font-mono text-[8px] uppercase tracking-[.1em]'
 
 /**
- * "Henad is live on Android": the app's download, beside two of its screens. The button goes to
- * the latest GitHub release, which the Android build workflow publishes, so a new APK reaches
- * this page without a deploy.
+ * "Henad is live on Android": the app's download, beside two of its screens. The button downloads
+ * the APK straight from the latest GitHub release, which the Android build workflow publishes,
+ * so a new build reaches this page without a deploy.
  *
  * The phones are pictures (aria-hidden) of the app's own sign-in and send screens; their figures
  * are the canvas's examples, and the points beside them say everything the pictures do.
@@ -46,7 +46,12 @@ export function AndroidApp() {
             Open in browser
           </Button>
         </div>
-        <p className="m-0 font-mono text-[10px] uppercase tracking-[.08em] text-muted">Android 9 or later · APK from GitHub releases</p>
+        <p className="m-0 font-mono text-[10px] uppercase tracking-[.08em] text-muted">
+          Android 9 or later · Direct APK download ·{' '}
+          <a href={ANDROID_RELEASE_URL} target="_blank" rel="noreferrer" className="text-purple underline-offset-2 hover:underline">
+            Release notes
+          </a>
+        </p>
       </div>
 
       <div
