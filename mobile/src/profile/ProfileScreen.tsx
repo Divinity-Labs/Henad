@@ -9,6 +9,7 @@ import { Button, Card, Dashed, Eyebrow, TextLink } from '@/ui'
 import { color, font, track } from '@/theme'
 import { units } from '@/send/format'
 import { TokenIcon } from '@/tokens/TokenIcon'
+import { HenadNameCard } from './HenadNameCard'
 
 /**
  * The account: how to get paid, what it holds, and the way to settings.
@@ -27,8 +28,15 @@ export function ProfileScreen({
   onMyName,
   onRefresh,
   onSettings,
+  handle,
+  onClaimed,
+  onSendLink,
 }: {
   address: Address
+  /** The account's Henad name: undefined while it is read, null when it has none. */
+  handle: string | null | undefined
+  onClaimed: (handle: string) => void
+  onSendLink: () => void
   holdings: Holding[] | null
   loading: boolean
   /** The name this person put on their own pay link. */
@@ -46,7 +54,8 @@ export function ProfileScreen({
   useEffect(() => setDraft(myName ?? ''), [myName])
 
   // Built from what is typed, so the QR and the shared link always match the field on screen.
-  const link = payLink(address, draft)
+  // With no name typed, the link carries the Henad name, so whoever opens it sees who it is.
+  const link = payLink(address, cleanName(draft) ?? (handle ? `@${handle}` : null))
 
   const commitName = () => {
     const clean = cleanName(draft)
@@ -88,6 +97,8 @@ export function ProfileScreen({
       <View style={s.body}>
         <Eyebrow tone="purple">Your account</Eyebrow>
 
+        <HenadNameCard address={address} handle={handle} suggestion={myName} onClaimed={onClaimed} />
+
         <Card style={s.qrCard}>
           <Eyebrow>Get paid</Eyebrow>
           <View style={s.qr}>
@@ -95,7 +106,7 @@ export function ProfileScreen({
           </View>
           <Text style={s.help}>Anyone with Henad can pay you by scanning this or opening your link.</Text>
           <View style={s.field}>
-            <Eyebrow>Your name on the link</Eyebrow>
+            <Eyebrow>Name shown on your link</Eyebrow>
             <TextInput
               style={s.input}
               value={draft}
@@ -156,6 +167,9 @@ export function ProfileScreen({
           )}
         </Card>
 
+
+        <Button label="Send by link" variant="secondary" onPress={onSendLink} />
+        <Text style={s.foot}>For someone who isn&apos;t on Henad yet. They tap once, and it&apos;s theirs.</Text>
 
         <View style={s.spacer} />
         <Button label="Settings" variant="secondary" onPress={onSettings} />

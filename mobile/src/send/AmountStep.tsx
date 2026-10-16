@@ -51,6 +51,7 @@ export function AmountStep({
   error,
   onQuote,
   onWhy,
+  onSendLink,
 }: {
   corridors: Corridor[]
   corridor: Corridor
@@ -76,6 +77,8 @@ export function AmountStep({
   error: string | null
   onQuote: () => void
   onWhy: () => void
+  /** For someone with no account to pay: a claim link instead. */
+  onSendLink: () => void
 }) {
   const [picking, setPicking] = useState(false)
   const [pickingSource, setPickingSource] = useState(false)
@@ -339,11 +342,11 @@ export function AmountStep({
                   style={s.recipientInput}
                   value={recipientText}
                   onChangeText={onRecipientText}
-                  placeholder={contacts.length > 0 ? 'Or a Henad link, .nad name, account number' : 'Henad link, .nad name or account number'}
+                  placeholder={contacts.length > 0 ? 'Or @name, Henad link, account number' : '@name, Henad link or account number'}
                   placeholderTextColor={color.muted}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  accessibilityLabel="Who to pay: a Henad link, a .nad name or an account number"
+                  accessibilityLabel="Who to pay: a Henad name, a Henad link, a .nad name or an account number"
                   onFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 300)}
                 />
                 <TextLink label="Scan" tone="purple" onPress={onScan} />
@@ -361,6 +364,7 @@ export function AmountStep({
           )}
         </Card>
 
+        {recipient ? null : <TextLink label="Not on Henad yet? Send them a link" tone="purple" onPress={onSendLink} style={s.linkOut} />}
         {error ? <ErrorText>{error}</ErrorText> : null}
         <Button label="Get quote" variant={blocker ? 'disabled' : 'primary'} onPress={onQuote} busy={busy} />
         <Text style={s.foot}>{blocker ?? 'Nothing moves until you approve the rate.'}</Text>
@@ -371,6 +375,7 @@ export function AmountStep({
 }
 
 const s = StyleSheet.create({
+  linkOut: { alignSelf: 'center', paddingVertical: 4 },
   flex: { flex: 1 },
   chipRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   scroll: { flexGrow: 1 },

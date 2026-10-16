@@ -108,6 +108,28 @@ export async function relaySettlement(chainId: number, intent: Record<string, un
   return body as RelayResult
 }
 
+/**
+ * POST to one of the web app's relayer routes (/api/handle, /api/claim) and return the
+ * transaction it sent. Those routes answer every failure with a sentence that can be shown
+ * as it is.
+ */
+export async function postForTx(path: string, body: Record<string, string>): Promise<Hex> {
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl()}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  } catch {
+    throw new Error('Could not reach Henad. Check your connection and try again.')
+  }
+  const json = (await res.json().catch(() => null)) as { txHash?: Hex; error?: string } | null
+  if (!res.ok || !json?.txHash) throw new Error(json?.error ?? 'That did not go through. Try again.')
+  return json.txHash
+}
+
+/** A Henad page on the web, for links this app hands to other people. */
+export function webUrl(path: string): string {
+  return `${baseUrl()}${path}`
+}
+
 /** The public permalink for a settled payout. The same URL anyone else would open. */
 export function receiptUrl(intentId: Hex): string {
   return `${baseUrl()}/receipt/${intentId}`

@@ -33,6 +33,8 @@ import { settleFromPhone } from '@/lib/settle'
 import { alertsState, cancelMarketAlerts, requestAlertPermission, scheduleMarketAlerts, sendTestAlert } from '@/lib/market-alerts'
 import { INTERVAL_MINUTES, WATCHABLE, rateWatchState, runRateWatch, setWatchedCorridors, startRateWatch, stopRateWatch, watchedKeys } from '@/lib/rate-watch'
 import { ProfileScreen } from '@/profile/ProfileScreen'
+import { LinksScreen } from '@/links/LinksScreen'
+import { readMyHandle } from '@/lib/handles'
 import { SettingsScreen } from '@/settings/SettingsScreen'
 import { ScanScreen } from '@/profile/ScanScreen'
 import { TabBar, type Tab } from '@/nav/TabBar'
@@ -58,7 +60,7 @@ function ago(at: number): string {
   if (s < 36 * 3600) return `${Math.round(s / 3600)} h ago`
   return `${Math.round(s / 86400)} days ago`
 }
-type View_ = 'send' | 'fund' | 'earn' | 'rates' | 'receipts' | 'profile' | 'settings'
+type View_ = 'send' | 'fund' | 'earn' | 'rates' | 'receipts' | 'profile' | 'settings' | 'links'
 
 /** A link or scan that already names an account; `.nad` names and typos are the send screen's. */
 function chosenFrom(parsed: ParsedRecipient): Recipient | null {
@@ -99,6 +101,10 @@ export default function App() {
   // Read by the async send path, which must note a payment against the list as it is now.
   const contactsRef = useRef<Contact[]>([])
   const [myName, setMyName] = useState<string | null>(null)
+  /** The account's Henad name, read from the registry: undefined until read, null for none. */
+  const [handle, setHandle] = useState<string | null | undefined>(undefined)
+  /** Where the link screen goes back to. */
+  const [linksFrom, setLinksFrom] = useState<View_>('send')
   /** A pay link opened before anyone was signed in, or during a payment, held until it can be applied. */
   const [pendingPay, setPendingPay] = useState<Recipient | null>(null)
   const [quote, setQuote] = useState<QuoteDto | null>(null)
@@ -300,6 +306,25 @@ export default function App() {
       live = false
     }
   }, [address])
+
+  // The Henad name lives on chain, not on the phone, so it is read for each account.
+  useEffect(() => {
+    setHandle(undefined)
+    if (!address) return
+    let live = true
+    readMyHandle(address).then(
+      (h) => live && setHandle(h),
+      () => live && setHandle(null),
+    )
+    return () => {
+      live = false
+    }
+  }, [address])
+
+  const openLinks = (from: View_) => {
+    setLinksFrom(from)
+    setView('links')
+  }
 
   const changeMyName = useCallback(
     (name: string | null) => {
@@ -568,6 +593,10 @@ export default function App() {
         setView('profile')
         return true
       }
+      if (view === 'links') {
+        setView(linksFrom)
+        return true
+      }
       if (view !== 'send') {
         setView('send')
         return true
@@ -585,19 +614,21 @@ export default function App() {
     }
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack)
     return () => sub.remove()
-  }, [scanning, view, step, busy, reset])
+  }, [scanning, view, step, busy, reset, linksFrom])
 
   const closed = corridor.tier === 'live' && (!isFxMarketOpen(Math.floor(now / 1000)) || rates?.rates.find((r) => r.key === corridor.key)?.marketClosed === true)
 
   // Routing lives in the tab bar now. The header carries the brand and, once signed in, the
   // account chip, which is a second way into the account. It shows the person's own name
-  // rather than their account number; the number is still read out to a screen reader.
-  const nameChars = myName ? Array.from(myName) : []
-  const chipName = myName ? (nameChars.length > 16 ? `${nameChars.slice(0, 15).join('')}…` : myName) : 'Your account'
+  // rather than their account number; the number is still read out to a screen reader. A Henad
+  // name comes first, because it is the one other people can pay.
+  const shownName = handle ? `@${handle}` : myName
+  const nameChars = shownName ? Array.from(shownName) : []
+  const chipName = shownName ? (nameChars.length > 16 ? `${nameChars.slice(0, 15).join('')}…` : shownName) : 'Your account'
   const header = address ? (
     <Header
       right={
-        <Chip onPress={() => setView('profile')} accessibilityLabel={`${myName ?? 'Your account'}, account number ${address}`}>
+        <Chip onPress={() => setView('profile')} accessibilityLabel={`${shownName ?? 'Your account'}, account number ${address}`}>
           {chipName}
         </Chip>
       }
@@ -606,7 +637,7 @@ export default function App() {
     <Header right={<BuiltOnMonad />} />
   )
 
-  const activeTab: Tab | null = view === 'profile' || view === 'settings' ? 'account' : view
+  const activeTab: Tab | null = view === 'profile' || view === 'settings' ? 'account' : view === 'links' ? (linksFrom === 'profile' ? 'account' : 'send') : view
   const selectTab = (tab: Tab) => {
     setError(null)
     // Account without an account is the sign-in screen, which lives under Send.
@@ -637,8 +668,13 @@ export default function App() {
         onMyName={changeMyName}
         onRefresh={() => void loadHoldings()}
         onSettings={() => setView('settings')}
+        handle={handle}
+        onClaimed={setHandle}
+        onSendLink={() => openLinks('profile')}
       />
     )
+  } else if (view === 'links' && address) {
+    body = <LinksScreen address={address} onBack={() => setView(linksFrom)} />
   } else if (view === 'settings') {
     body = (
       <SettingsScreen
@@ -759,6 +795,7 @@ export default function App() {
         error={error}
         onQuote={() => void getQuote()}
         onWhy={() => setView('rates')}
+        onSendLink={() => openLinks('send')}
       />
     )
   }
