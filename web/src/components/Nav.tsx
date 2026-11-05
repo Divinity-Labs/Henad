@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/send', label: 'Send' },
   { href: '/top-up', label: 'Top up' },
   { href: '/earn', label: 'Earn' },
+  { href: '/stocks', label: 'Stocks' },
   { href: '/rates', label: 'Rates' },
   { href: '/receipts', label: 'Receipts' },
   { href: '/account', label: 'Account' },
@@ -27,7 +28,7 @@ export function Nav({ right, mobileRight, showBuiltOn = true }: { right?: ReactN
   return (
     <nav className="border-b border-hairline">
       {/* desktop */}
-      {/* Seven links, the attribution and an action do not fit a ~900px window at full
+      {/* Eight links, the attribution and an action do not fit a ~900px window at full
           spacing: the gaps tighten below xl and the attribution waits for xl, so nothing
           wraps or overlaps on a laptop with a side panel open. */}
       <div className="hidden md:flex h-[72px] items-center justify-between gap-4 px-6 xl:px-9">
