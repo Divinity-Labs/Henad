@@ -89,13 +89,15 @@ export async function readEarnState(address: Address | null): Promise<EarnState>
 async function trailingApy(now: bigint): Promise<TrailingApy | null> {
   const v = vaultAddresses()
   const client = appChain()
-  const head = await client.getBlockNumber()
-  // ~0.4 s blocks, so 1.5M blocks is a touch under seven days, inside what the node keeps.
-  const past = head - 1_500_000n
+  // The latest block itself, not getBlockNumber() then getBlock(n): the public nodes report a
+  // head they cannot yet serve by number ("Block … could not be found"), and that one failed
+  // read blanked the rate on every load (seen 11 Nov 2026).
+  const headBlock = await client.getBlock({ blockTag: 'latest' })
+  // ~0.3 s blocks since the autumn, so 2M blocks is about seven days, inside what the node keeps.
+  const past = headBlock.number - 2_000_000n
   if (past <= 0n) return null
-  const [thenPrice, headBlock, pastBlock] = await Promise.all([
+  const [thenPrice, pastBlock] = await Promise.all([
     client.readContract({ address: v.vault, abi: upshiftVaultAbi, functionName: 'getSharePrice', blockNumber: past }),
-    client.getBlock({ blockNumber: head }),
     client.getBlock({ blockNumber: past }),
   ])
   const seconds = Number(headBlock.timestamp - pastBlock.timestamp)
