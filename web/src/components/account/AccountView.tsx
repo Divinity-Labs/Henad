@@ -7,15 +7,13 @@ import { AccountNumber } from '@/components/AccountNumber'
 import { HenadName } from '@/components/account/HenadName'
 import { Button } from '@/components/ui/Button'
 import { Card, StepHeader } from '@/components/send/send-ui'
-import { TokenIcon } from '@/components/ui/TokenIcon'
 import { isLocalFork } from '@/lib/chain'
 import { storeMyName, useMyName } from '@/lib/contacts'
-import { tokens } from '@/lib/format'
-import { forgetStoredAccount, readHoldings, type Holding } from '@/lib/send-mera'
+import { forgetStoredAccount } from '@/lib/send-mera'
 import { useStoredAddress } from '@/lib/use-stored-address'
 
 /**
- * The account in this browser: how to get paid, what it holds, sign out.
+ * The account in this browser: how to get paid and sign out. What it holds is PortfolioView.
  *
  * Nothing here needs the passkey. The address was stored at sign-in and balances are public
  * chain reads, so the page never prompts. Getting paid is a link, not an address: the QR and
@@ -36,53 +34,12 @@ export function AccountView({ network }: { network: string | null }) {
     setMyName(storedName)
   }
   const [qr, setQr] = useState<string | null>(null)
-  const [holdings, setHoldings] = useState<Holding[] | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [handle, setHandle] = useState<string | null>(null)
   const timer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
   // With no name typed, the link carries the Henad name, so a payer sees who it is.
   const link = address ? payLink(address, cleanName(myName) ?? (handle ? `@${handle}` : null)) : null
-
-  /** A failed read keeps the last good balances rather than blanking them. */
-  function apply(next: Holding[] | null) {
-    setHoldings((prev) => next ?? prev)
-    setFailed(next === null)
-  }
-
-  /** The Refresh button: the same read, with the button showing it is working. */
-  async function refresh() {
-    if (!address) return
-    setLoading(true)
-    apply(await readHoldings(address))
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    if (!address) return
-    let live = true
-    const read = () =>
-      readHoldings(address).then((next) => {
-        if (!live) return
-        setHoldings((prev) => next ?? prev)
-        setFailed(next === null)
-      })
-    void read()
-    // Balances change when a payout lands, including one sent from the phone, so keep reading
-    // while the page is open and read again the moment the tab comes back into view.
-    const id = window.setInterval(() => void read(), 15_000)
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void read()
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      live = false
-      window.clearInterval(id)
-      document.removeEventListener('visibilitychange', onVisible)
-    }
-  }, [address])
 
   // Redrawn as the name is typed, because the name rides in the link the code carries.
   useEffect(() => {
@@ -123,7 +80,6 @@ export function AccountView({ network }: { network: string | null }) {
     // useStoredAddress hears the sign-out and re-renders this page as signed out. Contacts are
     // stored per account, so they are left where they are for the next time it signs in here.
     forgetStoredAccount()
-    setHoldings(null)
   }
 
   if (address === undefined) return <div className="flex-1" />
@@ -143,7 +99,6 @@ export function AccountView({ network }: { network: string | null }) {
     )
   }
 
-  const held = holdings?.filter((h) => h.value > 0n) ?? []
   // Only read once the account is known, which is after hydration, so the server never asks.
   const canShare = typeof navigator.share === 'function'
   return (
@@ -197,30 +152,6 @@ export function AccountView({ network }: { network: string | null }) {
         />
       </Card>
 
-      <Card className="flex flex-col gap-2 p-4">
-        <div className="label flex items-center justify-between text-muted">
-          <span>Holdings</span>
-          <button type="button" className="label text-purple disabled:text-muted" onClick={() => void refresh()} disabled={loading}>
-            {loading ? 'Reading…' : 'Refresh'}
-          </button>
-        </div>
-        <div className="border-t border-dashed border-border" />
-        {holdings === null ? (
-          <p className="m-0 text-[13px] text-grey">{failed && !loading ? 'Balances could not be read. Try again.' : 'Reading your balances…'}</p>
-        ) : held.length === 0 ? (
-          <p className="m-0 text-[13px] text-grey">Nothing on this account yet.</p>
-        ) : (
-          held.map((h) => (
-            <div key={h.symbol} className="flex items-center justify-between">
-              <span className="flex items-center gap-2 font-mono text-[12px] text-grey">
-                <TokenIcon symbol={h.symbol} size={22} />
-                {h.symbol}
-              </span>
-              <span className="font-display text-[22px] tracking-[-.02em] tabular">{tokens(h.value, h.decimals, h.symbol, 2)}</span>
-            </div>
-          ))
-        )}
-      </Card>
 
       <div className="flex flex-wrap gap-2">
         <Button href="/send" size="lg">

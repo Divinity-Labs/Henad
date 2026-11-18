@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { pageMeta } from '@/lib/site'
 import { Nav } from '@/components/Nav'
 import { AccountView } from '@/components/account/AccountView'
+import { PortfolioView } from '@/components/account/PortfolioView'
 import { isLocalFork } from '@/lib/chain'
 
 // One person's address and balances: nothing a search result should ever show.
@@ -18,9 +19,12 @@ export default function AccountPage() {
   return (
     <div className="flex min-h-dvh flex-col">
       <Nav />
-      <main className="dotgrid flex flex-1 flex-col md:items-center md:px-6 md:py-12">
+      <main className="dotgrid flex flex-1 flex-col md:flex-row md:items-start md:justify-center md:gap-6 md:px-6 md:py-12">
         <section aria-label="Your account" className="flex w-full flex-1 flex-col bg-canvas md:w-[420px] md:min-h-[728px] md:flex-none md:border md:border-hairline">
           <AccountView network={network} />
+        </section>
+        <section aria-label="Your portfolio" className="flex w-full flex-col bg-canvas md:w-[480px] md:flex-none md:border md:border-hairline">
+          <PortfolioView />
         </section>
       </main>
     </div>
