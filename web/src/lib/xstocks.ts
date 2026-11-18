@@ -1,6 +1,7 @@
 'use client'
 
 import { erc20Abi, parseAbi, type Address, type Hex, type LocalAccount } from 'viem'
+import type { SourceAssetSymbol } from '@henad/core'
 import { appChain } from './chain'
 import { stableToken, quoteRelay, executeRelay } from './swap'
 
@@ -42,6 +43,8 @@ export async function readXStockBalance(symbol: string, owner: Address): Promise
 export interface StockOrderQuote {
   side: 'buy' | 'sell'
   symbol: string
+  /** the dollar the order is paid in, or paid out in: USDC or AUSD, both 6 decimals */
+  cash: SourceAssetSymbol
   amountIn: bigint
   amountOut: bigint
   minimumOut: bigint
@@ -55,18 +58,19 @@ export interface StockOrderQuote {
 }
 
 /**
- * What an order fills at right now, against the oracle's price per share. `amountIn` is USDC
- * (6 decimals) for a buy, wrapped tokens (18) for a sell.
+ * What an order fills at right now, against the oracle's price per share. `amountIn` is the
+ * dollar (USDC or AUSD, 6 decimals) for a buy, wrapped tokens (18) for a sell.
  */
 export async function quoteStockOrder(
   side: 'buy' | 'sell',
   symbol: string,
+  cash: SourceAssetSymbol,
   amountIn: bigint,
   user: Address,
   referencePrice: number,
   slippageBps = 100,
 ): Promise<StockOrderQuote> {
-  const usdc = stableToken('USDC').address
+  const usdc = stableToken(cash).address
   const wrapped = XSTOCKS[symbol]!.wrapped
   const [q, ratio] = await Promise.all([
     side === 'buy' ? quoteRelay(amountIn, usdc, wrapped, user, slippageBps) : quoteRelay(amountIn, wrapped, usdc, user, slippageBps),
@@ -79,6 +83,7 @@ export async function quoteStockOrder(
   return {
     side,
     symbol,
+    cash,
     amountIn,
     amountOut: q.amountOut,
     minimumOut: q.minimumOut,
@@ -90,7 +95,7 @@ export async function quoteStockOrder(
 }
 
 export async function executeStockOrder(account: LocalAccount, quote: StockOrderQuote, opts?: { onApproved?: () => void }): Promise<Hex> {
-  const usdc = stableToken('USDC').address
+  const usdc = stableToken(quote.cash).address
   const wrapped = XSTOCKS[quote.symbol]!.wrapped
   return quote.side === 'buy' ? executeRelay(account, usdc, wrapped, quote, opts) : executeRelay(account, wrapped, usdc, quote, opts)
 }

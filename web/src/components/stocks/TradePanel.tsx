@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { formatUnits, parseUnits, type Hex } from 'viem'
-import { describeTxFailure } from '@henad/core'
+import { describeTxFailure, type SourceAssetSymbol } from '@henad/core'
+import { TokenIcon } from '@/components/ui/TokenIcon'
 import { Button } from '@/components/ui/Button'
 import { Card, Notice } from '@/components/send/send-ui'
 import { appChain } from '@/lib/chain'
@@ -24,7 +25,8 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
   const x = XSTOCKS[symbol]!
   const [side, setSide] = useState<Side>('buy')
   const [amount, setAmount] = useState('')
-  const [usdc, setUsdc] = useState<bigint | null>(null)
+  const [cash, setCash] = useState<SourceAssetSymbol>('USDC')
+  const [cashHeld, setCashHeld] = useState<bigint | null>(null)
   const [held, setHeld] = useState<bigint | null>(null)
   const [ratio, setRatio] = useState<number | null>(null)
   const [quote, setQuote] = useState<StockOrderQuote | null>(null)
@@ -57,10 +59,10 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
     if (!address) return
     let live = true
     const read = () =>
-      Promise.all([readBalance(address, 'USDC'), readXStockBalance(symbol, address)]).then(
+      Promise.all([readBalance(address, cash), readXStockBalance(symbol, address)]).then(
         ([u, h]) => {
           if (!live) return
-          setUsdc(u)
+          setCashHeld(u)
           setHeld(h)
         },
         () => {},
@@ -71,7 +73,7 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
       live = false
       window.clearInterval(id)
     }
-  }, [address, symbol, txHash])
+  }, [address, symbol, cash, txHash])
 
   const inDecimals = side === 'buy' ? 6 : XSTOCK_DECIMALS
   const pattern = new RegExp(`^\\d+(\\.\\d{1,${inDecimals}})?$`)
@@ -82,7 +84,7 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
     let live = true
     const id = window.setTimeout(() => {
       setQuoting(true)
-      quoteStockOrder(side, symbol, units, address, price, SLIPPAGE_BPS).then(
+      quoteStockOrder(side, symbol, cash, units, address, price, SLIPPAGE_BPS).then(
         (q) => {
           if (!live) return
           setQuote(q)
@@ -99,10 +101,10 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
       live = false
       window.clearTimeout(id)
     }
-  }, [units, side, symbol, address, price])
+  }, [units, side, symbol, cash, address, price])
 
-  const fresh = quote && quote.side === side && quote.symbol === symbol && units !== null && quote.amountIn === units ? quote : null
-  const spendable = side === 'buy' ? usdc : held
+  const fresh = quote && quote.side === side && quote.symbol === symbol && quote.cash === cash && units !== null && quote.amountIn === units ? quote : null
+  const spendable = side === 'buy' ? cashHeld : held
   const overBalance = units !== null && spendable !== null && units > spendable
 
   const blocker = geo?.restricted
@@ -111,11 +113,11 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
       ? 'Sign in first.'
       : units === null
         ? side === 'buy'
-          ? 'Enter an amount of USDC.'
+          ? `Enter an amount of ${cash}.`
           : `Enter an amount of ${x.label}.`
         : overBalance
           ? side === 'buy'
-            ? 'That is more USDC than this account holds. Top up first.'
+            ? `That is more ${cash} than this account holds. Top up first.`
             : `That is more ${x.label} than this account holds.`
           : fresh === null
             ? quoting
@@ -156,7 +158,7 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
   }
 
   const heldShares = held !== null && ratio !== null ? (Number(formatUnits(held, XSTOCK_DECIMALS)) * ratio) : null
-  const outLabel = side === 'buy' ? x.label : 'USDC'
+  const outLabel = side === 'buy' ? x.label : cash
   const outDecimals = side === 'buy' ? XSTOCK_DECIMALS : 6
   const fmtOut = (v: bigint) => Number(formatUnits(v, outDecimals)).toLocaleString('en-US', { maximumFractionDigits: side === 'buy' ? 6 : 2 })
 
@@ -199,9 +201,9 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
           <span>{side === 'buy' ? 'You pay' : 'You sell'}</span>
           <span className="tabular">
             {side === 'buy'
-              ? usdc === null
-                ? 'USDC —'
-                : `USDC ${Number(formatUnits(usdc, 6)).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
+              ? cashHeld === null
+                ? `${cash} —`
+                : `${cash} ${Number(formatUnits(cashHeld, 6)).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
               : held === null
                 ? `${x.label} —`
                 : `${x.label} ${Number(formatUnits(held, XSTOCK_DECIMALS)).toLocaleString('en-US', { maximumFractionDigits: 6 })}`}
@@ -219,7 +221,7 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
             className="min-w-0 flex-1 bg-transparent p-0 tabular placeholder:text-dim-2"
             style={{ font: 'inherit' }}
           />
-          <span className="font-mono text-[13px] text-muted">{side === 'buy' ? 'USDC' : x.label}</span>
+          <span className="font-mono text-[13px] text-muted">{side === 'buy' ? cash : x.label}</span>
         </label>
         <button
           type="button"
@@ -229,6 +231,29 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
         >
           Use all
         </button>
+        <div className="flex items-center justify-between gap-3">
+          <span className="label text-muted">{side === 'buy' ? 'Pay with' : 'Get paid in'}</span>
+          <div className="flex gap-[6px]">
+            {(['USDC', 'AUSD'] as const).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  setCash(c)
+                  setQuote(null)
+                  if (side === 'buy') setAmount('')
+                }}
+                aria-pressed={cash === c}
+                className={`press flex items-center gap-[6px] rounded-full border px-3 py-[5px] font-mono text-[12px] ${
+                  cash === c ? 'border-purple text-ink' : 'border-border text-muted hover:border-muted'
+                }`}
+              >
+                <TokenIcon symbol={c} size={18} />
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline-2 pt-3 font-mono text-[12px] tabular">

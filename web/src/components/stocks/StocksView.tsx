@@ -161,58 +161,80 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <Card className="flex min-w-0 flex-col">
-          <div className="flex flex-col gap-4 p-5 md:p-6">
-            <div className="flex items-center gap-3">
-              <Logo q={q} size={48} />
-              <div className="min-w-0">
-                <div className="truncate text-[18px] font-medium leading-tight text-ink">{q.name}</div>
-                <div className="font-mono text-[12px] text-muted">{q.symbol}</div>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className="font-display text-[44px] font-medium leading-none tracking-[-.035em] text-ink tabular md:text-[56px]">{usd(q.price)}</div>
-                <div className="mt-2 flex items-center gap-2 font-mono text-[12px]">
-                  <Change c={c} />
-                  {c && (
-                    <span className="text-muted">
-                      {c.abs >= 0 ? '+' : '−'}
-                      {usd(Math.abs(c.abs))} since {sinceFmt.format(points[0]![0] * 1000)} ET
-                    </span>
-                  )}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Card className="flex min-w-0 flex-col">
+            <div className="flex flex-col gap-4 p-5 md:p-6">
+              <div className="flex items-center gap-3">
+                <Logo q={q} size={48} />
+                <div className="min-w-0">
+                  <div className="truncate text-[18px] font-medium leading-tight text-ink">{q.name}</div>
+                  <div className="font-mono text-[12px] text-muted">{q.symbol}</div>
                 </div>
               </div>
-              <div role="tablist" aria-label="Chart range" className="flex rounded-[6px] border border-hairline p-[3px]">
-                {RANGES.map((r) => (
-                  <button
-                    key={r.key}
-                    role="tab"
-                    aria-selected={range === r.key}
-                    onClick={() => setRange(r.key)}
-                    className={`rounded-[4px] px-3 py-[5px] font-mono text-[11px] ${range === r.key ? 'bg-ink text-white' : 'text-grey hover:text-ink'}`}
-                  >
-                    {r.key}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="font-display text-[44px] font-medium leading-none tracking-[-.035em] text-ink tabular md:text-[56px]">{usd(q.price)}</div>
+                  <div className="mt-2 flex items-center gap-2 font-mono text-[12px]">
+                    <Change c={c} />
+                    {c && (
+                      <span className="text-muted">
+                        {c.abs >= 0 ? '+' : '−'}
+                        {usd(Math.abs(c.abs))} since {sinceFmt.format(points[0]![0] * 1000)} ET
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div role="tablist" aria-label="Chart range" className="flex rounded-[6px] border border-hairline p-[3px]">
+                  {RANGES.map((r) => (
+                    <button
+                      key={r.key}
+                      role="tab"
+                      aria-selected={range === r.key}
+                      onClick={() => setRange(r.key)}
+                      className={`rounded-[4px] px-3 py-[5px] font-mono text-[11px] ${range === r.key ? 'bg-ink text-white' : 'text-grey hover:text-ink'}`}
+                    >
+                      {r.key}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div className={`px-5 md:px-6 ${history ? '' : 'opacity-60'}`}>
-            {historyFailed ? (
-              <div className="flex h-[300px] items-center justify-center font-mono text-[11px] text-muted">Price history is not available right now.</div>
-            ) : (
-              <PriceChart points={history ? points : []} height={320} />
-            )}
-          </div>
-          <div className="mt-4 grid grid-cols-2 border-t border-hairline-2 md:grid-cols-4">
-            <Stat k="Bid" v={usd(q.bid)} />
-            <Stat k="Ask" v={usd(q.ask)} />
-            <Stat k="Spread" v={`${q.spreadBps.toFixed(1)} bps`} />
-            <Stat k="Quoted" v={`${age(q.quotedAt, readAt)} ago`} />
-          </div>
-        </Card>
+            <div className={`px-5 md:px-6 ${history ? '' : 'opacity-60'}`}>
+              {historyFailed ? (
+                <div className="flex h-[300px] items-center justify-center font-mono text-[11px] text-muted">Price history is not available right now.</div>
+              ) : (
+                <PriceChart points={history ? points : []} height={320} />
+              )}
+            </div>
+            <div className="mt-4 grid grid-cols-2 border-t border-hairline-2 md:grid-cols-4">
+              <Stat k="Bid" v={usd(q.bid)} />
+              <Stat k="Ask" v={usd(q.ask)} />
+              <Stat k="Spread" v={`${q.spreadBps.toFixed(1)} bps`} />
+              <Stat k="Quoted" v={`${age(q.quotedAt, readAt)} ago`} />
+            </div>
+          </Card>
+          {tradable(q.symbol) ? (
+            <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} />
+          ) : (
+            <Card className="flex flex-col gap-3 p-5 md:p-6">
+              <span className="label text-purple">Trade</span>
+              <p className="m-0 max-w-[620px] text-[15px] leading-[1.5] text-ink pretty">
+                {q.name} has no market on Monad yet. You can buy and sell these from your Henad account now, with the oracle price, your price and the difference shown before you
+                sign:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {quotes
+                  .filter((s) => tradable(s.symbol))
+                  .map((s) => (
+                    <Button key={s.symbol} size="sm" variant="secondary" onClick={() => setSelected(s.symbol)}>
+                      {s.symbol}
+                    </Button>
+                  ))}
+              </div>
+            </Card>
+          )}
+        </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           {groups.map((g) => (
@@ -248,38 +270,15 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
               </Card>
             </section>
           ))}
+          <p className="m-0 text-[11.5px] leading-[1.5] text-muted pretty">
+            Prices come from Monday Trade&apos;s StockOracle contract on Monad mainnet. The source quote runs about 15 minutes behind the market, so treat them as a guide, not a
+            fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are US Eastern. Not available to US persons or in restricted countries.
+            Logos belong to their companies.{' '}
+            <a href="https://monadscan.com/address/0x037848af338c38e1e0ab722be80bf4c2e612a1f7" target="_blank" rel="noreferrer" className="text-purple">
+              Oracle on Monadscan ↗
+            </a>
+          </p>
         </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-        {tradable(q.symbol) ? (
-          <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} />
-        ) : (
-          <Card className="flex flex-col gap-3 p-5 md:p-6">
-            <span className="label text-purple">Trade</span>
-            <p className="m-0 max-w-[620px] text-[15px] leading-[1.5] text-ink pretty">
-              {q.name} has no market on Monad yet. You can buy and sell these from your Henad account now, with the oracle price, your price and the difference shown
-              before you sign:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {quotes
-                .filter((s) => tradable(s.symbol))
-                .map((s) => (
-                  <Button key={s.symbol} size="sm" variant="secondary" onClick={() => setSelected(s.symbol)}>
-                    {s.symbol}
-                  </Button>
-                ))}
-            </div>
-          </Card>
-        )}
-        <p className="m-0 self-center text-[11.5px] leading-[1.5] text-muted pretty">
-          Prices come from Monday Trade&apos;s StockOracle contract on Monad mainnet. The source quote runs about 15 minutes behind the market, so treat them as a
-          guide, not a fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are US Eastern. Not available to US
-          persons or in restricted countries. Logos belong to their companies.{' '}
-          <a href="https://monadscan.com/address/0x037848af338c38e1e0ab722be80bf4c2e612a1f7" target="_blank" rel="noreferrer" className="text-purple">
-            Oracle on Monadscan ↗
-          </a>
-        </p>
       </div>
     </div>
   )
