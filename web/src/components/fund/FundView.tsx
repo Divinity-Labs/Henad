@@ -39,7 +39,7 @@ type Quote = { amountIn: bigint; amountOut: bigint; minimumOut: bigint; slippage
  * Deliberately not dressed as a payout. A payout states a reference rate and enforces a spread
  * against it; this is a market swap where the venue's price is the only price there is, so the
  * screen names the venue, shows the floor the fill may not fall below, and promises nothing else.
- * USDC ⇄ AUSD asks PancakeSwap's direct pool and Mento's route through USDm and takes the better.
+ * USDC ⇄ AUSD asks PancakeSwap's direct pool, Mento's route through USDm and Relay, and takes the best.
  */
 export function FundView({ network }: { network: string }) {
   const address = useStoredAddress()

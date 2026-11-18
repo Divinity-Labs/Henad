@@ -163,21 +163,21 @@ interface RelayTx {
   chainId: number
 }
 
-interface RelayQuote {
+export interface RelayQuote {
   amountOut: bigint
   minimumOut: bigint
   txs: { kind: 'approve' | 'swap'; tx: RelayTx }[]
 }
 
-async function quoteRelay(
+export async function quoteRelay(
   amountIn: bigint,
-  from: SourceAssetSymbol,
-  to: SourceAssetSymbol,
+  fromAddress: Address,
+  toAddress: Address,
   user: Address,
   slippageBps: number,
 ): Promise<RelayQuote> {
   const chainId = appChainId()
-  const fromToken = stableToken(from).address.toLowerCase()
+  const fromToken = fromAddress.toLowerCase()
   const res = await fetch(`${RELAY_API}/quote`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -186,8 +186,8 @@ async function quoteRelay(
       recipient: user,
       originChainId: chainId,
       destinationChainId: chainId,
-      originCurrency: stableToken(from).address,
-      destinationCurrency: stableToken(to).address,
+      originCurrency: fromAddress,
+      destinationCurrency: toAddress,
       amount: amountIn.toString(),
       tradeType: 'EXACT_INPUT',
       slippageTolerance: String(slippageBps),
@@ -292,7 +292,7 @@ export async function quoteStableSwap(
   const [pancake, mento, relay] = await Promise.allSettled([
     quotePancakeStable(amountIn, from, to),
     quoteMentoStable(amountIn, from, to),
-    user ? quoteRelay(amountIn, from, to, user, slippageBps) : Promise.reject(new Error('no user')),
+    user ? quoteRelay(amountIn, stableToken(from).address, stableToken(to).address, user, slippageBps) : Promise.reject(new Error('no user')),
   ])
   const outs: [StableVenue, bigint][] = [
     ['pancake', pancake.status === 'fulfilled' ? pancake.value : -1n],
@@ -315,7 +315,7 @@ export async function quoteStableSwap(
 export async function swapStable(account: LocalAccount, quote: StableSwapQuote, opts?: { onApproved?: () => void }): Promise<Hex> {
   const chainId = appChainId()
   const wallet = createWalletClient({ account, chain: chainFor(chainId), transport: http(process.env.NEXT_PUBLIC_MONAD_RPC_URL) })
-  if (quote.venue === 'relay') return swapViaRelay(wallet, account, quote, opts)
+  if (quote.venue === 'relay') return executeRelay(account, stableToken(quote.from).address, stableToken(quote.to).address, quote, opts)
   const token = stableToken(quote.from).address
   const spender = quote.venue === 'pancake' ? PANCAKE_MAINNET.swapRouter : MENTO_MAINNET.router
   const allowance = await appChain().readContract({ address: token, abi: erc20Abi, functionName: 'allowance', args: [account.address, spender] })
@@ -354,24 +354,26 @@ export async function swapStable(account: LocalAccount, quote: StableSwapQuote, 
 }
 
 /**
- * Relay quotes expire within seconds, so the one shown is re-asked at signing time. The fresh
- * one must still meet the floor the payer approved, and its swap is dry-run after the approval
- * so a transaction that would revert is never sent.
+ * Re-ask Relay for the swap the payer approved and send it from their own account. The fresh
+ * quote must still meet the floor shown, and the swap is dry-run after the approval so a
+ * transaction that would revert is never sent. Shared by Top up and Stocks.
  */
-async function swapViaRelay(
-  wallet: ReturnType<typeof createWalletClient>,
+export async function executeRelay(
   account: LocalAccount,
-  quote: StableSwapQuote,
+  fromAddress: Address,
+  toAddress: Address,
+  quote: { amountIn: bigint; minimumOut: bigint; slippageBps: number },
   opts?: { onApproved?: () => void },
 ): Promise<Hex> {
+  const wallet = createWalletClient({ account, chain: chainFor(appChainId()), transport: http(process.env.NEXT_PUBLIC_MONAD_RPC_URL) })
   // Asked with 0.1% less slippage, so small drift between the two quotes still clears the floor shown.
-  const fresh = await quoteRelay(quote.amountIn, quote.from, quote.to, account.address, Math.max(quote.slippageBps - 10, 1))
+  const fresh = await quoteRelay(quote.amountIn, fromAddress, toAddress, account.address, Math.max(quote.slippageBps - 10, 1))
   if (fresh.minimumOut < quote.minimumOut) throw new Error('The price moved since the quote. Check the new one and try again.')
   const chain = chainFor(appChainId())
   let swapHash: Hex | null = null
   for (const { kind, tx } of fresh.txs) {
     if (kind === 'approve') {
-      const token = stableToken(quote.from).address
+      const token = fromAddress
       const allowance = await appChain().readContract({ address: token, abi: erc20Abi, functionName: 'allowance', args: [account.address, RELAY_ROUTER] })
       if (allowance >= quote.amountIn) continue
       const hash = await wallet.sendTransaction({ account, chain, to: tx.to, data: tx.data, value: 0n })

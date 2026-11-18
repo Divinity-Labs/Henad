@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 const usd = (v: bigint) => Number(v) / 1e8
 
-/** /stocks — live US stock prices and their charts, full width. Buying is not open yet. */
+/** /stocks — live US stock prices and their charts, full width; NVDA, TSLA, SPY and QQQ tradable as xStocks. */
 export default async function StocksPage() {
   const board = await stockQuotes().catch(() => null)
   const quotes: QuoteDto[] | null = board ? board.quotes.map((q) => ({ ...q, price: usd(q.price), bid: usd(q.bid), ask: usd(q.ask) })) : null

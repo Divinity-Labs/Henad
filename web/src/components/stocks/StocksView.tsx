@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { Card, Notice } from '@/components/send/send-ui'
 import type { History, Point } from '@/lib/stock-history'
 import type { Session, StockInfo } from '@/lib/stocks'
+import { tradable } from '@/lib/xstocks'
 import { PriceChart, Sparkline } from './PriceChart'
+import { TradePanel } from './TradePanel'
 
 /** A quote as the page sends it to the browser: prices as plain USD numbers. */
 export type QuoteDto = StockInfo & { price: number; bid: number; ask: number; spreadBps: number; quotedAt: number; session: Session }
@@ -102,7 +104,7 @@ function Stat({ k, v }: { k: string; v: React.ReactNode }) {
  * Stocks: live US prices read from Monday Trade's oracle on Monad, a chart of each from the
  * oracle's own update events, and the bid, the ask and the gap between them. The same promise
  * as a payout receipt — the cost is on the chain, so it is on the screen — pointed at a second
- * asset. Buying is not open yet, and the page says so.
+ * asset. NVDA, TSLA, SPY and QQQ can be bought and sold as xStocks (TradePanel).
  */
 export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; readAt: number }) {
   const [selected, setSelected] = useState<string>(quotes?.[0]?.symbol ?? 'AAPL')
@@ -250,20 +252,30 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <Card className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between md:p-6">
-          <div className="flex flex-col gap-1">
-            <span className="label text-purple">Coming soon</span>
+        {tradable(q.symbol) ? (
+          <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} />
+        ) : (
+          <Card className="flex flex-col gap-3 p-5 md:p-6">
+            <span className="label text-purple">Trade</span>
             <p className="m-0 max-w-[620px] text-[15px] leading-[1.5] text-ink pretty">
-              Buy from your Henad account, with a receipt for every order: the quote when you ordered, the price you paid, and the difference.
+              {q.name} has no market on Monad yet. You can buy and sell these from your Henad account now, with the oracle price, your price and the difference shown
+              before you sign:
             </p>
-          </div>
-          <Button size="lg" variant="disabled" disabled>
-            Buying opens soon
-          </Button>
-        </Card>
+            <div className="flex flex-wrap gap-2">
+              {quotes
+                .filter((s) => tradable(s.symbol))
+                .map((s) => (
+                  <Button key={s.symbol} size="sm" variant="secondary" onClick={() => setSelected(s.symbol)}>
+                    {s.symbol}
+                  </Button>
+                ))}
+            </div>
+          </Card>
+        )}
         <p className="m-0 self-center text-[11.5px] leading-[1.5] text-muted pretty">
           Prices come from Monday Trade&apos;s StockOracle contract on Monad mainnet. The source quote runs about 15 minutes behind the market, so treat them as a
-          guide, not a fill price. Times are US Eastern. Not available to US persons. Logos belong to their companies.{' '}
+          guide, not a fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are US Eastern. Not available to US
+          persons or in restricted countries. Logos belong to their companies.{' '}
           <a href="https://monadscan.com/address/0x037848af338c38e1e0ab722be80bf4c2e612a1f7" target="_blank" rel="noreferrer" className="text-purple">
             Oracle on Monadscan ↗
           </a>
