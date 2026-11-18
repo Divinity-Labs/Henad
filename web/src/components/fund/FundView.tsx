@@ -95,7 +95,7 @@ export function FundView({ network }: { network: string }) {
       const ask: Promise<Quote> =
         from === 'MON'
           ? quoteMonForStable(units, to).then((q) => ({ ...q, venueLabel: 'PancakeSwap 0.05% pool', kind: 'mon' as const, mon: q }))
-          : quoteStableSwap(units, from, to).then((q) => ({ ...q, kind: 'stable' as const, stable: q }))
+          : quoteStableSwap(units, from, to, 50, address ?? undefined).then((q) => ({ ...q, kind: 'stable' as const, stable: q }))
       ask.then(
         (q) => {
           if (!live) return
@@ -113,7 +113,7 @@ export function FundView({ network }: { network: string }) {
       live = false
       window.clearTimeout(id)
     }
-  }, [units, from, to])
+  }, [units, from, to, address])
 
   const spendable = from === 'MON' ? (mon === null ? null : mon > GAS_RESERVE ? mon - GAS_RESERVE : 0n) : fromHeld
   // A quote belongs to the amount and pair it was asked for; anything else is stale.
