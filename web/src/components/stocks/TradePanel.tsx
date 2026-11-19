@@ -20,7 +20,21 @@ const SLIPPAGE_BPS = 100
  * numbers before signing: the oracle's price per share, the price this order fills at, and the
  * difference in basis points. A fill below the floor shown reverts.
  */
-export function TradePanel({ symbol, name, price }: { symbol: string; name: string; price: number }) {
+/**
+ * The oracle republishes every ten minutes from a source about fifteen minutes behind. A quote
+ * much older than that means the feed has stalled (it did on 19 Nov 2026, for five hours, in
+ * market hours), and a spread measured against it says nothing about the fill. So past this
+ * age the panel names the age and shows no spread rather than a confident wrong number.
+ */
+const STALE_AFTER_SEC = 45 * 60
+
+function ageLabel(sec: number): string {
+  const m = Math.round(sec / 60)
+  return m < 90 ? `${m} min` : `${Math.round(m / 60)} h`
+}
+
+export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: string; name: string; price: number; quoteAgeSec: number }) {
+  const stale = quoteAgeSec > STALE_AFTER_SEC
   const address = useStoredAddress()
   const x = XSTOCKS[symbol]!
   const [side, setSide] = useState<Side>('buy')
@@ -260,14 +274,24 @@ export function TradePanel({ symbol, name, price }: { symbol: string; name: stri
         <span className="text-muted">You get</span>
         <span className="text-right text-ink">{fresh ? `${fmtOut(fresh.amountOut)} ${outLabel}` : '—'}</span>
         <span className="text-muted">Oracle price</span>
-        <span className="text-right text-ink">{usd(price)}</span>
+        <span className="text-right text-ink">
+          {usd(price)}
+          {stale && <span className="text-muted"> · {ageLabel(quoteAgeSec)} old</span>}
+        </span>
         <span className="text-muted">Your price</span>
         <span className="text-right text-ink">{fresh ? usd(fresh.executedPrice) : '—'}</span>
         <span className="text-muted">Spread</span>
-        <span className="text-right text-ink">{fresh ? `${fresh.spreadBps.toFixed(1)} bps` : '—'}</span>
+        <span className="text-right text-ink">{stale ? <span className="text-muted">Not shown</span> : fresh ? `${fresh.spreadBps.toFixed(1)} bps` : '—'}</span>
         <span className="text-muted">At worst</span>
         <span className="text-right text-ink">{fresh ? `${fmtOut(fresh.minimumOut)} ${outLabel}` : '—'}</span>
       </div>
+
+      {stale && (
+        <p className="m-0 font-mono text-[11px] leading-[1.5] text-muted">
+          The oracle&apos;s last quote is {ageLabel(quoteAgeSec)} old, so the market has moved since and a spread against it would mislead. Your price and the floor
+          below are live.
+        </p>
+      )}
 
       {heldShares !== null && heldShares > 0 && (
         <p className="m-0 font-mono text-[11px] text-muted tabular">

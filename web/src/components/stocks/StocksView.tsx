@@ -215,7 +215,7 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
             </div>
           </Card>
           {tradable(q.symbol) ? (
-            <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} />
+            <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} quoteAgeSec={Math.max(0, readAt - q.quotedAt)} />
           ) : (
             <Card className="flex flex-col gap-3 p-5 md:p-6">
               <span className="label text-purple">Trade</span>
