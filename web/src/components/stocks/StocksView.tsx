@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, Notice } from '@/components/send/send-ui'
 import type { History, Point } from '@/lib/stock-history'
-import type { Session, StockInfo } from '@/lib/stocks'
+import type { Session, StockInfo, StockQuote } from '@/lib/stocks'
 import { tradable } from '@/lib/xstocks'
 import { PriceChart, Sparkline } from './PriceChart'
 import { TradePanel } from './TradePanel'
 
 /** A quote as the page sends it to the browser: prices as plain USD numbers. */
-export type QuoteDto = StockInfo & { price: number; bid: number; ask: number; spreadBps: number; quotedAt: number; session: Session; source: 'Chainlink' | 'Monday Trade' }
+export type QuoteDto = StockInfo & { price: number; bid: number; ask: number; spreadBps: number; quotedAt: number; session: Session; source: StockQuote['source'] }
 
 const RANGES = [
   { key: '1D', sec: 86_400 },
@@ -104,7 +104,7 @@ function Stat({ k, v }: { k: string; v: React.ReactNode }) {
  * Stocks: live US prices read from Monday Trade's oracle on Monad, a chart of each from the
  * oracle's own update events, and the bid, the ask and the gap between them. The same promise
  * as a payout receipt — the cost is on the chain, so it is on the screen — pointed at a second
- * asset. NVDA, TSLA, SPY and QQQ can be bought and sold as xStocks (TradePanel).
+ * asset. ANT, NVDA, TSLA, SPY and QQQ can be bought and sold as xStocks (TradePanel).
  */
 export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; readAt: number }) {
   const [selected, setSelected] = useState<string>(quotes?.[0]?.symbol ?? 'AAPL')
@@ -209,10 +209,10 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
               )}
             </div>
             <div className="mt-4 grid grid-cols-2 border-t border-hairline-2 md:grid-cols-4">
-              {q.source === 'Chainlink' ? (
+              {q.source !== 'Monday Trade' ? (
                 <>
-                  <Stat k="Source" v="Chainlink" />
-                  <Stat k="Updates" v="24/5" />
+                  <Stat k="Source" v={q.source === 'Pool' ? 'Uniswap pool' : 'Chainlink'} />
+                  <Stat k="Updates" v={q.source === 'Pool' ? 'Every trade' : '24/5'} />
                   <Stat k="Market" v={q.session} />
                 </>
               ) : (
@@ -226,7 +226,7 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
             </div>
           </Card>
           {tradable(q.symbol) ? (
-            <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} quoteAgeSec={Math.max(0, readAt - q.quotedAt)} />
+            <TradePanel key={q.symbol} symbol={q.symbol} name={q.name} price={q.price} quoteAgeSec={Math.max(0, readAt - q.quotedAt)} noFeed={q.source === 'Pool'} />
           ) : (
             <Card className="flex flex-col gap-3 p-5 md:p-6">
               <span className="label text-purple">Trade</span>
@@ -268,7 +268,10 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
                       <Logo q={s} size={34} />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-[14px] font-medium leading-tight text-ink">{s.name}</div>
-                        <div className="font-mono text-[11px] text-muted">{s.symbol}</div>
+                        <div className="font-mono text-[11px] text-muted">
+                          {s.symbol}
+                          {s.source === 'Pool' && <span className="ml-[6px] rounded-full bg-tint px-[6px] py-[1px] text-purple">New</span>}
+                        </div>
                       </div>
                       {history && <Sparkline points={pts} />}
                       <div className="w-[86px] flex-none text-right">
@@ -282,9 +285,10 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
             </section>
           ))}
           <p className="m-0 text-[11.5px] leading-[1.5] text-muted pretty">
-            NVDA, TSLA, SPY and QQQ are priced by Chainlink&apos;s xStock feeds on Monad, updated through the US trading week. The others come from Monday Trade&apos;s StockOracle,
-            which has not updated since 19 Nov, so treat them as a guide, not a fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are
-            US Eastern. Not available to US persons or in restricted countries. Logos belong to their companies.{' '}
+            NVDA, TSLA, SPY and QQQ are priced by Chainlink&apos;s xStock feeds on Monad, updated through the US trading week. Anthropic is new on Monad and priced from its own
+            Uniswap pool until a feed exists. The others come from Monday Trade&apos;s StockOracle, which has not updated since 19 Nov, so treat them as a guide, not a fill price.
+            Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are US Eastern. Not available to US persons or in restricted countries. Logos belong
+            to their companies.{' '}
             <a href="https://monadscan.com/address/0x037848af338c38e1e0ab722be80bf4c2e612a1f7" target="_blank" rel="noreferrer" className="text-purple">
               StockOracle on Monadscan ↗
             </a>

@@ -7,7 +7,7 @@ import { stockQuotes } from '@/lib/stocks'
 
 export const metadata: Metadata = pageMeta({
   title: 'US stock prices on Monad',
-  description: 'Apple, NVIDIA, Tesla and the S&P 500, read live from an on-chain stock oracle on Monad, with the bid, the ask, the spread and a week of price history.',
+  description: 'Anthropic, Apple, NVIDIA, Tesla and the S&P 500, read live from an on-chain stock oracle on Monad, with the bid, the ask, the spread and a week of price history.',
   path: '/stocks',
 })
 // Read per request, for the same reason as /rates: a cached price is a price the chain no longer has.
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 const usd = (v: bigint) => Number(v) / 1e8
 
-/** /stocks — live US stock prices and their charts, full width; NVDA, TSLA, SPY and QQQ tradable as xStocks. */
+/** /stocks — live US stock prices and their charts, full width; ANT, NVDA, TSLA, SPY and QQQ tradable as xStocks. */
 export default async function StocksPage() {
   const board = await stockQuotes().catch(() => null)
   const quotes: QuoteDto[] | null = board ? board.quotes.map((q) => ({ ...q, price: usd(q.price), bid: usd(q.bid), ask: usd(q.ask) })) : null

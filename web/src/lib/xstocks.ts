@@ -18,6 +18,7 @@ import { stableToken, quoteRelay, executeRelay } from './swap'
  * never by symbol: the chain holds about 1,400 look-alike "…x" pools with ~99% fees.
  */
 export const XSTOCKS: Record<string, { wrapped: Address; label: string }> = {
+  ANT: { wrapped: '0xabec6aeab037b77c09a2a99264f9c81a35b02649', label: 'wANTx' },
   NVDA: { wrapped: '0xa8ddb5Cd96b5222AFe198316E9A57CAA642850D5', label: 'wNVDAx' },
   TSLA: { wrapped: '0xc3FdBe3A68EE5dE461D30415a8165cf9Aefe1171', label: 'wTSLAx' },
   SPY: { wrapped: '0xE7E553Cd128F0011777323A0b44a7b96EA1CB540', label: 'wSPYx' },

@@ -31,6 +31,18 @@ export const CHAINLINK_XSTOCK_FEEDS: Record<string, { feed: Address; wrapped: Ad
   QQQ: { feed: '0x7CA45B17D8D43059a222dEC5d991B613F61c02d9', wrapped: '0x4C1AE29c159838fC1b224636E28E086EB69101f7' },
 }
 
+/**
+ * Tickers with a Monad pool but no price feed yet: priced from their own Uniswap v4 pool, read
+ * through StateView. That is the price the order trades against, so Henad shows no spread for
+ * these until a feed exists. ANTx listed on Monad on 19 Nov 2026; the pool is wANTx/USDC, 0.01%,
+ * and one wANTx holds exactly one ANTx.
+ */
+const STATE_VIEW: Address = '0x77395f3b2e73ae90843717371294fa97cc419d64'
+export const POOL_PRICED: Record<string, { poolId: `0x${string}`; usdcIsCurrency0: boolean }> = {
+  ANT: { poolId: '0xbcd4d4703e14edcee1c832968bd05d7e1fbe56c00bdde1ac0ccd27ce3aeae257', usdcIsCurrency0: true },
+}
+const stateViewAbi = parseAbi(['function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)'])
+
 const chainlinkAbi = parseAbi([
   'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
   'function decimals() view returns (uint8)',
@@ -48,6 +60,7 @@ const oracleAbi = parseAbi([
  * on it. Funds have no logo of their own and get a lettered tile instead.
  */
 export const STOCKS = [
+  { symbol: 'ANT', name: 'Anthropic', kind: 'stock', tile: '#191919', ink: '#F0EEE6' },
   { symbol: 'AAPL', name: 'Apple', kind: 'stock', tile: '#000000', ink: '#ffffff' },
   { symbol: 'NVDA', name: 'NVIDIA', kind: 'stock', tile: '#76B900', ink: '#ffffff' },
   { symbol: 'TSLA', name: 'Tesla', kind: 'stock', tile: '#CC0000', ink: '#ffffff' },
@@ -81,8 +94,8 @@ export type StockQuote = StockInfo & {
   /** Unix seconds of the source quote */
   quotedAt: number
   session: Session
-  /** Who priced it. Chainlink quotes have no bid or ask (both 0, spread 0). */
-  source: 'Chainlink' | 'Monday Trade'
+  /** Who priced it. Chainlink and pool quotes have no bid or ask (both 0, spread 0). */
+  source: 'Chainlink' | 'Monday Trade' | 'Pool'
 }
 
 /** One read of every ticker, and the Unix second it was taken: ages are measured against that. */
@@ -107,11 +120,24 @@ export async function stockQuotes(): Promise<StockBoard> {
 }
 
 async function readQuotes(): Promise<StockBoard> {
-  const payloads = await mainnet().readContract({ address: STOCK_ORACLE, abi: oracleAbi, functionName: 'latestPrices', args: [STOCKS.map((s) => keccak256(toBytes(s.symbol)))] })
-  const quotes = payloads.map((p, i): StockQuote => {
+  // The oracle reverts or returns zeros for tickers it never registered, so pool-priced ones stay out of the call.
+  const onOracle = STOCKS.filter((s) => !(s.symbol in POOL_PRICED))
+  const [payloads, pooled] = await Promise.all([
+    mainnet().readContract({ address: STOCK_ORACLE, abi: oracleAbi, functionName: 'latestPrices', args: [onOracle.map((s) => keccak256(toBytes(s.symbol)))] }),
+    Promise.all(
+      STOCKS.filter((s) => s.symbol in POOL_PRICED).map((s) =>
+        readPoolPrice(s.symbol).then(
+          (price) => ({ symbol: s.symbol, price }),
+          () => null,
+        ),
+      ),
+    ),
+  ])
+  const now = Math.floor(Date.now() / 1000)
+  const oracleQuotes = payloads.map((p, i): StockQuote => {
     const mid = (p.bestBid + p.bestAsk) / 2n
     return {
-      ...STOCKS[i]!,
+      ...onOracle[i]!,
       price: p.price,
       bid: p.bestBid,
       ask: p.bestAsk,
@@ -121,7 +147,12 @@ async function readQuotes(): Promise<StockBoard> {
       source: 'Monday Trade',
     }
   })
-  const now = Math.floor(Date.now() / 1000)
+  const poolQuotes = pooled.flatMap((p): StockQuote[] => {
+    const info = p && STOCKS.find((s) => s.symbol === p.symbol)
+    return p && info ? [{ ...info, price: p.price, bid: 0n, ask: 0n, spreadBps: 0, quotedAt: now, session: 'Unknown', source: 'Pool' }] : []
+  })
+  const bySymbol = new Map([...oracleQuotes, ...poolQuotes].map((q) => [q.symbol, q]))
+  const quotes = STOCKS.flatMap((s) => bySymbol.get(s.symbol) ?? [])
   const chainlink = await Promise.all(quotes.map((q) => (q.symbol in CHAINLINK_XSTOCK_FEEDS ? readChainlink(q.symbol).catch(() => null) : null)))
   const session = sessionAt(now)
   return {
@@ -131,6 +162,17 @@ async function readQuotes(): Promise<StockBoard> {
     }),
     readAt: now,
   }
+}
+
+/** USD per wrapped token from the pool's current price, 8 decimals. USDC has 6 decimals, the token 18. */
+async function readPoolPrice(symbol: string): Promise<bigint> {
+  const { poolId, usdcIsCurrency0 } = POOL_PRICED[symbol]!
+  const [sqrtPriceX96] = await mainnet().readContract({ address: STATE_VIEW, abi: stateViewAbi, functionName: 'getSlot0', args: [poolId] })
+  if (sqrtPriceX96 === 0n) throw new Error('pool: not initialised')
+  const Q192 = 1n << 192n
+  const sq = sqrtPriceX96 * sqrtPriceX96
+  // sq / Q192 = raw currency1 per raw currency0. USD (8 dp) per token = raw USDC per raw token × 1e12 × 1e8.
+  return usdcIsCurrency0 ? (Q192 * 10n ** 20n) / sq : (sq * 10n ** 20n) / Q192
 }
 
 /** USD per share, 8 decimals like the oracle: the wrapped token's price over the shares it holds. */

@@ -33,8 +33,10 @@ function ageLabel(sec: number): string {
   return m < 90 ? `${m} min` : `${Math.round(m / 60)} h`
 }
 
-export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: string; name: string; price: number; quoteAgeSec: number }) {
-  const stale = quoteAgeSec > STALE_AFTER_SEC
+export function TradePanel({ symbol, name, price, quoteAgeSec, noFeed = false }: { symbol: string; name: string; price: number; quoteAgeSec: number; noFeed?: boolean }) {
+  // noFeed: priced from its own pool (e.g. ANTx before Chainlink lists it), so there is no
+  // independent price to measure a spread against.
+  const stale = !noFeed && quoteAgeSec > STALE_AFTER_SEC
   const address = useStoredAddress()
   const x = XSTOCKS[symbol]!
   const [side, setSide] = useState<Side>('buy')
@@ -273,7 +275,7 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline-2 pt-3 font-mono text-[12px] tabular">
         <span className="text-muted">You get</span>
         <span className="text-right text-ink">{fresh ? `${fmtOut(fresh.amountOut)} ${outLabel}` : '—'}</span>
-        <span className="text-muted">Market price</span>
+        <span className="text-muted">{noFeed ? 'Pool price' : 'Market price'}</span>
         <span className="text-right text-ink">
           {usd(price)}
           {stale && <span className="text-muted"> · {ageLabel(quoteAgeSec)} old</span>}
@@ -281,7 +283,17 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
         <span className="text-muted">Your price</span>
         <span className="text-right text-ink">{fresh ? usd(fresh.executedPrice) : '—'}</span>
         <span className="text-muted">Spread</span>
-        <span className="text-right text-ink">{stale ? <span className="text-muted">Not shown</span> : fresh ? `${fresh.spreadBps.toFixed(1)} bps` : '—'}</span>
+        <span className="text-right text-ink">
+          {noFeed ? (
+            <span className="text-muted">No market feed yet</span>
+          ) : stale ? (
+            <span className="text-muted">Not shown</span>
+          ) : fresh ? (
+            `${fresh.spreadBps.toFixed(1)} bps`
+          ) : (
+            '—'
+          )}
+        </span>
         <span className="text-muted">At worst</span>
         <span className="text-right text-ink">{fresh ? `${fmtOut(fresh.minimumOut)} ${outLabel}` : '—'}</span>
       </div>
@@ -289,6 +301,13 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       {stale && (
         <p className="m-0 font-mono text-[11px] leading-[1.5] text-muted">
           The last market price is {ageLabel(quoteAgeSec)} old (the US market may be closed), so a spread against it would mislead. Your price and the floor below are live.
+        </p>
+      )}
+
+      {noFeed && (
+        <p className="m-0 font-mono text-[11px] leading-[1.5] text-muted">
+          {name} is new on Monad and has no independent price feed yet, so Henad can&apos;t show a spread. Your price and the floor below are live, and the spread appears once a
+          feed exists.
         </p>
       )}
 
@@ -321,8 +340,9 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       </Button>
       <p className="m-0 text-center font-mono text-[11px] text-muted">{blocker ?? 'Your passkey signs this order, from your own account. Gas is paid in MON.'}</p>
       <p className="m-0 text-[11px] leading-[1.5] text-muted pretty">
-        You hold {x.label}, a wrapped xStock on Monad, filled through Relay from Uniswap v4. The market price is Chainlink&apos;s, read on Monad, and the spread is your price
-        against it. A fill below &quot;At worst&quot; reverts. Not investment advice.
+        You hold {x.label}, a wrapped xStock on Monad, filled through Relay from Uniswap v4.{' '}
+        {noFeed ? 'The pool price is read from that Uniswap pool.' : 'The market price is Chainlink’s, read on Monad, and the spread is your price against it.'} A fill below
+        &quot;At worst&quot; reverts. Not investment advice.
       </p>
     </Card>
   )
