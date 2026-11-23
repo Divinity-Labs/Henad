@@ -2,6 +2,8 @@ import { keccak256, parseAbi, toBytes, type Address } from 'viem'
 import { mainnet } from './chain'
 
 /**
+ * US stock prices on Monad mainnet: Chainlink for the four tradable xStocks, and Monday Trade's
+ * StockOracle for the rest (it stalled on 19 Nov 2026; see CHAINLINK_XSTOCK_FEEDS). Originally
  * US stock prices as Monday Trade's StockOracle publishes them on Monad mainnet
  * (docs.monday.trade/rwa-trading-apis/market-data/stock-oracle). Read only: buying needs
  * Monday Trade to approve Henad-onboarded wallets first (docs/STOCKS.md), so nothing here
@@ -14,6 +16,26 @@ import { mainnet } from './chain'
  */
 
 export const STOCK_ORACLE: Address = '0x037848af338c38e1e0ab722be80bf4c2e612a1f7'
+
+/**
+ * Chainlink's calculated feeds for the four wrapped xStocks we trade (reference-data-directory,
+ * feeds-monad-mainnet-1, read 23 Nov 2026): USD per *wrapped* token, 24/5, 1 h heartbeat. Monday
+ * Trade's oracle stopped updating at 13:09 UTC on 19 Nov 2026, so the tradable tickers take
+ * their price from here; dividing by the vault's `convertToAssets(1e18)` gives USD per share.
+ * Chainlink publishes no bid or ask, so those quotes carry none.
+ */
+export const CHAINLINK_XSTOCK_FEEDS: Record<string, { feed: Address; wrapped: Address }> = {
+  NVDA: { feed: '0x03ffa4673c060339E6a8E5Ba1a12B3301c966bf0', wrapped: '0xa8ddb5Cd96b5222AFe198316E9A57CAA642850D5' },
+  TSLA: { feed: '0xE42022cCe1913626AE4297B99291d3Ba24Cc9281', wrapped: '0xc3FdBe3A68EE5dE461D30415a8165cf9Aefe1171' },
+  SPY: { feed: '0x2e2dA5717eDE960F8b77Af4cFcBDC4Ca3099006D', wrapped: '0xE7E553Cd128F0011777323A0b44a7b96EA1CB540' },
+  QQQ: { feed: '0x7CA45B17D8D43059a222dEC5d991B613F61c02d9', wrapped: '0x4C1AE29c159838fC1b224636E28E086EB69101f7' },
+}
+
+const chainlinkAbi = parseAbi([
+  'function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)',
+  'function decimals() view returns (uint8)',
+  'function convertToAssets(uint256 shares) view returns (uint256)',
+])
 
 const oracleAbi = parseAbi([
   'struct PricePayload { int128 price; int128 bestBid; int128 bestAsk; uint64 feedUpdateTimestamp; uint64 publishedAt; uint80 roundId; uint8 session; }',
@@ -59,6 +81,8 @@ export type StockQuote = StockInfo & {
   /** Unix seconds of the source quote */
   quotedAt: number
   session: Session
+  /** Who priced it. Chainlink quotes have no bid or ask (both 0, spread 0). */
+  source: 'Chainlink' | 'Monday Trade'
 }
 
 /** One read of every ticker, and the Unix second it was taken: ages are measured against that. */
@@ -83,12 +107,7 @@ export async function stockQuotes(): Promise<StockBoard> {
 }
 
 async function readQuotes(): Promise<StockBoard> {
-  const payloads = await mainnet().readContract({
-    address: STOCK_ORACLE,
-    abi: oracleAbi,
-    functionName: 'latestPrices',
-    args: [STOCKS.map((s) => keccak256(toBytes(s.symbol)))],
-  })
+  const payloads = await mainnet().readContract({ address: STOCK_ORACLE, abi: oracleAbi, functionName: 'latestPrices', args: [STOCKS.map((s) => keccak256(toBytes(s.symbol)))] })
   const quotes = payloads.map((p, i): StockQuote => {
     const mid = (p.bestBid + p.bestAsk) / 2n
     return {
@@ -99,7 +118,64 @@ async function readQuotes(): Promise<StockBoard> {
       spreadBps: mid > 0n ? Number(((p.bestAsk - p.bestBid) * 1_000_000n) / mid) / 100 : 0,
       quotedAt: Number(p.feedUpdateTimestamp),
       session: SESSIONS[p.session] ?? 'Unknown',
+      source: 'Monday Trade',
     }
   })
-  return { quotes, readAt: Math.floor(Date.now() / 1000) }
+  const now = Math.floor(Date.now() / 1000)
+  const chainlink = await Promise.all(quotes.map((q) => (q.symbol in CHAINLINK_XSTOCK_FEEDS ? readChainlink(q.symbol).catch(() => null) : null)))
+  const session = sessionAt(now)
+  return {
+    quotes: quotes.map((q, i) => {
+      const c = chainlink[i]
+      return c ? { ...q, price: c.price, bid: 0n, ask: 0n, spreadBps: 0, quotedAt: c.updatedAt, session, source: 'Chainlink' } : { ...q, session }
+    }),
+    readAt: now,
+  }
+}
+
+/** USD per share, 8 decimals like the oracle: the wrapped token's price over the shares it holds. */
+async function readChainlink(symbol: string): Promise<{ price: bigint; updatedAt: number }> {
+  const { feed, wrapped } = CHAINLINK_XSTOCK_FEEDS[symbol]!
+  const c = mainnet()
+  const [round, decimals, assets] = await Promise.all([
+    c.readContract({ address: feed, abi: chainlinkAbi, functionName: 'latestRoundData' }),
+    c.readContract({ address: feed, abi: chainlinkAbi, functionName: 'decimals' }),
+    c.readContract({ address: wrapped, abi: chainlinkAbi, functionName: 'convertToAssets', args: [10n ** 18n] }),
+  ])
+  const answer = round[1]
+  if (answer <= 0n || assets <= 0n) throw new Error('chainlink: no price')
+  // per wrapped (decimals) -> per share (8): answer * 1e18 / assets, rescaled to 8 decimals
+  const price = (answer * 10n ** 18n * 10n ** 8n) / (assets * 10n ** BigInt(decimals))
+  return { price, updatedAt: Number(round[3]) }
+}
+
+/**
+ * The US session by the clock, in New York time, with NYSE holidays and early closes (from
+ * Pyth's equity schedule). The oracle used to tell us this; it no longer updates.
+ */
+const CLOSED = new Set(['2026-11-26', '2026-12-25', '2027-01-01', '2027-01-18', '2027-02-15', '2027-03-26', '2027-05-31', '2027-06-18', '2027-07-05', '2027-09-06'])
+const EARLY = new Set(['2026-11-27', '2026-12-24'])
+export function sessionAt(unix: number): Session {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(unix * 1000)
+      .map((p) => [p.type, p.value]),
+  )
+  const day = `${parts.year}-${parts.month}-${parts.day}`
+  if (parts.weekday === 'Sat' || parts.weekday === 'Sun' || CLOSED.has(day)) return 'Closed'
+  const min = Number(parts.hour) * 60 + Number(parts.minute)
+  const close = EARLY.has(day) ? 13 * 60 : 16 * 60
+  if (min >= 4 * 60 && min < 9 * 60 + 30) return 'Pre-market'
+  if (min >= 9 * 60 + 30 && min < close) return 'Market open'
+  if (min >= close && min < 20 * 60) return 'After hours'
+  return 'Overnight'
 }

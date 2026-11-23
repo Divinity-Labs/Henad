@@ -10,7 +10,7 @@ import { PriceChart, Sparkline } from './PriceChart'
 import { TradePanel } from './TradePanel'
 
 /** A quote as the page sends it to the browser: prices as plain USD numbers. */
-export type QuoteDto = StockInfo & { price: number; bid: number; ask: number; spreadBps: number; quotedAt: number; session: Session }
+export type QuoteDto = StockInfo & { price: number; bid: number; ask: number; spreadBps: number; quotedAt: number; session: Session; source: 'Chainlink' | 'Monday Trade' }
 
 const RANGES = [
   { key: '1D', sec: 86_400 },
@@ -139,7 +139,6 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
   const q = quotes.find((s) => s.symbol === selected) ?? quotes[0]!
   const points = series[q.symbol] ?? []
   const c = history ? change(points) : null
-  const oldest = Math.min(...quotes.map((s) => s.quotedAt))
   const groups = [
     { title: 'Stocks', list: quotes.filter((s) => s.kind === 'stock') },
     { title: 'Funds', list: quotes.filter((s) => s.kind === 'fund') },
@@ -152,12 +151,14 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
           <span className="label text-purple">Stocks · Monad mainnet</span>
           <h1 className="m-0 font-display text-[34px] font-medium leading-[1.02] tracking-[-.04em] md:text-[52px]">US stocks, priced on chain.</h1>
           <p className="m-0 max-w-[560px] text-[14px] leading-[1.5] text-grey pretty">
-            Every quote is read live from Monad, with its bid, its ask and the gap between them. Charts come from the oracle&apos;s own on-chain updates.
+            Every quote is read live from Monad. The stocks you can trade are priced by Chainlink, so each order shows the market price, your price and the gap.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <SessionPill session={q.session} />
-          <span className="font-mono text-[11px] text-muted tabular">Quotes up to {age(oldest, readAt)} old</span>
+          <span className="font-mono text-[11px] text-muted tabular">
+            {q.symbol} via {q.source}, {age(q.quotedAt, readAt)} ago
+          </span>
         </div>
       </header>
 
@@ -208,9 +209,19 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
               )}
             </div>
             <div className="mt-4 grid grid-cols-2 border-t border-hairline-2 md:grid-cols-4">
-              <Stat k="Bid" v={usd(q.bid)} />
-              <Stat k="Ask" v={usd(q.ask)} />
-              <Stat k="Spread" v={`${q.spreadBps.toFixed(1)} bps`} />
+              {q.source === 'Chainlink' ? (
+                <>
+                  <Stat k="Source" v="Chainlink" />
+                  <Stat k="Updates" v="24/5" />
+                  <Stat k="Market" v={q.session} />
+                </>
+              ) : (
+                <>
+                  <Stat k="Bid" v={usd(q.bid)} />
+                  <Stat k="Ask" v={usd(q.ask)} />
+                  <Stat k="Spread" v={`${q.spreadBps.toFixed(1)} bps`} />
+                </>
+              )}
               <Stat k="Quoted" v={`${age(q.quotedAt, readAt)} ago`} />
             </div>
           </Card>
@@ -220,7 +231,7 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
             <Card className="flex flex-col gap-3 p-5 md:p-6">
               <span className="label text-purple">Trade</span>
               <p className="m-0 max-w-[620px] text-[15px] leading-[1.5] text-ink pretty">
-                {q.name} has no market on Monad yet. You can buy and sell these from your Henad account now, with the oracle price, your price and the difference shown before you
+                {q.name} has no market on Monad yet. You can buy and sell these from your Henad account now, with the market price, your price and the difference shown before you
                 sign:
               </p>
               <div className="flex flex-wrap gap-2">
@@ -271,11 +282,11 @@ export function StocksView({ quotes, readAt }: { quotes: QuoteDto[] | null; read
             </section>
           ))}
           <p className="m-0 text-[11.5px] leading-[1.5] text-muted pretty">
-            Prices come from Monday Trade&apos;s StockOracle contract on Monad mainnet. The source quote runs about 15 minutes behind the market, so treat them as a guide, not a
-            fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are US Eastern. Not available to US persons or in restricted countries.
-            Logos belong to their companies.{' '}
+            NVDA, TSLA, SPY and QQQ are priced by Chainlink&apos;s xStock feeds on Monad, updated through the US trading week. The others come from Monday Trade&apos;s StockOracle,
+            which has not updated since 19 Nov, so treat them as a guide, not a fill price. Orders fill as wrapped xStocks through Relay from Uniswap v4 pools on Monad. Times are
+            US Eastern. Not available to US persons or in restricted countries. Logos belong to their companies.{' '}
             <a href="https://monadscan.com/address/0x037848af338c38e1e0ab722be80bf4c2e612a1f7" target="_blank" rel="noreferrer" className="text-purple">
-              Oracle on Monadscan ↗
+              StockOracle on Monadscan ↗
             </a>
           </p>
         </div>

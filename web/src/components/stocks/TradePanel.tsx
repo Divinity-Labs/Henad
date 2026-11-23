@@ -17,16 +17,16 @@ const SLIPPAGE_BPS = 100
 
 /**
  * Buy or sell one stock from the Henad account, as its wrapped xStock, with the receipt's three
- * numbers before signing: the oracle's price per share, the price this order fills at, and the
+ * numbers before signing: Chainlink's price per share, the price this order fills at, and the
  * difference in basis points. A fill below the floor shown reverts.
  */
 /**
- * The oracle republishes every ten minutes from a source about fifteen minutes behind. A quote
- * much older than that means the feed has stalled (it did on 19 Nov 2026, for five hours, in
- * market hours), and a spread measured against it says nothing about the fill. So past this
- * age the panel names the age and shows no spread rather than a confident wrong number.
+ * Chainlink's xStock feeds have a one-hour heartbeat through the US trading week and stop over
+ * weekends and holidays. A quote older than that means the market is shut or the feed has
+ * stalled, and a spread measured against it says nothing about the fill. So past this age the
+ * panel names the age and shows no spread rather than a confident wrong number.
  */
-const STALE_AFTER_SEC = 45 * 60
+const STALE_AFTER_SEC = 75 * 60
 
 function ageLabel(sec: number): string {
   const m = Math.round(sec / 60)
@@ -171,7 +171,7 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
     }
   }
 
-  const heldShares = held !== null && ratio !== null ? (Number(formatUnits(held, XSTOCK_DECIMALS)) * ratio) : null
+  const heldShares = held !== null && ratio !== null ? Number(formatUnits(held, XSTOCK_DECIMALS)) * ratio : null
   const outLabel = side === 'buy' ? x.label : cash
   const outDecimals = side === 'buy' ? XSTOCK_DECIMALS : 6
   const fmtOut = (v: bigint) => Number(formatUnits(v, outDecimals)).toLocaleString('en-US', { maximumFractionDigits: side === 'buy' ? 6 : 2 })
@@ -273,7 +273,7 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline-2 pt-3 font-mono text-[12px] tabular">
         <span className="text-muted">You get</span>
         <span className="text-right text-ink">{fresh ? `${fmtOut(fresh.amountOut)} ${outLabel}` : '—'}</span>
-        <span className="text-muted">Oracle price</span>
+        <span className="text-muted">Market price</span>
         <span className="text-right text-ink">
           {usd(price)}
           {stale && <span className="text-muted"> · {ageLabel(quoteAgeSec)} old</span>}
@@ -288,8 +288,7 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
 
       {stale && (
         <p className="m-0 font-mono text-[11px] leading-[1.5] text-muted">
-          The oracle&apos;s last quote is {ageLabel(quoteAgeSec)} old, so the market has moved since and a spread against it would mislead. Your price and the floor
-          below are live.
+          The last market price is {ageLabel(quoteAgeSec)} old (the US market may be closed), so a spread against it would mislead. Your price and the floor below are live.
         </p>
       )}
 
@@ -302,8 +301,8 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       <label className="flex items-start gap-2 text-[12px] leading-[1.5] text-grey">
         <input type="checkbox" checked={eligible} onChange={(e) => setEligible(e.target.checked)} className="mt-[3px]" />
         <span>
-          I am not a US person, and I am not in the US, the UK, Canada, Australia, the EU or EEA, or a sanctioned country. I understand xStocks track a share&apos;s price but
-          carry no voting rights.
+          I am not a US person, and I am not in the US, the UK, Canada, Australia, the EU or EEA, or a sanctioned country. I understand xStocks track a share&apos;s price but carry
+          no voting rights.
         </span>
       </label>
 
@@ -322,8 +321,8 @@ export function TradePanel({ symbol, name, price, quoteAgeSec }: { symbol: strin
       </Button>
       <p className="m-0 text-center font-mono text-[11px] text-muted">{blocker ?? 'Your passkey signs this order, from your own account. Gas is paid in MON.'}</p>
       <p className="m-0 text-[11px] leading-[1.5] text-muted pretty">
-        You hold {x.label}, a wrapped xStock on Monad, filled through Relay from Uniswap v4. The oracle price runs about 15 minutes behind the market, so the spread
-        includes any move since. A fill below &quot;At worst&quot; reverts. Not investment advice.
+        You hold {x.label}, a wrapped xStock on Monad, filled through Relay from Uniswap v4. The market price is Chainlink&apos;s, read on Monad, and the spread is your price
+        against it. A fill below &quot;At worst&quot; reverts. Not investment advice.
       </p>
     </Card>
   )
