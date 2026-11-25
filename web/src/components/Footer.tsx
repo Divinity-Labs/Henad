@@ -53,7 +53,7 @@ export function Footer() {
         ))}
       </footer>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-4 md:px-9 py-[22px] border-t border-hairline text-[14px] text-grey">
-        <span>© 2026 Henad. No fiat. No custody. No KYC.</span>
+        <span>© 2026 Divinity Labs Limited (RC 10031131). Henad is a product of Divinity Labs. No fiat. No custody. No KYC.</span>
         <div className="flex gap-6 label-md">
           <Link href="/docs/privacy" className="text-ink">
             Privacy policy ↗

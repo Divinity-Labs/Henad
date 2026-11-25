@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMeta({
   path: '/docs/privacy',
 })
 
-const UPDATED = '20 September 2026'
+const UPDATED = '25 November 2026'
 
 /** /docs/privacy — short on purpose: a product that holds no accounts has little to disclose. */
 export default function PrivacyPage() {
@@ -23,6 +23,9 @@ export default function PrivacyPage() {
       <p className="pretty m-0 max-w-[560px] text-[16px] leading-[1.6] text-grey">
         There is no sign-up, no email address, no password and no profile. Your account is a passkey held by your device and its
         operating system, and Henad never sees it.
+      </p>
+      <p className="pretty m-0 max-w-[560px] text-[16px] leading-[1.6] text-grey">
+        Henad is a product of Divinity Labs Limited, a company registered in Nigeria (RC 10031131).
       </p>
 
       <h2 className="m-0 mt-4 font-display text-[20px] font-medium tracking-[-.02em]">What stays on your device</h2>

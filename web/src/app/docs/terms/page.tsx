@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMeta({
   path: '/docs/terms',
 })
 
-const UPDATED = '20 September 2026'
+const UPDATED = '25 November 2026'
 
 /** /docs/terms — the honest version: software, no custody, no guarantees, irreversible. */
 export default function TermsPage() {
@@ -22,6 +22,10 @@ export default function TermsPage() {
 
       <p className="pretty m-0 max-w-[560px] text-[16px] leading-[1.6] text-grey">
         Using this site or the app means accepting what follows. If any of it is unacceptable to you, do not use it.
+      </p>
+      <p className="pretty m-0 max-w-[560px] text-[16px] leading-[1.6] text-grey">
+        Henad is a product of Divinity Labs Limited, a company registered in Nigeria (RC 10031131). &ldquo;We&rdquo; in these
+        terms means Divinity Labs Limited.
       </p>
 
       <h2 className="m-0 mt-4 font-display text-[20px] font-medium tracking-[-.02em]">What this is</h2>
